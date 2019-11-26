@@ -52,4 +52,15 @@ func Test05ShortTokenSet(t *testing.T) {
 	if tc.BASE64 != "Abys-_" {
 		t.Error("wrong token BASE64 representation")
 	}
+
+	tc, err = ShortTokenSet("a#$%s-")
+	if err.Error() != "illegal base64 data at input byte 1" {
+		t.Error("wrong error for wrong alphabet: " + err.Error())
+	}
+
+	tc, err = ShortTokenSet("-_")
+	if err.Error() != "wrong token length" {
+		t.Error("wrong error for wrong token lenght: " + err.Error())
+	}
+
 }
