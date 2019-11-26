@@ -20,18 +20,18 @@ func readDSN() (string, error) {
 	cfgFile := ".cnf.json"
 	f, err := os.Open(cfgFile)
 	if err != nil {
-		return "", fmt.Errorf("Configuration file '%s' can't be read: %w", cfgFile, err)
+		return "", fmt.Errorf("configuration file '%s' can't be read: %w", cfgFile, err)
 	}
 	defer f.Close()
 	cfg := make(map[string]interface{})
 	err = json.NewDecoder(f).Decode(&cfg)
 	if err != nil && err != io.EOF {
-		return "", fmt.Errorf("Configuration file '%s' can be parsed: %w", cfgFile, err)
+		return "", fmt.Errorf("configuration file '%s' can be parsed: %w", cfgFile, err)
 	}
 
 	dsn, ok := cfg["URLSHORTENER_DSN"].(string)
 	if !ok || dsn == "" {
-		return "", fmt.Errorf("Configuration file '%s' sould contain URLSHORTENER_DSN variable with value like '<user>:<password>@<protocol>(<host>:<port>)/<database>'", cfgFile)
+		return "", fmt.Errorf("configuration file '%s' sould contain URLSHORTENER_DSN variable with value like '<user>:<password>@<protocol>(<host>:<port>)/<database>'", cfgFile)
 	}
 	return dsn, nil
 }

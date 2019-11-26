@@ -50,7 +50,7 @@ func ShortTokenNew() (*ShortToken, error) {
 func ShortTokenSet(sToken string) (*ShortToken, error) {
 
 	if len(sToken) != 6 {
-		return nil, errors.New("Wrong token length")
+		return nil, errors.New("wrong token length")
 	}
 
 	// add "A=" (6 zeros bits and 2-bits padding) to receive 5 bytes from decoding
