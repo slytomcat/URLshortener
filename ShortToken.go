@@ -53,8 +53,6 @@ func ShortTokenSet(sToken string) (*ShortToken, error) {
 		return nil, errors.New("Wrong token length")
 	}
 
-	b := make([]byte, 5)
-
 	// add "A=" (6 zeros bits and 2-bits padding) to receive 5 bytes from decoding
 	b, err := base64.URLEncoding.DecodeString(sToken + "A=")
 	if err != nil {

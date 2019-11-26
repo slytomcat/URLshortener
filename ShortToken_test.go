@@ -28,7 +28,7 @@ func Test03ShortTokenNewReal(t *testing.T) {
 		t.Error("error of ShortToken creation from random")
 	}
 
-	tc1, err := ShortTokenNew()
+	tc1, _ := ShortTokenNew()
 
 	if bytes.Equal(tc.Bytes, tc1.Bytes) {
 		t.Error("2 sequential token are equal by bytes")
