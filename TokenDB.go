@@ -13,9 +13,10 @@ import (
 
 // TokenDB is a structure to handle the DB token operations
 type TokenDB struct {
-	DB *sql.DB
+	DB *sql.DB // database connection
 }
 
+// readDSN reads dsn from config file
 func readDSN() (string, error) {
 	cfgFile := ".cnf.json"
 	f, err := os.Open(cfgFile)
@@ -59,8 +60,6 @@ func TokenDBNew() (*TokenDB, error) {
 		return nil, err
 	}
 
-	// fmt.Println("DB Connected")
-
 	return &TokenDB{db}, nil
 }
 
@@ -74,6 +73,9 @@ func (t *TokenDB) New(longURL string, expiration int) (string, error) {
 		return "", fmt.Errorf("can't create transaction: %w", err)
 	}
 
+	// Try several times to create new token and insert it into DB table.
+	// The token field is unique in DB so it's not possible to insert the same token twice.
+	// But if the token already expired then try to update it (url and expiration).
 	for {
 		tc, err := ShortTokenNew()
 		if err != nil {
@@ -91,7 +93,7 @@ func (t *TokenDB) New(longURL string, expiration int) (string, error) {
 			break
 		} else { // the token ia alredy in use
 			if strings.Contains(err.Error(), "Duplicate entry") {
-				// update the token if it is expired
+				// try to update the token if it is expired
 				result, err := tran.Exec("UPDATE `urls` SET `url`=?, `exp`=? WHERE `token` = ? and DATE_ADD(`ts`, INTERVAL `exp` DAY) < NOW()",
 					longURL,
 					expiration,
@@ -139,6 +141,7 @@ func (t *TokenDB) Get(sToken string) (string, error) {
 	return url, nil
 }
 
+// common function for update token expiration
 func (t *TokenDB) updateExpiration(sToken string, exp int) error {
 
 	tc, err := ShortTokenSet(sToken)
