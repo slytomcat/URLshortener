@@ -22,7 +22,7 @@ func Test10NewTokenDB(t *testing.T) {
 }
 
 func Test15ClearTable(t *testing.T) {
-	tx, err := tDB.DB.Begin()
+	tx, _ := tDB.DB.Begin()
 	_, err = tx.Exec("DELETE FROM urls")
 	if err != nil {
 		t.Errorf("Can't clear table: %v", err)
