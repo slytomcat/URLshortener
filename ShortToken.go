@@ -13,7 +13,8 @@ import (
 )
 
 var (
-	DEBUG = false  // DEBUG = true sets token as constant
+	// DEBUG = true sets token as constant
+	DEBUG = false
 )
 
 // ShortToken is a structure with 2 representation of token
