@@ -18,21 +18,25 @@ type TokenDB struct {
 
 // TokenDBNew - creates new TokenDB struct and connect to mysql server
 func TokenDBNew() (*TokenDB, error) {
-	cfgFile := ".cnf.json"
-	f, err := os.Open(cfgFile)
-	if err != nil {
-		return nil, fmt.Errorf("Configuration file '%s' can't be read: %w", cfgFile, err)
-	}
-	defer f.Close()
-	cfg := make(map[string]interface{})
-	err = json.NewDecoder(f).Decode(&cfg)
-	if err != nil && err != io.EOF {
-		return nil, fmt.Errorf("Configuration file '%s' can be parsed: %w", cfgFile, err)
-	}
 
-	dsn, ok := cfg["URLSHORTENER_DSN"].(string)
-	if !ok || dsn == "" {
-		return nil, fmt.Errorf("Configuration file '%s' sould contain URLSHORTENER_DSN variable with value like '<user>:<password>@<protocol>(<host>:<port>)/<database>'", cfgFile)
+	dsn := os.Getenv("URLSHORTENER_DSN")
+	if dsn == "" {
+		cfgFile := ".cnf.json"
+		f, err := os.Open(cfgFile)
+		if err != nil {
+			return nil, fmt.Errorf("Configuration file '%s' can't be read: %w", cfgFile, err)
+		}
+		defer f.Close()
+		cfg := make(map[string]interface{})
+		err = json.NewDecoder(f).Decode(&cfg)
+		if err != nil && err != io.EOF {
+			return nil, fmt.Errorf("Configuration file '%s' can be parsed: %w", cfgFile, err)
+		}
+
+		dsn, ok := cfg["URLSHORTENER_DSN"].(string)
+		if !ok || dsn == "" {
+			return nil, fmt.Errorf("Configuration file '%s' sould contain URLSHORTENER_DSN variable with value like '<user>:<password>@<protocol>(<host>:<port>)/<database>'", cfgFile)
+		}
 	}
 
 	db, err := sql.Open("mysql", dsn)
