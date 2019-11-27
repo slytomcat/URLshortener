@@ -49,14 +49,13 @@ func raceNewToken(url string, t *testing.T) {
 		time.Sleep(time.Duration(rand.Intn(10)) * time.Microsecond * 100)
 		fmt.Printf("%v Racer %d: Ready!\n", time.Now(), i)
 		start.RLock()
-		startTime := time.Now()
 		Token, err := tDB.New(url, 1)
 		if err != nil {
-			fmt.Printf("%v Racer %d: can't get token\n", startTime, i)
+			fmt.Printf("%v Racer %d: can't get token\n", time.Now(), i)
 			atomic.AddInt64(&fail, 1)
 			return
 		}
-		fmt.Printf("%v Racer %d: Token for %s: %v\n", startTime, i, url, Token)
+		fmt.Printf("%v Racer %d: Token for %s: %v\n", time.Now(), i, url, Token)
 		atomic.AddInt64(&succes, 1)
 	}
 
@@ -67,12 +66,11 @@ func raceNewToken(url string, t *testing.T) {
     fmt.Printf("%v Ready?\n",time.Now())
 	time.Sleep(time.Second * 2)
 	start.Unlock()
-	startTime := time.Now()
-	fmt.Printf("%v Go!!!\n", startTime)
+	fmt.Printf("%v Go!!!\n", time.Now())
 	wg.Wait()
 
-	if succes != 1 && fail != cnt-1 {
-		t.Errorf("Concurent update error: success=%d, fail=%d", succes, fail)
+	if succes != 1 || fail != cnt-1 {
+		t.Errorf("Concurent update error: success=%d, fail=%d, total=%d", succes, fail, cnt)
 	}
 }
 
