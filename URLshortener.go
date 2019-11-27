@@ -112,7 +112,7 @@ func getNewToken(w http.ResponseWriter, r *http.Request) {
 
 	// set the default expiration if it is not passed
 	if params.Exp == 0 {
-		params.Exp = 1 // TODO: should be default expiration from config
+		params.Exp = CONFIG.DefaultExp
 	}
 
 	// create new token
@@ -133,7 +133,7 @@ func getNewToken(w http.ResponseWriter, r *http.Request) {
 			URL   string `json:"url"`
 		}{
 			Token: sToken,
-			URL:   "localhost:8080/" + sToken, // TODO: read server name from config or from request
+			URL:   CONFIG.ShortDomain + "/" + sToken,
 		})
 	if err != nil {
 		fmt.Printf("response body JSON marshaling error: %v\n", err)
@@ -156,7 +156,7 @@ func myMUX(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("Request for token")
 		getNewToken(w, r)
 	case "/favicon.ico": // I have no idea why the chromium make such requests together with request for redirect
-		return
+		return // skip it
 	default: // all the rest are requests for redirect
 		fmt.Println("Request for redirect")
 		redirect(w, r, path[1:])
@@ -164,8 +164,13 @@ func myMUX(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-
 	var err error
+
+	// get the configuratin variables
+	err = readConfig()
+	if err != nil {
+		panic(err)
+	}
 
 	// create new TokenDB interface
 	tokenDB, err = TokenDBNew()
@@ -177,7 +182,6 @@ func main() {
 	http.HandleFunc("/", myMUX)
 
 	// start server
-	// TODO: read host:port from config file
-	fmt.Println("starting server at :8080")
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	fmt.Println("starting server at", CONFIG.ListenHostPort)
+	log.Fatal(http.ListenAndServe(CONFIG.ListenHostPort, nil))
 }

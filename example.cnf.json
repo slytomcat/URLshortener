@@ -1,3 +1,6 @@
 {
-    "URLSHORTENER_DSN":"shortener:<password>@<protocol>(<host>:<port>)/shortener_DB"
+    "DSN":"shortener:<password>@<protocol>(<host>:<port>)/shortener_DB",
+    "ListenHostPort":"localhost:8080",
+    "DefaultExp":"1",
+	"ShortDomain":"localhost:8080"
 }

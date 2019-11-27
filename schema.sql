@@ -1,4 +1,4 @@
--- This script contains all necessary commands to create necessary DB structure for URLshortener
+-- This script contains all necessary commands to create DB structure for URLshortener
 -- It should be run from root user in MySQL console
 
 CREATE DATABASE IF NOT EXISTS shortener_DB
@@ -18,7 +18,7 @@ CREATE TABLE `urls` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 
--- keep the generated password to use in in DSN (connection string)
+-- keep the generated password to use in in DSN (DB connection string)
 CREATE USER `shortener`@`%` IDENTIFIED BY RANDOM PASSWORD;
 
 GRANT ALL ON `shortener_DB`.`urls` TO `shortener`@`%`;
