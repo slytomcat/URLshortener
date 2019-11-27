@@ -17,6 +17,11 @@ var (
 
 func Test10NewTokenDB(t *testing.T) {
 	var err error
+	err = readConfig(".cnf.json")
+	if err != nil {
+		t.Error(err)
+	}
+
 	tDB, err = TokenDBNew()
 	if err != nil {
 		t.Error(err)
@@ -63,7 +68,7 @@ func raceNewToken(url string, t *testing.T) {
 		wg.Add(1)
 		go racer(i)
 	}
-    fmt.Printf("%v Ready?\n",time.Now())
+	fmt.Printf("%v Ready?\n", time.Now())
 	time.Sleep(time.Second * 2)
 	start.Unlock()
 	fmt.Printf("%v Go!!!\n", time.Now())
