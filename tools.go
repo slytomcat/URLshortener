@@ -11,6 +11,7 @@ import (
 // Config - configuration structure
 type Config struct {
 	DSN            string
+	MaxOpenConns   int `json:",string"`
 	ListenHostPort string
 	DefaultExp     int `json:",string"`
 	ShortDomain    string
@@ -43,6 +44,9 @@ func readConfig(cfgFile string) error {
 	}
 
 	// set default values for optional config variables
+	if CONFIG.MaxOpenConns == 0 {
+		CONFIG.MaxOpenConns = 10
+	}
 	if CONFIG.ListenHostPort == "" {
 		CONFIG.ListenHostPort = "localhost:8080"
 	}
