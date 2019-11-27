@@ -2,9 +2,11 @@ package main
 
 import (
 	"fmt"
+	"math/rand"
 	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	_ "github.com/go-sql-driver/mysql"
 )
@@ -36,16 +38,25 @@ func raceNewToken(url string, t *testing.T) {
 	var wg sync.WaitGroup
 	var succes, fail, cnt, i int64
 	cnt = 5
+	var start sync.RWMutex
+
+	start.Lock()
+	rand.Seed(time.Now().UnixNano())
 
 	racer := func(i int64) {
 		defer wg.Done()
+
+		time.Sleep(time.Duration(rand.Intn(10)) * time.Microsecond * 100)
+		fmt.Printf("%v Racer %d: Ready!\n", time.Now(), i)
+		start.RLock()
+		startTime := time.Now()
 		Token, err := tDB.New(url, 1)
 		if err != nil {
-			fmt.Printf("Racer %d: can't get token\n", i)
+			fmt.Printf("%v Racer %d: can't get token\n", startTime, i)
 			atomic.AddInt64(&fail, 1)
 			return
 		}
-		fmt.Printf("Racer %d: Token for %s: %v\n", i, url, Token)
+		fmt.Printf("%v Racer %d: Token for %s: %v\n", startTime, i, url, Token)
 		atomic.AddInt64(&succes, 1)
 	}
 
@@ -53,6 +64,11 @@ func raceNewToken(url string, t *testing.T) {
 		wg.Add(1)
 		go racer(i)
 	}
+    fmt.Printf("%v Ready?\n",time.Now())
+	time.Sleep(time.Second * 2)
+	start.Unlock()
+	startTime := time.Now()
+	fmt.Printf("%v Go!!!\n", startTime)
 	wg.Wait()
 
 	if succes != 1 && fail != cnt-1 {

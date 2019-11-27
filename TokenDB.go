@@ -5,10 +5,13 @@ package main
 import (
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
 	"strings"
+
+	_ "github.com/go-sql-driver/mysql"
 )
 
 // TokenDB is a structure to handle the DB token operations
@@ -81,11 +84,11 @@ func (t *TokenDB) New(longURL string, expiration int) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		sToken = tc.BASE64
+		sToken = tc
 
 		_, err = tran.Exec(
 			"INSERT INTO urls (`token`, `url`, `exp`) VALUES (?, ?, ?)",
-			tc.Bytes,
+			tc,
 			longURL,
 			expiration,
 		)
@@ -97,7 +100,7 @@ func (t *TokenDB) New(longURL string, expiration int) (string, error) {
 				result, err := tran.Exec("UPDATE `urls` SET `url`=?, `exp`=? WHERE `token` = ? and DATE_ADD(`ts`, INTERVAL `exp` DAY) < NOW()",
 					longURL,
 					expiration,
-					tc.Bytes,
+					tc,
 				)
 				if err != nil {
 					tran.Rollback()
@@ -124,16 +127,15 @@ func (t *TokenDB) New(longURL string, expiration int) (string, error) {
 
 // Get returns long url for given token
 func (t *TokenDB) Get(sToken string) (string, error) {
-	tc, err := ShortTokenSet(sToken)
-	if err != nil {
-		return "", err
+	if len(sToken) != 6 {
+		return "", errors.New("wrong token length")
 	}
 
 	// get the url by token (ignore expiratinon)
-	row := t.DB.QueryRow("SELECT url FROM urls WHERE token = ?", tc.Bytes)
+	row := t.DB.QueryRow("SELECT url FROM urls WHERE token = ?", sToken)
 
 	url := ""
-	err = row.Scan(&url)
+	err := row.Scan(&url)
 	if err != nil {
 		return "", err
 	}
@@ -144,17 +146,12 @@ func (t *TokenDB) Get(sToken string) (string, error) {
 // common function for update token expiration
 func (t *TokenDB) updateExpiration(sToken string, exp int) error {
 
-	tc, err := ShortTokenSet(sToken)
-	if err != nil {
-		return err
-	}
-
 	tran, err := t.DB.Begin()
 	if err != nil {
 		return fmt.Errorf("can't create transaction: %w", err)
 	}
 
-	_, err = tran.Exec("UPDATE `urls` SET `exp`=? WHERE `token` = ? ", exp, tc.Bytes)
+	_, err = tran.Exec("UPDATE `urls` SET `exp`=? WHERE `token` = ? ", exp, sToken)
 	if err != nil {
 		tran.Rollback()
 		return fmt.Errorf("can't update token: %w", err)
