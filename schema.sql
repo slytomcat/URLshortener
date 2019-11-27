@@ -2,15 +2,15 @@
 -- It should be run from root user in MySQL console
 
 CREATE DATABASE IF NOT EXISTS shortener_DB
-CHARACTER SET 'utf8';
+CHARACTER SET `utf8`;
 
-use shortener_DB
+USE shortener_DB
 
 SET time_zone = '+00:00';
 
 DROP TABLE IF EXISTS `urls`;
 CREATE TABLE `urls` (
-  `token` BINARY(5) NOT NULL ,
+  `token` CHAR(6) NOT NULL ,
   `url` VARCHAR(255) NOT NULL,
   `ts` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `exp` INT DEFAULT NULL,
@@ -19,6 +19,6 @@ CREATE TABLE `urls` (
 
 
 -- keep the generated password to use in in DSN (connection string)
-Create user `shortener`@`%` IDENTIFIED BY RANDOM PASSWORD;
+CREATE USER `shortener`@`%` IDENTIFIED BY RANDOM PASSWORD;
 
-grant all on shortener_DB.* to shortener@'%';
+GRANT ALL ON `shortener_DB`.`urls` TO `shortener`@`%`;
