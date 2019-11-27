@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"os"
 )
 
@@ -18,25 +19,16 @@ type Config struct {
 // CONFIG - structure with the configuration variables
 var CONFIG Config
 
-func readConfig() error {
-	cfgFile := ".cnf.json"
-
-	// open config file
-	cf, err := os.Open(cfgFile)
-	if err != nil {
-		return fmt.Errorf("configuration file '%s' can't be read: %w", cfgFile, err)
-	}
-	defer cf.Close()
+func readConfig(cfgFile string) error {
 
 	// read config file into buffer
-	buf := make([]byte, 1024)
-	n, err := cf.Read(buf)
+	buf, err := ioutil.ReadFile(cfgFile)
 	if err != nil {
 		return fmt.Errorf("configuration file '%s' reading error: %w", cfgFile, err)
 	}
 
 	// parse config file
-	err = json.Unmarshal(buf[:n], &CONFIG)
+	err = json.Unmarshal(buf, &CONFIG)
 	if err != nil {
 		return fmt.Errorf("configuration file '%s' parsing error: %w", cfgFile, err)
 	}

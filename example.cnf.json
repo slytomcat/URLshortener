@@ -1,6 +1,6 @@
 {
     "DSN":"shortener:<password>@<protocol>(<host>:<port>)/shortener_DB",
-    "ListenHostPort":"localhost:8080",
-    "DefaultExp":"1",
-	"ShortDomain":"localhost:8080"
+    "ListenHostPort":"0.0.0.0:80",
+    "DefaultExp":"30",
+	"ShortDomain":"<shortDomain>"
 }

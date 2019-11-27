@@ -167,7 +167,7 @@ func main() {
 	var err error
 
 	// get the configuratin variables
-	err = readConfig()
+	err = readConfig(".cnf.json")
 	if err != nil {
 		panic(err)
 	}
