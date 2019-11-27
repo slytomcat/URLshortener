@@ -2,6 +2,40 @@
 [![CircleCI](https://circleci.com/gh/slytomcat/URLshortener.svg?style=svg)](https://circleci.com/gh/slytomcat/URLshortener)
 [![DeepSource](https://static.deepsource.io/deepsource-badge-light.svg)](https://deepsource.io/gh/slytomcat/URLshortener/?ref=repository-badge)
 
-Golang microservice for shortening URLs
+URLshortener is a microservice to shorten long URLs and to handle the redirection by generated short URLs.
 
-It is in development now
+### Request for short URL:
+`URL: <host>[:<port>]/token`
+
+`Method: POST`
+
+`Body: JSON with following parameters:`
+
+- url: URL to shorten, mandatory
+- exp: short URL expiration in days, optional
+
+`Response: JSON with following parameters:`
+
+- token: token for short URL
+- url: short URL
+
+### Redirect to long URL:
+`URL: <host>[:<port>]/<token> - URL from response on request for short URL`
+
+`Method: GET`
+
+`No parameters`
+
+`Response contain the redirection to long URL`
+
+### Helth-check:
+`URL: <host>[:<port>]/`
+
+`Method: GET`
+
+`No parameters`
+
+`Responce: simple home page and HTTP 200 OK in case of good service health or HTTP 500 Server error in case of bad service health`
+
+
+It is still under development.
