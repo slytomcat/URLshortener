@@ -168,8 +168,8 @@ func main() {
 	var err error
 	shutDown = make(chan bool)
 	log.SetPrefix("URLshortener: ")
-		// get the configuratin variables
-		err = readConfig(".cnf.json")
+	// get the configuratin variables
+	err = readConfig(".cnf.json")
 	if err != nil {
 		log.Fatal(err)
 	}
