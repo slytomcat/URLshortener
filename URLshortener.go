@@ -91,8 +91,8 @@ func getNewToken(w http.ResponseWriter, r *http.Request) {
 
 	// parameters structure
 	var params struct {
-		URL string `json:"url"`
-		Exp int    `json:"exp,string,omitempty"`
+		URL string `json:"url"`                  // long URL
+		Exp int    `json:"exp,string,omitempty"` // Expiration
 	}
 
 	// read the request body
@@ -104,7 +104,7 @@ func getNewToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// read JSON parameters
+	// parse JSON to parameters structure
 	err = json.Unmarshal(buf, &params)
 	if err != nil || params.URL == "" {
 		log.Printf("bad request")
@@ -128,8 +128,8 @@ func getNewToken(w http.ResponseWriter, r *http.Request) {
 	// prepare response body
 	resp, err := json.Marshal(
 		struct {
-			Token string `json:"token"`
-			URL   string `json:"url"`
+			Token string `json:"token"` // token
+			URL   string `json:"url"`   // short URL
 		}{
 			Token: sToken,
 			URL:   CONFIG.ShortDomain + "/" + sToken,
