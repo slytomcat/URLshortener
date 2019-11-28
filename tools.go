@@ -24,14 +24,12 @@ func readConfig(cfgFile string) error {
 
 	// read config file into buffer
 	buf, err := ioutil.ReadFile(cfgFile)
-	if err != nil {
-		return fmt.Errorf("configuration file '%s' reading error: %w", cfgFile, err)
-	}
-
-	// parse config file
-	err = json.Unmarshal(buf, &CONFIG)
-	if err != nil {
-		return fmt.Errorf("configuration file '%s' parsing error: %w", cfgFile, err)
+	if err == nil {
+		// parse config file
+		err = json.Unmarshal(buf, &CONFIG)
+		if err != nil {
+			return fmt.Errorf("configuration file '%s' parsing error: %w", cfgFile, err)
+		}
 	}
 
 	// check mandatory config variable
