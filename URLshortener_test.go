@@ -47,7 +47,7 @@ func Test55mainGetToken(t *testing.T) {
 		t.Errorf("response body reading error: %v", err)
 	}
 
-	if !bytes.Contains(buf, []byte("http://some.url")) {
+	if !bytes.Contains(buf[:n], []byte("http://some.url")) {
 		t.Error("redirect to wrong site")
 	}
 }
