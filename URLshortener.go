@@ -34,7 +34,7 @@ import (
 	"net/http"
 )
 
-// simple home page
+// simple home page to display on health check request
 var (
 	homePage = []byte(`
 <html>
@@ -45,25 +45,27 @@ var (
 	</body>
 </html>
 `)
-	tokenDB  *TokenDB
-	shutDown chan bool
+	tokenDB *TokenDB
+	Server  *http.Server
 )
 
-/* test:
+/* test for test env:
 curl -i -v http://localhost:8080/
 */
 
 // Home shows simple home page
 // It can be used to check the service health.
 func home(w http.ResponseWriter) {
+	// check th DataBase connection
 	if tokenDB.DB.Ping() != nil {
+		// Response by error in case of any problem with DB connection
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	w.Write(homePage)
 }
 
-/* test:
+/* test for test env:
 curl -i -v http://localhost:8080/<token>
 */
 
@@ -81,7 +83,7 @@ func redirect(w http.ResponseWriter, r *http.Request, sToken string) {
 	http.Redirect(w, r, longURL, http.StatusMovedPermanently)
 }
 
-/* test:
+/* test for test env:
 curl -v POST -H "Content-Type: application/json" -d '{"url":"https://www.w3schools.com/html/html_forms.asp","exp":"10"}' http://localhost:8080/token
 */
 
@@ -139,7 +141,7 @@ func getNewToken(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	// return new token and short URL
+	// log new token record
 	log.Printf("Saved token:\n[ %s | %s | %d ]\n", sToken, params.URL, params.Exp)
 
 	// send response
@@ -173,7 +175,6 @@ func main() {
 
 	var err error
 
-	shutDown = make(chan bool)
 	log.SetPrefix("URLshortener: ")
 
 	// get the configuratin variables
@@ -193,14 +194,8 @@ func main() {
 
 	// start server
 	log.Println("starting server at", CONFIG.ListenHostPort)
-	server := &http.Server{Addr: CONFIG.ListenHostPort, Handler: nil}
-	go func() {
-		log.Println(server.ListenAndServe())
-	}()
-
-	// wait for shutdown
-	<-shutDown
-	log.Println("exiting...")
-	server.Close()
-	log.Println("Closed")
+	Server = &http.Server{
+		Addr:    CONFIG.ListenHostPort,
+		Handler: nil}
+	log.Println(Server.ListenAndServe())
 }

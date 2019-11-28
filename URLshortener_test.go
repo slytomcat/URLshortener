@@ -5,16 +5,35 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"io/ioutil"
+	"log"
 	"net/http"
+	"os"
 	"strings"
 	"testing"
 	"time"
 )
 
-// It is not a test it just start of service
+// try to start service
 func Test50mainStart(t *testing.T) {
+	logger := log.Writer()
+	r, w, _ := os.Pipe()
+	log.SetOutput(w)
+
 	go main()
 	time.Sleep(time.Second * 3)
+
+	w.Close()
+	log.SetOutput(logger)
+	buf, err := ioutil.ReadAll(r)
+	if err != nil {
+		t.Error(err)
+	}
+	if !bytes.Contains(buf, []byte("starting server at")) {
+		t.Errorf("received not expected output: %s", buf)
+	}
+	log.Printf("%s", buf)
+
 }
 
 // Full success test: get short URL and make redirect by it
@@ -160,8 +179,24 @@ func Test70main404(t *testing.T) {
 
 }
 
-// it is not a test, it just stopping of service.
+// try to stop service
 func Test99mainKill(t *testing.T) {
-	shutDown <- true
+	logger := log.Writer()
+	r, w, _ := os.Pipe()
+	log.SetOutput(w)
+
+	Server.Close()
 	time.Sleep(time.Second * 3)
+
+	w.Close()
+	log.SetOutput(logger)
+	buf, err := ioutil.ReadAll(r)
+	if err != nil {
+		t.Error(err)
+	}
+	if !bytes.Contains(buf, []byte("http: Server closed")) {
+		t.Errorf("received not expected output: %s", buf)
+	}
+	log.Printf("%s", buf)
+
 }
