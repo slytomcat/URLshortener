@@ -21,4 +21,4 @@ CREATE TABLE `urls` (
 -- keep the generated password to use in in DSN (DB connection string)
 CREATE USER `shortener`@`%` IDENTIFIED BY RANDOM PASSWORD;
 
-GRANT DELETE, SELECT(`token`, `url`, `exp`), INSERT(`token`, `url`, `exp`), UPDATE(`token`, `url`, `exp`) ON `shortener_DB`.`urls` TO `shortener`@`%`;
+GRANT DELETE, SELECT(`token`, `url`, `ts`, `exp`), INSERT(`token`, `url`, `exp`), UPDATE(`token`, `url`, `exp`) ON `shortener_DB`.`urls` TO `shortener`@`%`;
