@@ -23,7 +23,7 @@ package main
 // URL: <host>[:<port>]/
 // Method: GET
 // No parameters
-// Responce: simple home page and HTTP 200 OK in case of good service health
+// Response: simple home page and HTTP 200 OK in case of good service health
 // or HTTP 500 Server error in case of bad service health
 
 import (
