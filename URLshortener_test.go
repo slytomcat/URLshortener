@@ -11,11 +11,13 @@ import (
 	"time"
 )
 
+// It is not a test it just start of service
 func Test50mainStart(t *testing.T) {
 	go main()
 	time.Sleep(time.Second * 3)
 }
 
+// Full success test: get short URL and make redirect by it
 func Test55mainGetToken(t *testing.T) {
 	resp, err := http.Post("http://"+CONFIG.ListenHostPort+"/token", "application/json",
 		strings.NewReader(`{"url": "http://`+CONFIG.ShortDomain+`", "exp": "3"}`))
@@ -58,10 +60,11 @@ func Test55mainGetToken(t *testing.T) {
 
 }
 
+// test health check
 func Test57mainHome(t *testing.T) {
 	resp, err := http.Get("http://" + CONFIG.ListenHostPort)
 	if err != nil {
-		t.Errorf("helth check request error: %v", err)
+		t.Errorf("health check request error: %v", err)
 	}
 	defer resp.Body.Close()
 	buf := make([]byte, 256)
@@ -71,7 +74,7 @@ func Test57mainHome(t *testing.T) {
 	}
 
 	if !bytes.Contains(buf[:n], []byte("Home page of URLshortener")) {
-		t.Error("wrong response on helth check request")
+		t.Error("wrong response on health check request")
 	}
 
 	if resp.StatusCode != http.StatusOK {
@@ -80,6 +83,7 @@ func Test57mainHome(t *testing.T) {
 
 }
 
+// test request for short URL with empty request body
 func Test60mainBadRequest(t *testing.T) {
 	resp, err := http.Post("http://"+CONFIG.ListenHostPort+"/token", "application/json",
 		strings.NewReader(``))
@@ -92,6 +96,7 @@ func Test60mainBadRequest(t *testing.T) {
 	}
 }
 
+// test request for short URL with empty JSON
 func Test61mainBadRequest2(t *testing.T) {
 	resp, err := http.Post("http://"+CONFIG.ListenHostPort+"/token", "application/json",
 		strings.NewReader(`{}`))
@@ -104,6 +109,7 @@ func Test61mainBadRequest2(t *testing.T) {
 	}
 }
 
+//test request for short URL without expiration in request
 func Test62mainGetTokenWOexp(t *testing.T) {
 	DEBUG = true
 	defer func() { DEBUG = false }()
@@ -126,6 +132,7 @@ func Test62mainGetTokenWOexp(t *testing.T) {
 	}
 }
 
+// try to get the same (debugging) token twice
 func Test62mainGetTokenTwice(t *testing.T) {
 	DEBUG = true
 	defer func() { DEBUG = false }()
@@ -140,6 +147,7 @@ func Test62mainGetTokenTwice(t *testing.T) {
 	}
 }
 
+// test redirect with wrong token
 func Test70main404(t *testing.T) {
 	resp, err := http.Get("http://" + CONFIG.ListenHostPort + "/not_existing_token")
 	if err != nil {
@@ -152,6 +160,7 @@ func Test70main404(t *testing.T) {
 
 }
 
+// it is not a test, it just stopping of service.
 func Test99mainKill(t *testing.T) {
 	shutDown <- true
 	time.Sleep(time.Second * 3)
