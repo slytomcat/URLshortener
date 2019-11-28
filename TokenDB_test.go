@@ -126,7 +126,7 @@ func Test25GetToken(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	fmt.Printf("URL for token ______: %s", lURL)
+	fmt.Printf("URL for token ______: %s\n", lURL)
 }
 
 // try to prolong the token
