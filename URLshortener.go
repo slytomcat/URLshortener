@@ -30,7 +30,6 @@ package main
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -71,11 +70,11 @@ func redirect(w http.ResponseWriter, r *http.Request, sToken string) {
 	if err != nil {
 		// send 404 response
 		http.NotFound(w, r)
-		fmt.Printf("URL fror token '%s' was not found\n", sToken)
+		log.Printf("URL fror token '%s' was not found\n", sToken)
 		return
 	}
 	// make redirect response
-	fmt.Println("Redirest to ", longURL)
+	log.Println("Redirest to ", longURL)
 	http.Redirect(w, r, longURL, 301)
 }
 
@@ -97,7 +96,7 @@ func getNewToken(w http.ResponseWriter, r *http.Request) {
 	buf := make([]byte, r.ContentLength)
 	_, err := r.Body.Read(buf)
 	if err != nil && !errors.Is(err, io.EOF) {
-		fmt.Printf("request body reading error: %v", err)
+		log.Printf("request body reading error: %v", err)
 		w.WriteHeader(400)
 		return
 	}
@@ -105,7 +104,7 @@ func getNewToken(w http.ResponseWriter, r *http.Request) {
 	// read JSON parameters
 	err = json.Unmarshal(buf, &params)
 	if err != nil || params.URL == "" {
-		fmt.Printf("bad request")
+		log.Printf("bad request")
 		w.WriteHeader(400)
 		return
 	}
@@ -118,13 +117,10 @@ func getNewToken(w http.ResponseWriter, r *http.Request) {
 	// create new token
 	sToken, err := tokenDB.New(params.URL, params.Exp)
 	if err != nil {
-		fmt.Printf("new token creation error: %v\n", err)
+		log.Printf("new token creation error: %v\n", err)
 		w.WriteHeader(504)
 		return
 	}
-
-	// return new token and short URL
-	fmt.Printf("[ %s | %s | %d ]\n", sToken, params.URL, params.Exp)
 
 	// prepare response body
 	resp, err := json.Marshal(
@@ -136,10 +132,12 @@ func getNewToken(w http.ResponseWriter, r *http.Request) {
 			URL:   CONFIG.ShortDomain + "/" + sToken,
 		})
 	if err != nil {
-		fmt.Printf("response body JSON marshaling error: %v\n", err)
+		log.Printf("response body JSON marshaling error: %v\n", err)
 		w.WriteHeader(500)
 		return
 	}
+	// return new token and short URL
+	log.Printf("[ %s | %s | %d ]\n", sToken, params.URL, params.Exp)
 
 	// send response
 	w.Write(resp)
@@ -150,15 +148,15 @@ func myMUX(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Path
 	switch path {
 	case "/": // request for health-check
-		fmt.Println("Home")
+		log.Println("Home")
 		home(w)
 	case "/token": // request for new short url/token
-		fmt.Println("Request for token")
+		log.Println("Request for token")
 		getNewToken(w, r)
 	case "/favicon.ico": // I have no idea why the chromium make such requests together with request for redirect
 		return // skip it
 	default: // all the rest are requests for redirect
-		fmt.Println("Request for redirect")
+		log.Println("Request for redirect")
 		redirect(w, r, path[1:])
 	}
 }
@@ -169,19 +167,19 @@ func main() {
 	// get the configuratin variables
 	err = readConfig(".cnf.json")
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 
 	// create new TokenDB interface
 	tokenDB, err = TokenDBNew()
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 
 	// register the handler
 	http.HandleFunc("/", myMUX)
 
 	// start server
-	fmt.Println("starting server at", CONFIG.ListenHostPort)
+	log.Println("starting server at", CONFIG.ListenHostPort)
 	log.Fatal(http.ListenAndServe(CONFIG.ListenHostPort, nil))
 }
