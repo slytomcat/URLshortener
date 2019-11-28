@@ -137,7 +137,7 @@ func getNewToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// return new token and short URL
-	log.Printf("[ %s | %s | %d ]\n", sToken, params.URL, params.Exp)
+	log.Printf("Saved token:\n[ %s | %s | %d ]\n", sToken, params.URL, params.Exp)
 
 	// send response
 	w.Write(resp)
@@ -148,24 +148,24 @@ func myMUX(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Path
 	switch path {
 	case "/": // request for health-check
-		log.Println("Home")
+		log.Println("health-check")
 		home(w)
 	case "/token": // request for new short url/token
-		log.Println("Request for token")
+		log.Println("request for token")
 		getNewToken(w, r)
 	case "/favicon.ico": // I have no idea why the chromium make such requests together with request for redirect
 		return // skip it
 	default: // all the rest are requests for redirect
-		log.Println("Request for redirect")
+		log.Println("request for redirect")
 		redirect(w, r, path[1:])
 	}
 }
 
 func main() {
 	var err error
-
-	// get the configuratin variables
-	err = readConfig(".cnf.json")
+	log.SetPrefix("URLshortener: ")
+		// get the configuratin variables
+		err = readConfig(".cnf.json")
 	if err != nil {
 		log.Fatal(err)
 	}
