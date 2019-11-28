@@ -1,10 +1,10 @@
 package main
 
-import "testing"
-
-import "io/ioutil"
-
-import "os"
+import (
+	"io/ioutil"
+	"os"
+	"testing"
+)
 
 func Test01Tools00WrongFile(t *testing.T) {
 
