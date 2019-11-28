@@ -45,7 +45,7 @@ var (
 	</body>
 </html>
 `)
-	tokenDB *TokenDB
+	tokenDB  *TokenDB
 	shutDown chan bool
 )
 
@@ -150,24 +150,32 @@ func getNewToken(w http.ResponseWriter, r *http.Request) {
 func myMUX(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Path
 	switch path {
-	case "/": // request for health-check
+	case "/":
+		// request for health-check
 		log.Println("health-check")
 		home(w)
-	case "/token": // request for new short url/token
+	case "/token":
+		// request for new short url/token
 		log.Println("request for token")
 		getNewToken(w, r)
-	case "/favicon.ico": // I have no idea why the chromium make such requests together with request for redirect
-		return // skip it
-	default: // all the rest are requests for redirect
+	case "/favicon.ico":
+		// I have no idea why the chromium make such requests together with request for redirect
+		// skip it
+		return
+	default:
+		// all the rest are requests for redirect (probably)
 		log.Println("request for redirect")
 		redirect(w, r, path[1:])
 	}
 }
 
 func main() {
+
 	var err error
+
 	shutDown = make(chan bool)
 	log.SetPrefix("URLshortener: ")
+
 	// get the configuratin variables
 	err = readConfig(".cnf.json")
 	if err != nil {
@@ -186,12 +194,12 @@ func main() {
 	// start server
 	log.Println("starting server at", CONFIG.ListenHostPort)
 	server := &http.Server{Addr: CONFIG.ListenHostPort, Handler: nil}
-	go func(){
+	go func() {
 		log.Println(server.ListenAndServe())
 	}()
 
-	// wait for shut down
-	<- shutDown
+	// wait for shutdown
+	<-shutDown
 	log.Println("exiting...")
 	server.Close()
 	log.Println("Closed")
