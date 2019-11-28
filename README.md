@@ -35,7 +35,7 @@ URLshortener is a microservice to shorten long URLs and to handle the redirectio
 
 `No parameters`
 
-`Responce: simple home page and HTTP 200 OK in case of good service health or HTTP 500 Server error in case of bad service health`
+`Response: simple home page and HTTP 200 OK in case of good service health or HTTP 500 Server error in case of bad service health`
 
 
 It is still under development.
