@@ -15,6 +15,7 @@ var (
 	tDB *TokenDB
 )
 
+// test new TokenDB creation
 func Test10NewTokenDB(t *testing.T) {
 	var err error
 	err = readConfig(".cnf.json")
@@ -28,6 +29,7 @@ func Test10NewTokenDB(t *testing.T) {
 	}
 }
 
+// Clear the table - it is not a test
 func Test13ClearTable(t *testing.T) {
 	tx, _ := tDB.DB.Begin()
 	_, err := tx.Exec("DELETE FROM urls")
@@ -37,6 +39,7 @@ func Test13ClearTable(t *testing.T) {
 	tx.Commit()
 }
 
+// Concurrent goroutines tries to make new short URL in the same time with the same token (debugging)
 func raceNewToken(url string, t *testing.T) {
 	DEBUG = true
 	defer func() { DEBUG = false }()
@@ -73,10 +76,10 @@ func raceNewToken(url string, t *testing.T) {
 		wg.Add(1)
 		go racer(i)
 	}
-	//fmt.Printf("%v Ready?\n", time.Now())
+	fmt.Printf("%v Ready?\n", time.Now())
 	time.Sleep(time.Second * 2)
 	start.Unlock()
-	//fmt.Printf("%v Go!!!\n", time.Now())
+	fmt.Printf("%v Go!!!\n", time.Now())
 	wg.Wait()
 
 	if succes != 1 || fail != cnt-1 {
@@ -84,10 +87,12 @@ func raceNewToken(url string, t *testing.T) {
 	}
 }
 
+// try to insert new token from concurrent goroutines
 func Test15NewToken(t *testing.T) {
 	raceNewToken("https://golang.org", t)
 }
 
+// Try to insert one more the same token (error expected)
 func Test17OneMoreToken(t *testing.T) {
 	DEBUG = true
 	defer func() { DEBUG = false }()
@@ -101,6 +106,7 @@ func Test17OneMoreToken(t *testing.T) {
 	}
 }
 
+// try to make token expired
 func Test20ExpireToken(t *testing.T) {
 	err := tDB.Expire("______")
 	if err != nil {
@@ -108,10 +114,12 @@ func Test20ExpireToken(t *testing.T) {
 	}
 }
 
+// try to update expired token from several concurrent goroutines
 func Test23OneMoreTokenRace(t *testing.T) {
 	raceNewToken("https://golang.org/pkg/time/error", t)
 }
 
+// try to receive long URL by token
 func Test25GetToken(t *testing.T) {
 
 	lURL, err := tDB.Get("______")
@@ -121,6 +129,7 @@ func Test25GetToken(t *testing.T) {
 	fmt.Printf("URL for token ______: %s", lURL)
 }
 
+// try to prolong the token
 func Test27Prolong(t *testing.T) {
 	err := tDB.Expire("______")
 	if err != nil {

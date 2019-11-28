@@ -6,6 +6,7 @@ import (
 	"testing"
 )
 
+// test config reading from nonexistent file
 func Test01Tools00WrongFile(t *testing.T) {
 	saveDSN := os.Getenv("URLSHORTENER_DSN")
 	saveCONFIG := CONFIG
@@ -30,6 +31,7 @@ func Test01Tools00WrongFile(t *testing.T) {
 	t.Logf("Receved: %v", err)
 }
 
+// test it with emty file with URLSHORTENER_DSN unset
 func Test01Tools05EmptyFile(t *testing.T) {
 	tmpfile, err := ioutil.TempFile(os.TempDir(), "testing*.json")
 	if err != nil {
@@ -64,6 +66,7 @@ func Test01Tools05EmptyFile(t *testing.T) {
 	t.Logf("Receved: %v", err)
 }
 
+// test it with empty JSON with URLSHORTENER_DSN unset
 func Test01Tools10EmptyJSON(t *testing.T) {
 	tmpfile, err := ioutil.TempFile(os.TempDir(), "testing*.json")
 	if err != nil {
@@ -93,11 +96,12 @@ func Test01Tools10EmptyJSON(t *testing.T) {
 	err = readConfig(tmpfile.Name())
 
 	if err == nil {
-		t.Error("no error for empty JSON with with URLSHORTENER_DSN unset")
+		t.Error("no error for empty JSON with URLSHORTENER_DSN unset")
 	}
 	t.Logf("Receved: %v", err)
 }
 
+// test it with empty JSON but with set URLSHORTENER_DSN
 func Test02Tools15EmptyJSON_(t *testing.T) {
 	tmpfile, err := ioutil.TempFile(os.TempDir(), "testing*.json")
 	if err != nil {
@@ -128,7 +132,7 @@ func Test02Tools15EmptyJSON_(t *testing.T) {
 	err = readConfig(tmpfile.Name())
 
 	if err != nil {
-		t.Errorf("error for empty JSON with URLSHORTENER_DSN set ")
+		t.Error("error for empty JSON with set URLSHORTENER_DSN")
 	}
 	if CONFIG.DSN != "testDSNvalue" ||
 		CONFIG.MaxOpenConns != 10 ||
@@ -139,6 +143,7 @@ func Test02Tools15EmptyJSON_(t *testing.T) {
 	}
 }
 
+// test full success
 func Test03Tools20FullJSON(t *testing.T) {
 	saveCONFIG := CONFIG
 	saveDSN := os.Getenv("URLSHORTENER_DSN")
