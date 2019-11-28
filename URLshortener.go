@@ -39,7 +39,9 @@ var (
 	homePage = []byte(`
 <html>
 	<body>
-	   Home page of URLshortener
+	   <h1>Home page of URLshortener</h1>
+
+	   See sources at <a href="https://github.com/slytomcat/URLshortener">https://github.com/slytomcat/URLshortener</a>
 	</body>
 </html>
 `)
@@ -183,7 +185,7 @@ func main() {
 
 	// start server
 	log.Println("starting server at", CONFIG.ListenHostPort)
-    server := &http.Server{Addr: CONFIG.ListenHostPort, Handler: nil}
+	server := &http.Server{Addr: CONFIG.ListenHostPort, Handler: nil}
 	go func(){
 		log.Println(server.ListenAndServe())
 	}()
