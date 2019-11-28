@@ -36,15 +36,17 @@ import (
 )
 
 // simple home page
-var homePage = []byte(`
+var (
+	homePage = []byte(`
 <html>
 	<body>
 	   Home page of URLshortener
 	</body>
 </html>
 `)
-
-var tokenDB *TokenDB
+	tokenDB *TokenDB
+	shutDown chan bool
+)
 
 /* test:
 curl -i -v http://localhost:8080/
@@ -54,7 +56,7 @@ curl -i -v http://localhost:8080/
 // It can be used to check the service health.
 func home(w http.ResponseWriter) {
 	if tokenDB.DB.Ping() != nil {
-		w.WriteHeader(500)
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	w.Write(homePage)
@@ -70,12 +72,12 @@ func redirect(w http.ResponseWriter, r *http.Request, sToken string) {
 	if err != nil {
 		// send 404 response
 		http.NotFound(w, r)
-		log.Printf("URL fror token '%s' was not found\n", sToken)
+		log.Printf("URL for token '%s' was not found\n", sToken)
 		return
 	}
 	// make redirect response
 	log.Println("Redirest to ", longURL)
-	http.Redirect(w, r, longURL, 301)
+	http.Redirect(w, r, longURL, http.StatusNotExtended)
 }
 
 /* test:
@@ -97,7 +99,7 @@ func getNewToken(w http.ResponseWriter, r *http.Request) {
 	_, err := r.Body.Read(buf)
 	if err != nil && !errors.Is(err, io.EOF) {
 		log.Printf("request body reading error: %v", err)
-		w.WriteHeader(400)
+		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
@@ -105,7 +107,7 @@ func getNewToken(w http.ResponseWriter, r *http.Request) {
 	err = json.Unmarshal(buf, &params)
 	if err != nil || params.URL == "" {
 		log.Printf("bad request")
-		w.WriteHeader(400)
+		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
@@ -118,7 +120,7 @@ func getNewToken(w http.ResponseWriter, r *http.Request) {
 	sToken, err := tokenDB.New(params.URL, params.Exp)
 	if err != nil {
 		log.Printf("new token creation error: %v\n", err)
-		w.WriteHeader(504)
+		w.WriteHeader(http.StatusGatewayTimeout)
 		return
 	}
 
@@ -133,7 +135,7 @@ func getNewToken(w http.ResponseWriter, r *http.Request) {
 		})
 	if err != nil {
 		log.Printf("response body JSON marshaling error: %v\n", err)
-		w.WriteHeader(500)
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	// return new token and short URL
@@ -163,6 +165,7 @@ func myMUX(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 	var err error
+	shutDown = make(chan bool)
 	log.SetPrefix("URLshortener: ")
 		// get the configuratin variables
 		err = readConfig(".cnf.json")
@@ -181,5 +184,12 @@ func main() {
 
 	// start server
 	log.Println("starting server at", CONFIG.ListenHostPort)
-	log.Fatal(http.ListenAndServe(CONFIG.ListenHostPort, nil))
+    server := &http.Server{Addr: CONFIG.ListenHostPort, Handler: nil}
+	go func(){
+		log.Println(server.ListenAndServe())
+	}()
+	<- shutDown
+	log.Println("exiting...")
+	server.Close()
+	log.Println("Closed")
 }

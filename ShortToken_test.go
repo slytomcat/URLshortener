@@ -4,7 +4,7 @@ import (
 	"testing"
 )
 
-func Test00ShortTokenNewFake(t *testing.T) {
+func Test05ShortTokenNewFake(t *testing.T) {
 	DEBUG = true
 	tc, err := ShortTokenNew()
 	if err != nil {
@@ -16,7 +16,7 @@ func Test00ShortTokenNewFake(t *testing.T) {
 	}
 }
 
-func Test00ShortTokenNewReal(t *testing.T) {
+func Test07ShortTokenNewReal(t *testing.T) {
 	DEBUG = false
 	tc, err := ShortTokenNew()
 	if err != nil {
