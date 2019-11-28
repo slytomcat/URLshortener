@@ -28,7 +28,7 @@ func Test10NewTokenDB(t *testing.T) {
 	}
 }
 
-func Test15ClearTable(t *testing.T) {
+func Test13ClearTable(t *testing.T) {
 	tx, _ := tDB.DB.Begin()
 	_, err := tx.Exec("DELETE FROM urls")
 	if err != nil {
@@ -39,6 +39,7 @@ func Test15ClearTable(t *testing.T) {
 
 func raceNewToken(url string, t *testing.T) {
 	DEBUG = true
+	defer func() { DEBUG = false }()
 
 	var wg sync.WaitGroup
 	var succes, fail, cnt, i int64
@@ -83,12 +84,14 @@ func raceNewToken(url string, t *testing.T) {
 	}
 }
 
-func Test20NewToken(t *testing.T) {
+func Test15NewToken(t *testing.T) {
 	raceNewToken("https://golang.org", t)
 }
 
-func Test30OneMoreToken(t *testing.T) {
+func Test17OneMoreToken(t *testing.T) {
 	DEBUG = true
+	defer func() { DEBUG = false }()
+
 	url := "https://golang.org/pkg/time/"
 	token1, err := tDB.New(url, 1)
 	if err != nil {
@@ -98,18 +101,18 @@ func Test30OneMoreToken(t *testing.T) {
 	}
 }
 
-func Test35ExpireToken(t *testing.T) {
+func Test20ExpireToken(t *testing.T) {
 	err := tDB.Expire("______")
 	if err != nil {
 		t.Error(err)
 	}
 }
 
-func Test40OneMoreTokenRace(t *testing.T) {
+func Test23OneMoreTokenRace(t *testing.T) {
 	raceNewToken("https://golang.org/pkg/time/error", t)
 }
 
-func Test45GetToken(t *testing.T) {
+func Test25GetToken(t *testing.T) {
 
 	lURL, err := tDB.Get("______")
 	if err != nil {
@@ -118,7 +121,7 @@ func Test45GetToken(t *testing.T) {
 	fmt.Printf("URL for token ______: %s", lURL)
 }
 
-func Test50Prolong(t *testing.T) {
+func Test27Prolong(t *testing.T) {
 	err := tDB.Expire("______")
 	if err != nil {
 		t.Error(err)
@@ -127,7 +130,10 @@ func Test50Prolong(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
+
 	DEBUG = true
+	defer func() { DEBUG = false }()
+
 	url := "https://golang.org/pkg/sometime/"
 	token1, err := tDB.New(url, 1)
 	if err != nil {

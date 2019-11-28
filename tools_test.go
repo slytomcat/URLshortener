@@ -98,7 +98,7 @@ func Test01Tools10EmptyJSON(t *testing.T) {
 	t.Logf("Receved: %v", err)
 }
 
-func Test01Tools15EmptyJSON_(t *testing.T) {
+func Test02Tools15EmptyJSON_(t *testing.T) {
 	tmpfile, err := ioutil.TempFile(os.TempDir(), "testing*.json")
 	if err != nil {
 		t.Errorf("temp file creation error: %w", err)
@@ -139,7 +139,7 @@ func Test01Tools15EmptyJSON_(t *testing.T) {
 	}
 }
 
-func Test01Tools20FullJSON(t *testing.T) {
+func Test03Tools20FullJSON(t *testing.T) {
 	saveCONFIG := CONFIG
 	saveDSN := os.Getenv("URLSHORTENER_DSN")
 	defer func() {
