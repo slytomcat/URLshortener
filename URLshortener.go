@@ -146,7 +146,7 @@ func getNewToken(w http.ResponseWriter, r *http.Request) {
 	w.Write(resp)
 }
 
-// myMUX
+// myMUX selects the handler function according to request URL
 func myMUX(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Path
 	switch path {
