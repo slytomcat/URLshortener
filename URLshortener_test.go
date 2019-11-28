@@ -18,7 +18,7 @@ func Test50mainStart(t *testing.T) {
 
 func Test55mainGetToken(t *testing.T) {
 	resp, err := http.Post("http://"+CONFIG.ListenHostPort+"/token", "application/json",
-		strings.NewReader(`{"url": "http://some.url", "exp": "3"}`))
+		strings.NewReader(`{"url": "http://`+CONFIG.ShortDomain+`", "exp": "3"}`))
 	if err != nil {
 		t.Errorf("token request error: %v", err)
 	}
@@ -36,7 +36,8 @@ func Test55mainGetToken(t *testing.T) {
 	if err != nil {
 		t.Errorf("response body parsing error: %v", err)
 	}
-	t.Logf("Received: %v", rep)
+	t.Logf("Received: %v", rep.URL)
+
 	resp2, err := http.Get("http://" + rep.URL)
 	if err != nil {
 		t.Errorf("redirect request error: %v", err)
@@ -47,9 +48,14 @@ func Test55mainGetToken(t *testing.T) {
 		t.Errorf("response body reading error: %v", err)
 	}
 
-	if !bytes.Contains(buf[:n], []byte("http://some.url")) {
-		t.Error("redirect to wrong site")
+	if !bytes.Contains(buf[:n], []byte("Home page of URLshortener")) {
+		t.Error("wrong response on helth check request")
 	}
+
+	if resp2.StatusCode != http.StatusOK {
+		t.Errorf("wrong status : %d", resp.StatusCode)
+	}
+
 }
 
 func Test57mainHome(t *testing.T) {
@@ -67,6 +73,11 @@ func Test57mainHome(t *testing.T) {
 	if !bytes.Contains(buf[:n], []byte("Home page of URLshortener")) {
 		t.Error("wrong response on helth check request")
 	}
+
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("wrong status : %d", resp.StatusCode)
+	}
+
 }
 
 func Test60mainBadRequest(t *testing.T) {
