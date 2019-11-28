@@ -76,7 +76,7 @@ func redirect(w http.ResponseWriter, r *http.Request, sToken string) {
 	}
 	// make redirect response
 	log.Println("Redirest to ", longURL)
-	http.Redirect(w, r, longURL, http.StatusNotExtended)
+	http.Redirect(w, r, longURL, http.StatusMovedPermanently)
 }
 
 /* test:
