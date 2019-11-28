@@ -50,8 +50,8 @@ func (t *TokenDB) New(longURL string, expiration int) (string, error) {
 	// Try 3 times to create new token and insert it into DB table.
 	// The token field is unique in DB so it's not possible to insert the same token twice.
 	// But if the token is already expired then try to update it (url and expiration).
-	for tryCnt := 0; tryCnt > 2; tryCnt++ {
-		sToken, err := ShortTokenNew()
+	for tryCnt := 0; tryCnt < 3; tryCnt++ {
+		sToken, err = ShortTokenNew()
 		if err != nil {
 			return "", err
 		}
@@ -64,27 +64,28 @@ func (t *TokenDB) New(longURL string, expiration int) (string, error) {
 		)
 		if err == nil {
 			break // the token is successfully inserted
-		} else { // the token is already in use
-			tran.Rollback()
-			if strings.Contains(err.Error(), "Duplicate entry") {
-				// try to update the token if it is expired
-				result, err := tran.Exec("UPDATE `urls` SET `url`=?, `exp`=? WHERE `token` = ? and DATE_ADD(`ts`, INTERVAL `exp` DAY) < NOW()",
-					longURL,
-					expiration,
-					sToken,
-				)
-				if err != nil {
-					tran.Rollback()
-					return "", fmt.Errorf("can't update token: %w", err)
-				}
-				affected, _ := result.RowsAffected()
-				if affected == 1 {
-					break // the token is successfully updated
-				}
-			}
-			// token is not expired, let's try to select a new one token
-			sToken = "" // reset bad token
 		}
+		if !strings.Contains(err.Error(), "Duplicate entry") {
+			tran.Rollback()
+			return "", fmt.Errorf("can't insert token: %w", err)
+		}
+		// the token is already in use: try to update the token if it is expired
+		result, err := tran.Exec("UPDATE `urls` SET `url`=?, `exp`=? WHERE `token` = ? and DATE_ADD(`ts`, INTERVAL `exp` DAY) < NOW()",
+			longURL,
+			expiration,
+			sToken,
+		)
+		if err != nil {
+			tran.Rollback()
+			return "", fmt.Errorf("can't update token: %w", err)
+		}
+
+		if affected, _ := result.RowsAffected(); affected == 1 {
+			break // the token is successfully updated
+		}
+
+		// token is not expired, let's try to select a new one token
+		sToken = "" // reset bad token
 
 	}
 
