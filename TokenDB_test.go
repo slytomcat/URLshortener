@@ -52,14 +52,18 @@ func raceNewToken(url string, t *testing.T) {
 		defer wg.Done()
 
 		time.Sleep(time.Duration(rand.Intn(10)) * time.Microsecond * 100)
-		fmt.Printf("%v Racer %d: Ready!\n", time.Now(), i)
+		startTime := time.Now()
 		start.RLock()
+		fmt.Printf("%v Racer %d: Ready!\n", startTime, i)
+
 		Token, err := tDB.New(url, 1)
+
 		if err != nil {
 			fmt.Printf("%v Racer %d: can't get token\n", time.Now(), i)
 			atomic.AddInt64(&fail, 1)
 			return
 		}
+
 		fmt.Printf("%v Racer %d: Token for %s: %v\n", time.Now(), i, url, Token)
 		atomic.AddInt64(&succes, 1)
 	}
@@ -68,10 +72,10 @@ func raceNewToken(url string, t *testing.T) {
 		wg.Add(1)
 		go racer(i)
 	}
-	fmt.Printf("%v Ready?\n", time.Now())
+	//fmt.Printf("%v Ready?\n", time.Now())
 	time.Sleep(time.Second * 2)
 	start.Unlock()
-	fmt.Printf("%v Go!!!\n", time.Now())
+	//fmt.Printf("%v Go!!!\n", time.Now())
 	wg.Wait()
 
 	if succes != 1 || fail != cnt-1 {
@@ -109,7 +113,7 @@ func Test45GetToken(t *testing.T) {
 
 	lURL, err := tDB.Get("______")
 	if err != nil {
-		panic(err)
+		t.Error(err)
 	}
 	fmt.Printf("URL for token ______: %s", lURL)
 }
