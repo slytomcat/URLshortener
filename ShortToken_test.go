@@ -4,11 +4,12 @@ import (
 	"testing"
 )
 
+// try to create new token from debugging source
 func Test05ShortTokenNewFake(t *testing.T) {
 	DEBUG = true
 	tc, err := ShortTokenNew()
 	if err != nil {
-		t.Error("error of ShortToken creation from random:", err)
+		t.Error("error of ShortToken creation from debug source:", err)
 	}
 
 	if tc != "______" {
@@ -16,6 +17,7 @@ func Test05ShortTokenNewFake(t *testing.T) {
 	}
 }
 
+// try to make two tokens from random source and compare them
 func Test07ShortTokenNewReal(t *testing.T) {
 	DEBUG = false
 	tc, err := ShortTokenNew()
