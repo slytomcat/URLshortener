@@ -6,6 +6,11 @@ CHARACTER SET `utf8`;
 
 USE shortener_DB
 
+-- actually, there is no matter which TimeZone is used by server. 
+-- Expiration of token is detected by comparison the timestamp of 
+-- stored token + expiration period and the current time (Now()). 
+-- Timestamp and now() are in the same TimeZone and such comparison
+-- works independently on used timezone. But let it be UTC.  
 SET time_zone = '+00:00';
 
 DROP TABLE IF EXISTS `urls`;
@@ -21,4 +26,10 @@ CREATE TABLE `urls` (
 -- keep the generated password to use in in DSN (DB connection string)
 CREATE USER `shortener`@`%` IDENTIFIED BY RANDOM PASSWORD;
 
-GRANT DELETE, SELECT(`token`, `url`, `ts`, `exp`), INSERT(`token`, `url`, `exp`), UPDATE(`token`, `url`, `exp`) ON `shortener_DB`.`urls` TO `shortener`@`%`;
+-- NOTE:
+-- DELETE right required only for test purpose. Do not grant DELETE right in production environment.
+
+-- GRANT command for test environment only:
+--GRANT DELETE, SELECT(`token`, `url`, `ts`, `exp`), INSERT(`token`, `url`, `exp`), UPDATE(`token`, `url`, `exp`) ON `shortener_DB`.`urls` TO `shortener`@`%`;
+-- GRANT command for production environment:
+GRANT SELECT(`token`, `url`, `ts`, `exp`), INSERT(`token`, `url`, `exp`), UPDATE(`token`, `url`, `exp`) ON `shortener_DB`.`urls` TO `shortener`@`%`;
