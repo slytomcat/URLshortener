@@ -1,6 +1,5 @@
 package main
 
-//
 // URLshortener is a microservice to shorten long URLs
 // and to handle the redirection by generated short URLs.
 //
@@ -188,6 +187,8 @@ func main() {
 	go func(){
 		log.Println(server.ListenAndServe())
 	}()
+
+	// wait for shut down
 	<- shutDown
 	log.Println("exiting...")
 	server.Close()
