@@ -1,6 +1,7 @@
 package main
 
-// TokenDB provides parallel execution safe methods to store, update and retrieve tokens from data base
+// TokenDB provides parallel execution safe methods to store, update and
+// retrieve tokens from data base.
 
 import (
 	"database/sql"
@@ -45,7 +46,8 @@ func (t *TokenDB) New(longURL string, expiration int) (string, error) {
 		return "", fmt.Errorf("can't create transaction: %w", err)
 	}
 
-	sToken := "" // token of saved long URL
+	// token of saved long URL
+	sToken := ""
 
 	// Try 3 times to create new token and insert it into DB table.
 	// The token field is unique in DB so it's not possible to insert the same token twice.
@@ -63,7 +65,8 @@ func (t *TokenDB) New(longURL string, expiration int) (string, error) {
 			expiration,
 		)
 		if err == nil {
-			break // the token is successfully inserted
+			// the token is successfully inserted
+			break
 		}
 		if !strings.Contains(err.Error(), "Duplicate entry") {
 			tran.Rollback()
@@ -81,11 +84,13 @@ func (t *TokenDB) New(longURL string, expiration int) (string, error) {
 		}
 
 		if affected, _ := result.RowsAffected(); affected == 1 {
-			break // the token is successfully updated
+			// the token is successfully updated
+			break
 		}
-
 		// token is not expired, let's try to select a new one token
-		sToken = "" // reset bad token
+
+		// reset bad token
+		sToken = ""
 
 	}
 
@@ -94,7 +99,8 @@ func (t *TokenDB) New(longURL string, expiration int) (string, error) {
 		tran.Rollback()
 		return "", fmt.Errorf("BD insert error; can't create new random token")
 	}
-	tran.Commit() // commit the successful insert or update
+	// commit the successful insert or update
+	tran.Commit()
 	return sToken, nil
 }
 

@@ -15,7 +15,7 @@ var (
 	DEBUG = false
 )
 
-// ShortTokenNew -
+// ShortTokenNew creates the token (6 BASE64 symbols) from random or debugging source
 func ShortTokenNew() (string, error) {
 
 	b := make([]byte, 5)

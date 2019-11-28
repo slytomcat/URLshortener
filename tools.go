@@ -10,16 +10,17 @@ import (
 
 // Config - configuration structure
 type Config struct {
-	DSN            string
-	MaxOpenConns   int `json:",string"`
-	ListenHostPort string
-	DefaultExp     int `json:",string"`
-	ShortDomain    string
+	DSN            string // MySQL connection string
+	MaxOpenConns   int    `json:",string"` // DB connections pool size
+	ListenHostPort string // host and port to listen on
+	DefaultExp     int    `json:",string"` // Default expiration of token (days)
+	ShortDomain    string // Short domain name for short URL creation
 }
 
 // CONFIG - structure with the configuration variables
 var CONFIG Config
 
+// readConfig reads config and also tries to get the DB connection string from environment variable
 func readConfig(cfgFile string) error {
 
 	// read config file into buffer
