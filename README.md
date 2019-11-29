@@ -40,7 +40,7 @@ URLshortener is a microservice to shorten long URLs and to handle the redirectio
 
 ### Configuration file
 
-`{
+    {
     
     "DSN":"shortener:<password>@<protocol>(<host>:<port>)/shortener_DB",
     
@@ -54,12 +54,12 @@ URLshortener is a microservice to shorten long URLs and to handle the redirectio
     
     "Mode":"0"
     
-}`
+    }
 
 Where:
 
 - DSN - MySQL connection string
-- MaxOpenConns - DataBase connection pool size
+- MaxOpenConns - DataBase connections pool size
 - ListenHostPort - host and port to listen on
 - DefaultExp - default token expiration period in days
 - ShortDomain - short domain name for short URL creation
@@ -71,6 +71,3 @@ Where:
    
    0 - (default) service handles all requests
 
-
-
-It is still under development...
