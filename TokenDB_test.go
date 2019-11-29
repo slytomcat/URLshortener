@@ -32,7 +32,7 @@ func Test10NewTokenDB(t *testing.T) {
 // Clear the table - it is not a test
 func Test13ClearTable(t *testing.T) {
 	tx, _ := tDB.DB.Begin()
-	_, err := tx.Exec("DELETE FROM urls")
+	_, err := tx.Exec("DELETE FROM urls WHERE token='______'")
 	if err != nil {
 		t.Errorf("Can't clear table: %v", err)
 	}
@@ -88,7 +88,7 @@ func raceNewToken(url string, t *testing.T) {
 }
 
 // try to insert new token from concurrent goroutines
-func Test15NewToken(t *testing.T) {
+func Test15NewTokenRace(t *testing.T) {
 	raceNewToken("https://golang.org", t)
 }
 
