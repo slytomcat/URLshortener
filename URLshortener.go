@@ -198,6 +198,8 @@ func myMUX(w http.ResponseWriter, r *http.Request) {
 		if CONFIG.Mode == 0 || CONFIG.Mode == 1 {
 			log.Printf("request for token from %s (%s)\n", r.RemoteAddr, r.Referer())
 			getNewToken(w, r)
+		} else {
+			http.NotFound(w, r)
 		}
 	case "/favicon.ico":
 		// Chromium make such requests together with request for redirect to show the site icon on tab header
@@ -209,6 +211,8 @@ func myMUX(w http.ResponseWriter, r *http.Request) {
 		if CONFIG.Mode == 0 || CONFIG.Mode == 2 {
 			log.Printf("request for redirect from %s (%s)\n", r.RemoteAddr, r.Referer())
 			redirect(w, r, path[1:])
+		} else {
+			http.NotFound(w, r)
 		}
 	}
 }
