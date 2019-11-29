@@ -186,7 +186,7 @@ func Test73mainServiceMode1(t *testing.T) {
 
 	resp, err := http.Get("http://" + CONFIG.ListenHostPort + "/______")
 	if err != nil {
-		t.Errorf("token request error: %v", err)
+		t.Errorf("redirect request error: %v", err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusNotFound {
