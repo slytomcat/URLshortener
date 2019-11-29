@@ -190,20 +190,26 @@ func myMUX(w http.ResponseWriter, r *http.Request) {
 	switch path {
 	case "/":
 		// request for health-check
-		log.Println("health-check")
+		log.Printf("health-check from %s (%s)\n", r.RemoteAddr, r.Referer())
 		home(w)
 	case "/token":
 		// request for new short url/token
-		log.Println("request for token")
-		getNewToken(w, r)
+		// handle it only in TokenCreator and Both service modes
+		if CONFIG.Mode == 0 || CONFIG.Mode == 1 {
+			log.Printf("request for token from %s (%s)\n", r.RemoteAddr, r.Referer())
+			getNewToken(w, r)
+		}
 	case "/favicon.ico":
 		// Chromium make such requests together with request for redirect to show the site icon on tab header
 		// In this code it is used for health check
 		return
 	default:
 		// all the rest are requests for redirect (probably)
-		log.Println("request for redirect")
-		redirect(w, r, path[1:])
+		// handle it Redirector and Both service modes
+		if CONFIG.Mode == 0 || CONFIG.Mode == 2 {
+			log.Printf("request for redirect from %s (%s)\n", r.RemoteAddr, r.Referer())
+			redirect(w, r, path[1:])
+		}
 	}
 }
 
