@@ -38,6 +38,7 @@ func Test50mainStart(t *testing.T) {
 
 // Full success test: get short URL and make redirect by it
 func Test55mainGetToken(t *testing.T) {
+	// use health check as long url
 	resp, err := http.Post("http://"+CONFIG.ListenHostPort+"/token", "application/json",
 		strings.NewReader(`{"url": "http://`+CONFIG.ShortDomain+`", "exp": "3"}`))
 	if err != nil {
@@ -141,7 +142,7 @@ func Test62mainGetTokenWOexp(t *testing.T) {
 	tx.Commit()
 
 	resp, err := http.Post("http://"+CONFIG.ListenHostPort+"/token", "application/json",
-		strings.NewReader(`{"url": "http://someother.url"}`))
+		strings.NewReader(`{"url": "http://`+CONFIG.ShortDomain+`"}`))
 	if err != nil {
 		t.Errorf("token request error: %v", err)
 	}
@@ -156,7 +157,7 @@ func Test62mainGetTokenTwice(t *testing.T) {
 	DEBUG = true
 	defer func() { DEBUG = false }()
 	resp, err := http.Post("http://"+CONFIG.ListenHostPort+"/token", "application/json",
-		strings.NewReader(`{"url": "http://someother.url"}`))
+		strings.NewReader(`{"url": "http://`+CONFIG.ShortDomain+`"}`))
 	if err != nil {
 		t.Errorf("token request error: %v", err)
 	}
@@ -177,6 +178,35 @@ func Test70main404(t *testing.T) {
 		t.Errorf("wrong status : %d", resp.StatusCode)
 	}
 
+}
+
+// try unsupported request in mode = 1
+func Test73mainServiceMode1(t *testing.T) {
+	CONFIG.Mode = 1
+
+	resp, err := http.Get("http://" + CONFIG.ListenHostPort + "/______")
+	if err != nil {
+		t.Errorf("token request error: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusNotFound {
+		t.Errorf("wrong status : %d", resp.StatusCode)
+	}
+}
+
+// try unsupported request in mode = 2
+func Test73mainServiceMode2(t *testing.T) {
+	CONFIG.Mode = 2
+
+	resp, err := http.Post("http://"+CONFIG.ListenHostPort+"/token", "application/json",
+		strings.NewReader(`{"url": "http://someother.url"}`))
+	if err != nil {
+		t.Errorf("token request error: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusNotFound {
+		t.Errorf("wrong status : %d", resp.StatusCode)
+	}
 }
 
 // try to stop service
