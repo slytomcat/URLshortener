@@ -55,7 +55,7 @@ curl -i -v http://localhost:8080/
 */
 
 // Home shows simple home page
-// But before showing home page it make full selftest
+// But before showing home page, make the full self-test
 func home(w http.ResponseWriter) {
 
 	// Perform self-test
