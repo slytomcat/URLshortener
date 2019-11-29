@@ -50,55 +50,82 @@ var (
 	Server  *http.Server
 )
 
+func healthCheck() error {
+	url := "http://" + CONFIG.ShortDomain + "/favicon.ico"
+	var repl struct {
+		URL   string `json:"url"`
+		Token string `json:"token"`
+	}
+	var err error
+
+	// get short URL
+	if CONFIG.Mode == 2 {
+		// use tokenDB inteface as web-interface is locked in this mode
+		if repl.Token, err = tokenDB.New(url, 1); err != nil {
+			return err
+		}
+		repl.URL = CONFIG.ShortDomain + "/" + repl.Token
+	} else {
+		// make the HTTP request for new token
+		resp, err := http.Post("http://"+CONFIG.ListenHostPort+"/token", "application/json",
+			strings.NewReader(`{"url": "`+url+`", "exp": "1"}`))
+		if err != nil {
+			return err
+		}
+		defer resp.Body.Close()
+
+		// read response body
+		buf := make([]byte, resp.ContentLength)
+		_, err = resp.Body.Read(buf)
+		if err != nil && !errors.Is(err, io.EOF) {
+			return err
+		}
+
+		// decode response body
+		if err = json.Unmarshal(buf, &repl); err != nil {
+			return err
+		}
+	}
+
+	// check redirect
+	if CONFIG.Mode == 1 {
+		// use tokenDB interface as web-interface is locked in this mode
+		if _, err = tokenDB.Get(repl.Token); err != nil {
+			return err
+		}
+	} else {
+		// try to make the redirect by short URL
+		resp2, err := http.Get("http://" + repl.URL)
+		if err != nil {
+			return err
+		}
+		defer resp2.Body.Close()
+
+		// check redirect response status
+		if resp2.StatusCode != http.StatusOK {
+			return err
+		}
+	}
+	// expire received token
+	if err := tokenDB.Expire(repl.Token); err != nil {
+		return err
+	}
+	return nil
+}
+
 /* test for test env:
 curl -i -v http://localhost:8080/
 */
 
 // Home shows simple home page
-// But before showing home page, make the full self-test
 func home(w http.ResponseWriter) {
-
 	// Perform self-test
-
-	// make the request for new token
-	resp, err := http.Post("http://"+CONFIG.ListenHostPort+"/token", "application/json",
-		strings.NewReader(`{"url": "http://`+CONFIG.ShortDomain+`/favicon.ico", "exp": "1"}`))
-	if err != nil {
+	if err := healthCheck(); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
+	} else {
+		// show the home page if self-test was successfully passed
+		w.Write(homePage)
 	}
-	defer resp.Body.Close()
-
-	// read response body
-	buf := make([]byte, resp.ContentLength)
-	_, err = resp.Body.Read(buf)
-	if err != nil && !errors.Is(err, io.EOF) {
-		w.WriteHeader(http.StatusInternalServerError)
-	}
-
-	// decode response body
-	var rep struct {
-		URL   string `json:"url"`
-		Token string `json:"token"`
-	}
-	err = json.Unmarshal(buf, &rep)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-	}
-
-	// try to make the redirect by received short URL
-	resp2, err := http.Get("http://" + rep.URL)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-	}
-	defer resp2.Body.Close()
-
-	// expire received token and check the responce status
-	if err := tokenDB.Expire(rep.Token); err != nil || (resp2.StatusCode != http.StatusOK) {
-		w.WriteHeader(http.StatusInternalServerError)
-	}
-
-	// finally, if self-test was successfully passed, show the home page
-	w.Write(homePage)
 }
 
 /* test for test env:

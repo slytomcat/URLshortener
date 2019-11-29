@@ -32,12 +32,12 @@ func Test50mainStart(t *testing.T) {
 	if !bytes.Contains(buf, []byte("starting server at")) {
 		t.Errorf("received not expected output: %s", buf)
 	}
-	log.Printf("%s", buf)
+	log.Printf("%s", buf[20:])
 
 }
 
 // Full success test: get short URL and make redirect by it
-func Test55mainGetToken(t *testing.T) {
+func Test55MainFullSuccess(t *testing.T) {
 	// use health check as long url
 	resp, err := http.Post("http://"+CONFIG.ListenHostPort+"/token", "application/json",
 		strings.NewReader(`{"url": "http://`+CONFIG.ShortDomain+`", "exp": "3"}`))
@@ -81,7 +81,7 @@ func Test55mainGetToken(t *testing.T) {
 }
 
 // test health check
-func Test57mainHome(t *testing.T) {
+func Test57MainHome(t *testing.T) {
 	resp, err := http.Get("http://" + CONFIG.ListenHostPort)
 	if err != nil {
 		t.Errorf("health check request error: %v", err)
@@ -104,7 +104,7 @@ func Test57mainHome(t *testing.T) {
 }
 
 // test request for short URL with empty request body
-func Test60mainBadRequest(t *testing.T) {
+func Test60MainBadRequest(t *testing.T) {
 	resp, err := http.Post("http://"+CONFIG.ListenHostPort+"/token", "application/json",
 		strings.NewReader(``))
 	if err != nil {
@@ -117,7 +117,7 @@ func Test60mainBadRequest(t *testing.T) {
 }
 
 // test request for short URL with empty JSON
-func Test61mainBadRequest2(t *testing.T) {
+func Test61MainBadRequest2(t *testing.T) {
 	resp, err := http.Post("http://"+CONFIG.ListenHostPort+"/token", "application/json",
 		strings.NewReader(`{}`))
 	if err != nil {
@@ -130,7 +130,7 @@ func Test61mainBadRequest2(t *testing.T) {
 }
 
 //test request for short URL without expiration in request
-func Test62mainGetTokenWOexp(t *testing.T) {
+func Test62MainGetTokenWOexp(t *testing.T) {
 	DEBUG = true
 	defer func() { DEBUG = false }()
 
@@ -153,7 +153,7 @@ func Test62mainGetTokenWOexp(t *testing.T) {
 }
 
 // try to get the same (debugging) token twice
-func Test62mainGetTokenTwice(t *testing.T) {
+func Test62MainGetTokenTwice(t *testing.T) {
 	DEBUG = true
 	defer func() { DEBUG = false }()
 	resp, err := http.Post("http://"+CONFIG.ListenHostPort+"/token", "application/json",
@@ -168,7 +168,7 @@ func Test62mainGetTokenTwice(t *testing.T) {
 }
 
 // test redirect with wrong token
-func Test70main404(t *testing.T) {
+func Test70Main404(t *testing.T) {
 	resp, err := http.Get("http://" + CONFIG.ListenHostPort + "/not_existing_token")
 	if err != nil {
 		t.Errorf("not-existing token request error: %v", err)
@@ -181,7 +181,7 @@ func Test70main404(t *testing.T) {
 }
 
 // try unsupported request in mode = 1
-func Test73mainServiceMode1(t *testing.T) {
+func Test73MainServiceMode1(t *testing.T) {
 	CONFIG.Mode = 1
 
 	resp, err := http.Get("http://" + CONFIG.ListenHostPort + "/______")
@@ -195,7 +195,7 @@ func Test73mainServiceMode1(t *testing.T) {
 }
 
 // try unsupported request in mode = 2
-func Test73mainServiceMode2(t *testing.T) {
+func Test73MainServiceMode2(t *testing.T) {
 	CONFIG.Mode = 2
 
 	resp, err := http.Post("http://"+CONFIG.ListenHostPort+"/token", "application/json",
@@ -209,8 +209,34 @@ func Test73mainServiceMode2(t *testing.T) {
 	}
 }
 
+func Test75MainHealthCheckMode1(t *testing.T) {
+	CONFIG.Mode = 1
+
+	resp, err := http.Get("http://" + CONFIG.ListenHostPort)
+	if err != nil {
+		t.Errorf("health check mode1 request error: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("wrong status : %d", resp.StatusCode)
+	}
+}
+
+func Test77MainHealthCheckMode2(t *testing.T) {
+	CONFIG.Mode = 2
+
+	resp, err := http.Get("http://" + CONFIG.ListenHostPort)
+	if err != nil {
+		t.Errorf("health check mode1 request error: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("wrong status : %d", resp.StatusCode)
+	}
+}
+
 // try to stop service
-func Test99mainKill(t *testing.T) {
+func Test99MainKill(t *testing.T) {
 	logger := log.Writer()
 	r, w, _ := os.Pipe()
 	log.SetOutput(w)
@@ -227,6 +253,6 @@ func Test99mainKill(t *testing.T) {
 	if !bytes.Contains(buf, []byte("http: Server closed")) {
 		t.Errorf("received not expected output: %s", buf)
 	}
-	log.Printf("%s", buf)
+	log.Printf("%s", buf[20:])
 
 }
