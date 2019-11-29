@@ -55,7 +55,7 @@ func raceNewToken(url string, t *testing.T) {
 	racer := func(i int64) {
 		defer wg.Done()
 
-		time.Sleep(time.Duration(rand.Intn(10)) * time.Microsecond * 100)
+		time.Sleep(time.Duration(rand.Intn(42)) * time.Microsecond * 100)
 		startTime := time.Now()
 		start.RLock()
 		fmt.Printf("%v Racer %d: Ready!\n", startTime, i)
@@ -100,7 +100,7 @@ func Test17OneMoreToken(t *testing.T) {
 	url := "https://golang.org/pkg/time/"
 	token1, err := tDB.New(url, 1)
 	if err != nil {
-		fmt.Println("ERROR (expected, don't panic): ", err)
+		fmt.Println("expected error (don't panic): ", err)
 	} else {
 		fmt.Printf("Token for %s: %v\n", url, token1)
 	}
@@ -146,7 +146,7 @@ func Test27Prolong(t *testing.T) {
 	url := "https://golang.org/pkg/sometime/"
 	token1, err := tDB.New(url, 1)
 	if err != nil {
-		fmt.Println("ERROR (don't panic): ", err)
+		fmt.Printf("expected error (don't panic): %v\n", err)
 	} else {
 		fmt.Printf("Token for %s: %v\n", url, token1)
 	}
