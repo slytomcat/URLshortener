@@ -58,14 +58,13 @@ func Test55MainFullSuccess(t *testing.T) {
 	if err != nil {
 		t.Errorf("response body parsing error: %v", err)
 	}
-	t.Logf("Received: %v", repl.URL)
 
 	resp2, err := http.Get("http://" + repl.URL)
 	if err != nil {
 		t.Errorf("redirect request error: %v", err)
 	}
 	defer resp2.Body.Close()
-	buf = make([]byte, resp.ContentLength)
+	buf = make([]byte, resp2.ContentLength)
 	_, err = resp2.Body.Read(buf)
 	if err != nil && !errors.Is(err, io.EOF) {
 		t.Errorf("response body reading error: %v", err)
