@@ -32,6 +32,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"strings"
 )
 
 // simple home page to display on health check request
@@ -54,14 +55,49 @@ curl -i -v http://localhost:8080/
 */
 
 // Home shows simple home page
-// It can be used to check the service health.
+// But before showing home page it make full selftest
 func home(w http.ResponseWriter) {
-	// check th DataBase connection
-	if tokenDB.DB.Ping() != nil {
-		// Response by error in case of any problem with DB connection
+
+	// Perform self-test
+
+	// make the request for new token
+	resp, err := http.Post("http://"+CONFIG.ListenHostPort+"/token", "application/json",
+		strings.NewReader(`{"url": "http://`+CONFIG.ShortDomain+`/favicon.ico", "exp": "1"}`))
+	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		return
 	}
+	defer resp.Body.Close()
+
+	// read response body
+	buf := make([]byte, resp.ContentLength)
+	_, err = resp.Body.Read(buf)
+	if err != nil && !errors.Is(err, io.EOF) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}
+
+	// decode response body
+	var rep struct {
+		URL   string `json:"url"`
+		Token string `json:"token"`
+	}
+	err = json.Unmarshal(buf, &rep)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+	}
+
+	// try to make the redirect by received short URL
+	resp2, err := http.Get("http://" + rep.URL)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+	}
+	defer resp2.Body.Close()
+
+	// expire received token and check the responce status
+	if err := tokenDB.Expire(rep.Token); err != nil || (resp2.StatusCode != http.StatusOK) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}
+
+	// finally, if self-test was successfully passed, show the home page
 	w.Write(homePage)
 }
 
@@ -161,8 +197,8 @@ func myMUX(w http.ResponseWriter, r *http.Request) {
 		log.Println("request for token")
 		getNewToken(w, r)
 	case "/favicon.ico":
-		// I have no idea why the chromium make such requests together with request for redirect
-		// skip it
+		// Chromium make such requests together with request for redirect to show the site icon on tab header
+		// In this code it is used for health check
 		return
 	default:
 		// all the rest are requests for redirect (probably)
