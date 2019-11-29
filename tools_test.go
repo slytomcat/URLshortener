@@ -6,15 +6,6 @@ import (
 	"testing"
 )
 
-var emptyConfig = Config{
-	DSN:            "",
-	MaxOpenConns:   0,
-	ListenHostPort: "",
-	DefaultExp:     0,
-	ShortDomain:    "",
-	Mode:           0,
-}
-
 // test config reading from nonexistent file
 func Test01Tools00WrongFile(t *testing.T) {
 	saveDSN := os.Getenv("URLSHORTENER_DSN")
@@ -24,7 +15,7 @@ func Test01Tools00WrongFile(t *testing.T) {
 		os.Setenv("URLSHORTENER_DSN", saveDSN)
 	}()
 	os.Unsetenv("URLSHORTENER_DSN")
-	CONFIG = emptyConfig
+	CONFIG = Config{}
 
 	err := readConfig("wrong.wrong.wrong.file.json")
 
@@ -53,7 +44,7 @@ func Test01Tools05EmptyFile(t *testing.T) {
 		os.Setenv("URLSHORTENER_DSN", saveDSN)
 	}()
 	os.Unsetenv("URLSHORTENER_DSN")
-	CONFIG = emptyConfig
+	CONFIG = Config{}
 
 	err = readConfig(tmpfile.Name())
 
@@ -82,7 +73,7 @@ func Test01Tools10EmptyJSON(t *testing.T) {
 		os.Setenv("URLSHORTENER_DSN", saveDSN)
 	}()
 	os.Unsetenv("URLSHORTENER_DSN")
-	CONFIG = emptyConfig
+	CONFIG = Config{}
 
 	err = readConfig(tmpfile.Name())
 
@@ -112,7 +103,7 @@ func Test02Tools15EmptyJSON_(t *testing.T) {
 		os.Setenv("URLSHORTENER_DSN", saveDSN)
 	}()
 
-	CONFIG = emptyConfig
+	CONFIG = Config{}
 	os.Setenv("URLSHORTENER_DSN", "testDSNvalue")
 
 	err = readConfig(tmpfile.Name())
@@ -139,7 +130,7 @@ func Test03Tools20FullJSON(t *testing.T) {
 		os.Setenv("URLSHORTENER_DSN", saveDSN)
 	}()
 
-	CONFIG = emptyConfig
+	CONFIG = Config{}
 	os.Unsetenv("URLSHORTENER_DSN")
 
 	err := readConfig("example.cnf.json")
