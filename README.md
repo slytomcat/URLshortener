@@ -38,4 +38,39 @@ URLshortener is a microservice to shorten long URLs and to handle the redirectio
 `Response: simple home page and HTTP 200 OK in case of good service health or HTTP 500 Server error in case of bad service health`
 
 
-It is still under development.
+### Configuration file
+
+`{
+    
+    "DSN":"shortener:<password>@<protocol>(<host>:<port>)/shortener_DB",
+    
+    "MaxOpenConns":"33",
+    
+    "ListenHostPort":"0.0.0.0:80",
+    
+    "DefaultExp":"30",
+    
+    "ShortDomain":"<shortDomain>",
+    
+    "Mode":"0"
+    
+}`
+
+Where:
+
+- DSN - MySQL connection string
+- MaxOpenConns - DataBase connection pool size
+- ListenHostPort - host and port to listen on
+- DefaultExp - default token expiration period in days
+- ShortDomain - short domain name for short URL creation
+- Mode - service mode:
+
+   1 - service handles only request for short URLs and health check request
+   
+   2 - service handles only request for redirect and health check request
+   
+   0 - (default) service handles all requests
+
+
+
+It is still under development...
