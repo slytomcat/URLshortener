@@ -15,6 +15,7 @@ type Config struct {
 	ListenHostPort string // host and port to listen on
 	DefaultExp     int    `json:",string"` // Default expiration of token (days)
 	ShortDomain    string // Short domain name for short URL creation
+	Mode           int    `json:",string"` // Service mode: 1 - TokenCreator, 2 - Redirector, 0 - both (default)
 }
 
 // CONFIG - structure with the configuration variables
@@ -55,5 +56,8 @@ func readConfig(cfgFile string) error {
 	if CONFIG.ShortDomain == "" {
 		CONFIG.ShortDomain = "localhost:8080"
 	}
+
+	// do not set CONFIG.Mode as default is 0
+
 	return nil
 }
