@@ -45,33 +45,34 @@ func Test55MainFullSuccess(t *testing.T) {
 		t.Errorf("token request error: %v", err)
 	}
 	defer resp.Body.Close()
-	buf := make([]byte, 256)
-	n, err := resp.Body.Read(buf)
+	buf := make([]byte, resp.ContentLength)
+	_, err = resp.Body.Read(buf)
 	if err != nil && !errors.Is(err, io.EOF) {
 		t.Errorf("response body reading error: %v", err)
 	}
-	var rep struct {
+	var repl struct {
 		URL   string `json:"url"`
 		Token string `json:"token"`
 	}
-	err = json.Unmarshal(buf[:n], &rep)
+	err = json.Unmarshal(buf, &repl)
 	if err != nil {
 		t.Errorf("response body parsing error: %v", err)
 	}
-	t.Logf("Received: %v", rep.URL)
+	t.Logf("Received: %v", repl.URL)
 
-	resp2, err := http.Get("http://" + rep.URL)
+	resp2, err := http.Get("http://" + repl.URL)
 	if err != nil {
 		t.Errorf("redirect request error: %v", err)
 	}
 	defer resp2.Body.Close()
-	n, err = resp2.Body.Read(buf)
+	buf = make([]byte, resp.ContentLength)
+	_, err = resp2.Body.Read(buf)
 	if err != nil && !errors.Is(err, io.EOF) {
 		t.Errorf("response body reading error: %v", err)
 	}
 
-	if !bytes.Contains(buf[:n], []byte("Home page of URLshortener")) {
-		t.Error("wrong response on helth check request")
+	if !bytes.Contains(buf, []byte("Home page of URLshortener")) {
+		t.Error("wrong response body on helth check request")
 	}
 
 	if resp2.StatusCode != http.StatusOK {
@@ -87,13 +88,13 @@ func Test57MainHome(t *testing.T) {
 		t.Errorf("health check request error: %v", err)
 	}
 	defer resp.Body.Close()
-	buf := make([]byte, 256)
-	n, err := resp.Body.Read(buf)
+	buf := make([]byte, resp.ContentLength)
+	_, err = resp.Body.Read(buf)
 	if err != nil && !errors.Is(err, io.EOF) {
 		t.Errorf("response body reading error: %v", err)
 	}
 
-	if !bytes.Contains(buf[:n], []byte("Home page of URLshortener")) {
+	if !bytes.Contains(buf, []byte("Home page of URLshortener")) {
 		t.Error("wrong response on health check request")
 	}
 
@@ -177,7 +178,6 @@ func Test70Main404(t *testing.T) {
 	if resp.StatusCode != http.StatusNotFound {
 		t.Errorf("wrong status : %d", resp.StatusCode)
 	}
-
 }
 
 // try unsupported request in mode = 1
@@ -209,6 +209,7 @@ func Test73MainServiceMode2(t *testing.T) {
 	}
 }
 
+// try health check in service mode 1
 func Test75MainHealthCheckMode1(t *testing.T) {
 	CONFIG.Mode = 1
 
@@ -222,6 +223,7 @@ func Test75MainHealthCheckMode1(t *testing.T) {
 	}
 }
 
+// try health check in service mode 1
 func Test77MainHealthCheckMode2(t *testing.T) {
 	CONFIG.Mode = 2
 
@@ -254,5 +256,4 @@ func Test99MainKill(t *testing.T) {
 		t.Errorf("received not expected output: %s", buf)
 	}
 	log.Printf("%s", buf[20:])
-
 }

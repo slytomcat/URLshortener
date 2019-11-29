@@ -94,7 +94,7 @@ func healthCheck() error {
 			return err
 		}
 	} else {
-		// try to make the redirect by short URL
+		// try to make the HTTP request for redirect by short URL
 		resp2, err := http.Get("http://" + repl.URL)
 		if err != nil {
 			return err
