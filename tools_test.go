@@ -6,6 +6,15 @@ import (
 	"testing"
 )
 
+var emptyConfig = Config{
+	DSN:            "",
+	MaxOpenConns:   0,
+	ListenHostPort: "",
+	DefaultExp:     0,
+	ShortDomain:    "",
+	Mode:           0,
+}
+
 // test config reading from nonexistent file
 func Test01Tools00WrongFile(t *testing.T) {
 	saveDSN := os.Getenv("URLSHORTENER_DSN")
@@ -15,13 +24,7 @@ func Test01Tools00WrongFile(t *testing.T) {
 		os.Setenv("URLSHORTENER_DSN", saveDSN)
 	}()
 	os.Unsetenv("URLSHORTENER_DSN")
-	CONFIG = Config{
-		DSN:            "",
-		MaxOpenConns:   0,
-		ListenHostPort: "",
-		DefaultExp:     0,
-		ShortDomain:    "",
-	}
+	CONFIG = emptyConfig
 
 	err := readConfig("wrong.wrong.wrong.file.json")
 
@@ -50,13 +53,7 @@ func Test01Tools05EmptyFile(t *testing.T) {
 		os.Setenv("URLSHORTENER_DSN", saveDSN)
 	}()
 	os.Unsetenv("URLSHORTENER_DSN")
-	CONFIG = Config{
-		DSN:            "",
-		MaxOpenConns:   0,
-		ListenHostPort: "",
-		DefaultExp:     0,
-		ShortDomain:    "",
-	}
+	CONFIG = emptyConfig
 
 	err = readConfig(tmpfile.Name())
 
@@ -85,13 +82,7 @@ func Test01Tools10EmptyJSON(t *testing.T) {
 		os.Setenv("URLSHORTENER_DSN", saveDSN)
 	}()
 	os.Unsetenv("URLSHORTENER_DSN")
-	CONFIG = Config{
-		DSN:            "",
-		MaxOpenConns:   0,
-		ListenHostPort: "",
-		DefaultExp:     0,
-		ShortDomain:    "",
-	}
+	CONFIG = emptyConfig
 
 	err = readConfig(tmpfile.Name())
 
@@ -120,13 +111,8 @@ func Test02Tools15EmptyJSON_(t *testing.T) {
 		CONFIG = saveCONFIG
 		os.Setenv("URLSHORTENER_DSN", saveDSN)
 	}()
-	CONFIG = Config{
-		DSN:            "",
-		MaxOpenConns:   0,
-		ListenHostPort: "",
-		DefaultExp:     0,
-		ShortDomain:    "",
-	}
+
+	CONFIG = emptyConfig
 	os.Setenv("URLSHORTENER_DSN", "testDSNvalue")
 
 	err = readConfig(tmpfile.Name())
@@ -138,7 +124,8 @@ func Test02Tools15EmptyJSON_(t *testing.T) {
 		CONFIG.MaxOpenConns != 10 ||
 		CONFIG.ListenHostPort != "localhost:8080" ||
 		CONFIG.DefaultExp != 1 ||
-		CONFIG.ShortDomain != "localhost:8080" {
+		CONFIG.ShortDomain != "localhost:8080" ||
+		CONFIG.Mode != 0 {
 		t.Error("Wrong default values set")
 	}
 }
@@ -152,13 +139,7 @@ func Test03Tools20FullJSON(t *testing.T) {
 		os.Setenv("URLSHORTENER_DSN", saveDSN)
 	}()
 
-	CONFIG = Config{
-		DSN:            "",
-		MaxOpenConns:   0,
-		ListenHostPort: "",
-		DefaultExp:     0,
-		ShortDomain:    "",
-	}
+	CONFIG = emptyConfig
 	os.Unsetenv("URLSHORTENER_DSN")
 
 	err := readConfig("example.cnf.json")
@@ -170,7 +151,8 @@ func Test03Tools20FullJSON(t *testing.T) {
 		CONFIG.MaxOpenConns != 33 ||
 		CONFIG.ListenHostPort != "0.0.0.0:80" ||
 		CONFIG.DefaultExp != 30 ||
-		CONFIG.ShortDomain != "<shortDomain>" {
+		CONFIG.ShortDomain != "<shortDomain>" ||
+		CONFIG.Mode != 1 {
 		t.Error("Wrong values set")
 	}
 }
