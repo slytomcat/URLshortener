@@ -1,0 +1,12 @@
+version: "3"
+
+services:
+
+  urlshortener:
+    container_name: urlshortener
+    image: slytomcat/urlshortener:latest
+    restart: always
+    network_mode: host
+    volumes:
+      - ./cnf.json:/opt/URLshortener/cnf.json
+
