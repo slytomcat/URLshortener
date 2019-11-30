@@ -21,7 +21,7 @@ Response: JSON with following parameters:
 - url: short URL
 
 ### Redirect to long URL:
-URL: `<host>[:<port>]/<token> - URL from response on request for short URL`
+URL: `<host>[:<port>]/<token>` - URL from response on request for short URL
 
 Method: `GET`
 
