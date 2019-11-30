@@ -251,7 +251,7 @@ func main() {
 	log.SetPrefix("URLshortener: ")
 
 	// get the configuratin variables
-	err = readConfig(".cnf.json")
+	err = readConfig("cnf.json")
 	if err != nil {
 		log.Fatal(err)
 	}
