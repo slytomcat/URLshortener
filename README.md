@@ -28,7 +28,7 @@ Method: `GET`
 Response contain the redirection to long URL (response code: HTTP 301 'Moved permanently' with 'Location' = long URL in header)
 
 ### Helth-check:
-URL: '<host>[:<port>]/`
+URL: `<host>[:<port>]/`
 
 Method: `GET`
 
