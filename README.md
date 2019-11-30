@@ -5,42 +5,39 @@
 URLshortener is a microservice to shorten long URLs and to handle the redirection by generated short URLs.
 
 ### Request for short URL:
-`URL: <host>[:<port>]/token`
 
-`Method: POST`
+URL: `<host>[:<port>]/token`
 
-`Body: JSON with following parameters:`
+Method: `POST`
+
+Body: JSON with following parameters:
 
 - url: URL to shorten, mandatory
 - exp: short URL expiration in days, optional
 
-`Response: JSON with following parameters:`
+Response: JSON with following parameters:
 
 - token: token for short URL
 - url: short URL
 
 ### Redirect to long URL:
-`URL: <host>[:<port>]/<token> - URL from response on request for short URL`
+URL: `<host>[:<port>]/<token>` - URL from response on request for short URL
 
-`Method: GET`
+Method: `GET`
 
-`No parameters`
-
-`Response contain the redirection to long URL`
+Response contain the redirection to long URL (response code: HTTP 301 'Moved permanently' with 'Location' = long URL in header)
 
 ### Helth-check:
-`URL: <host>[:<port>]/`
+URL: `<host>[:<port>]/`
 
-`Method: GET`
+Method: `GET`
 
-`No parameters`
-
-`Response: simple home page and HTTP 200 OK in case of good service health or HTTP 500 Server error in case of bad service health`
+Response: simple home page and HTTP 200 OK in case of good service health or HTTP 500 Server error in case of bad service health
 
 
 ### Configuration file
 
-`{
+    {
     
     "DSN":"shortener:<password>@<protocol>(<host>:<port>)/shortener_DB",
     
@@ -54,12 +51,12 @@ URLshortener is a microservice to shorten long URLs and to handle the redirectio
     
     "Mode":"0"
     
-}`
+    }
 
 Where:
 
 - DSN - MySQL connection string
-- MaxOpenConns - DataBase connection pool size
+- MaxOpenConns - DataBase connections pool size
 - ListenHostPort - host and port to listen on
 - DefaultExp - default token expiration period in days
 - ShortDomain - short domain name for short URL creation
@@ -71,6 +68,3 @@ Where:
    
    0 - (default) service handles all requests
 
-
-
-It is still under development...
