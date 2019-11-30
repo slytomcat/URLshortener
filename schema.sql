@@ -29,7 +29,7 @@ CREATE USER `shortener`@`%` IDENTIFIED BY RANDOM PASSWORD;
 -- NOTE:
 -- DELETE right required only for test purpose. Do not grant DELETE right in production environment.
 
--- GRANT command for test environment only:
---GRANT DELETE, SELECT(`token`, `url`, `ts`, `exp`), INSERT(`token`, `url`, `exp`), UPDATE(`token`, `url`, `exp`) ON `shortener_DB`.`urls` TO `shortener`@`%`;
+-- GRANT command for test environment:
+--GRANT DELETE, SELECT, INSERT(`token`, `url`, `exp`), UPDATE(`token`, `url`, `exp`) ON `shortener_DB`.`urls` TO `shortener`@`%`;
 -- GRANT command for production environment:
-GRANT SELECT(`token`, `url`, `ts`, `exp`), INSERT(`token`, `url`, `exp`), UPDATE(`token`, `url`, `exp`) ON `shortener_DB`.`urls` TO `shortener`@`%`;
+GRANT SELECT, INSERT(`token`, `url`, `exp`), UPDATE(`token`, `url`, `exp`) ON `shortener_DB`.`urls` TO `shortener`@`%`;
