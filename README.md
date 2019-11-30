@@ -4,6 +4,8 @@
 
 URLshortener is a microservice to shorten long URLs and to handle the redirection by generated short URLs.
 
+Docker image: https://hub.docker.com/r/slytomcat/urlshortener
+
 ### Request for short URL:
 
 URL: `<host>[:<port>]/token`
