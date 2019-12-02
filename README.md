@@ -57,7 +57,7 @@ Response: simple home page and HTTP 200 OK in case of good service health or HTT
 
 Where:
 
-- DSN - MySQL connection string
+- DSN - MySQL connection string (can be also set via URLSHORTENER_DSN environment variable)
 - MaxOpenConns - DataBase connections pool size
 - ListenHostPort - host and port to listen on
 - DefaultExp - default token expiration period in days
