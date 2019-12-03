@@ -8,6 +8,14 @@ jobs:
       - run:
           name: building
           command: go build .
+      - run:
+          name: Store version
+          command: git describe --tags > VERSION
+      - persist_to_workspace:
+          root: .
+          paths:
+            - ./URLshortener
+            - ./VERSION
   test:
     docker:
       - image: circleci/golang:1.13.4
@@ -34,12 +42,48 @@ jobs:
       - store_test_results:
           path: results
 
+  upload_github:
+    docker:
+      - image: 'cibuilds/github:0.10'
+    steps:
+      - attach_workspace:
+          at: ./artifacts
+      - run:
+          name: Publish Release on GitHub
+          command: |
+            TAG=$(cat ./artifacts/VERSION)
+            echo "TAG: $TAG"
+            [[ $TAG =~  ^v\.[0-9]+\.[0-9]+\.[0-9]+$ ]] || exit 0
+            cp ./artifacts/URLshortener ./URLshortener-amd64
+            ghr -t ${GHAPITOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -delete ${TAG} ./URLshortener-amd64
+
+  upload_docker:
+    docker:
+      - image: circleci/golang:1.13.4
+    steps:
+      - attach_workspace:
+          at: ./artifacts
+      - setup_remote_docker
+      - run: 
+          name: Build and push Release Docker.io
+          command: |
+            cd ./artifacts
+            TAG=$(cat VERSION)
+            echo "TAG: $TAG"
+            [[ $TAG =~  ^v\.[0-9]+\.[0-9]+\.[0-9]+$ ]] || exit 0
+            echo "$DOCKER_PASS" | docker login --username $DOCKER_USER --password-stdin
+            docker image build -t slytomcat/urlshortener:$TAG
+            docker push slytomcat/urlshortener:$TAG
 
 workflows:
   version: 2
-  build_and_test:
+  build_test_upload:
     jobs:
       - build
-      - test:
+      - test
+      - upload_github:
+          requires:
+            - build
+      - upload_docker:
           requires:
             - build
