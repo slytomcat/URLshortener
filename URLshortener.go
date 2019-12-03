@@ -29,6 +29,7 @@ package main
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -118,7 +119,8 @@ curl -i -v http://localhost:8080/
 */
 
 // Home shows simple home page
-func home(w http.ResponseWriter) {
+func home(w http.ResponseWriter, r *http.Request) {
+	log.Printf("health-check request from %s (%s)\n", r.RemoteAddr, r.Referer())
 	// Perform self-test
 	if err := healthCheck(); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -133,16 +135,24 @@ curl -i -v http://localhost:8080/<token>
 */
 
 // Redirect handles redirection to URL that was stored for the specified token
-func redirect(w http.ResponseWriter, r *http.Request, sToken string) {
-	longURL, err := tokenDB.Get(sToken)
-	if err != nil {
+func redirect(w http.ResponseWriter, r *http.Request) {
+	sToken := r.URL.Path[1:]
+	rMess := fmt.Sprintf("redirect request from %s (%s), token: %s", r.RemoteAddr, r.Referer(), sToken)
+	if CONFIG.Mode == 1 {
+		log.Printf("%s: request disabled\n", rMess)
 		// send 404 response
 		http.NotFound(w, r)
-		log.Printf("URL for token '%s' was not found\n", sToken)
 		return
 	}
+	longURL, err := tokenDB.Get(r.URL.Path[1:])
+	if err != nil {
+		log.Printf("%s: token not found\n", rMess)
+		// send 404 response
+		http.NotFound(w, r)
+		return
+	}
+	log.Printf("%s: redirected to %s\n", rMess, longURL)
 	// make redirect response
-	log.Println("Redirect to ", longURL)
 	http.Redirect(w, r, longURL, http.StatusMovedPermanently)
 }
 
@@ -154,6 +164,15 @@ curl -v POST -H "Content-Type: application/json" -d '{"url":"https://www.w3schoo
 func getNewToken(w http.ResponseWriter, r *http.Request) {
 	// ????: check some authorisation???
 
+	rMess := fmt.Sprintf("token request from %s (%s)", r.RemoteAddr, r.Referer())
+
+	if CONFIG.Mode == 2 {
+		log.Printf("%s: request disabled\n", rMess)
+		// send 404 response
+		http.NotFound(w, r)
+		return
+	}
+
 	// parameters structure
 	var params struct {
 		URL string `json:"url"`                  // long URL
@@ -164,7 +183,7 @@ func getNewToken(w http.ResponseWriter, r *http.Request) {
 	buf := make([]byte, r.ContentLength)
 	_, err := r.Body.Read(buf)
 	if err != nil && !errors.Is(err, io.EOF) {
-		log.Printf("request body reading error: %v", err)
+		log.Printf("%s: request body reading error: %v", rMess, err)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -172,7 +191,7 @@ func getNewToken(w http.ResponseWriter, r *http.Request) {
 	// parse JSON to parameters structure
 	err = json.Unmarshal(buf, &params)
 	if err != nil || params.URL == "" {
-		log.Printf("bad request")
+		log.Printf("%s: bad request parameters:%s", rMess, buf)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -185,7 +204,7 @@ func getNewToken(w http.ResponseWriter, r *http.Request) {
 	// create new token
 	sToken, err := tokenDB.New(params.URL, params.Exp)
 	if err != nil {
-		log.Printf("new token creation error: %v\n", err)
+		log.Printf("%s: token creation error: %v\n", rMess, err)
 		w.WriteHeader(http.StatusGatewayTimeout)
 		return
 	}
@@ -200,12 +219,12 @@ func getNewToken(w http.ResponseWriter, r *http.Request) {
 			URL:   CONFIG.ShortDomain + "/" + sToken,
 		})
 	if err != nil {
-		log.Printf("response body JSON marshaling error: %v\n", err)
+		log.Printf("%s: JSON marshaling error: %v\n", rMess, err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	// log new token record
-	log.Printf("Saved token:\n[ %s | %s | %d ]\n", sToken, params.URL, params.Exp)
+	log.Printf("%s: token saved: [ %s | %s | %d ]\n", rMess, sToken, params.URL, params.Exp)
 
 	// send response
 	w.Write(resp)
@@ -217,17 +236,11 @@ func myMUX(w http.ResponseWriter, r *http.Request) {
 	switch path {
 	case "/":
 		// request for health-check
-		log.Printf("health-check from %s (%s)\n", r.RemoteAddr, r.Referer())
-		home(w)
+		home(w, r)
 	case "/token":
 		// request for new short url/token
 		// handle it only in TokenCreator and Both service modes
-		if CONFIG.Mode == 0 || CONFIG.Mode == 1 {
-			log.Printf("request for token from %s (%s)\n", r.RemoteAddr, r.Referer())
-			getNewToken(w, r)
-		} else {
-			http.NotFound(w, r)
-		}
+		getNewToken(w, r)
 	case "/favicon.ico":
 		// Chromium make such requests together with request for redirect to show the site icon on tab header
 		// In this code it is used for health check
@@ -235,12 +248,7 @@ func myMUX(w http.ResponseWriter, r *http.Request) {
 	default:
 		// all the rest are requests for redirect (probably)
 		// handle it Redirector and Both service modes
-		if CONFIG.Mode == 0 || CONFIG.Mode == 2 {
-			log.Printf("request for redirect from %s (%s)\n", r.RemoteAddr, r.Referer())
-			redirect(w, r, path[1:])
-		} else {
-			http.NotFound(w, r)
-		}
+		redirect(w, r)
 	}
 }
 

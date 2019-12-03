@@ -18,7 +18,7 @@ var (
 // test new TokenDB creation
 func Test10NewTokenDB(t *testing.T) {
 	var err error
-	err = readConfig(".cnf.json")
+	err = readConfig("cnf.json")
 	if err != nil {
 		t.Error(err)
 	}

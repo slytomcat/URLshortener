@@ -97,7 +97,7 @@ func (t *TokenDB) New(longURL string, expiration int) (string, error) {
 	if sToken == "" {
 		// if we can't insert random token for 3 tries, then it seems that all tokens are busy
 		tran.Rollback()
-		return "", fmt.Errorf("BD insert error; can't create new random token")
+		return "", fmt.Errorf("BD insert error; can't create new token")
 	}
 	// commit the successful insert or update
 	tran.Commit()
