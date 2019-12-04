@@ -65,16 +65,17 @@ jobs:
       - attach_workspace:
           at: ./artifacts
       - setup_remote_docker
-      - run: 
-          name: Build and push Release Docker.io
+      - run:
+          name: Build and push Release to Docker.io
           command: |
             TAG=$(cat ./artifacts/VERSION)
             echo "TAG: $TAG"
             [[ $TAG =~  ^v\.[0-9]+\.[0-9]+\.[0-9]+$ ]] || exit 0
             cp ./artifacts/URLshortener .
             echo "$DOCKER_PASS" | docker login --username $DOCKER_USER --password-stdin
-            docker image build -t slytomcat/urlshortener:$TAG .
-            docker push slytomcat/urlshortener:$TAG
+            docker image build -t slytomcat/urlshortener:latest .
+            docker tag slytomcat/urlshortener:latest slytomcat/urlshortener:$TAG
+            docker push slytomcat/urlshortener
 
 workflows:
   version: 2
