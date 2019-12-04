@@ -235,7 +235,7 @@ func getNewToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// log new token record
-	log.Printf("%s: token saved: [ %s | %s | %d ]\n", rMess, sToken, params.URL, params.Exp)
+	log.Printf("%s: URL saved, token: %s , exp: %d\n", rMess, sToken, params.Exp)
 
 	// send response
 	w.Write(resp)
