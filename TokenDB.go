@@ -53,11 +53,13 @@ func (t *TokenDB) New(longURL string, expiration int) (string, error) {
 	// The token field is unique in DB so it's not possible to insert the same token twice.
 	// But if the token is already expired then try to update it (url and expiration).
 	for tryCnt := 0; tryCnt < 3; tryCnt++ {
+
+		// get new token
 		sToken, err = ShortTokenNew()
 		if err != nil {
 			return "", err
 		}
-		// try to insert new token
+		// try to store new token
 		_, err = tran.Exec(
 			"INSERT INTO urls (`token`, `url`, `exp`) VALUES (?, ?, ?)",
 			sToken,
@@ -65,13 +67,16 @@ func (t *TokenDB) New(longURL string, expiration int) (string, error) {
 			expiration,
 		)
 		if err == nil {
-			// the token is successfully inserted
+			// the token is successfully stored
 			break
 		}
+
+		// handle error if it is not Duplicate entry error
 		if !strings.Contains(err.Error(), "Duplicate entry") {
 			tran.Rollback()
 			return "", fmt.Errorf("can't insert token: %w", err)
 		}
+
 		// the token is already in use: try to update the token if it is expired
 		result, err := tran.Exec("UPDATE `urls` SET `url`=?, `exp`=? WHERE `token` = ? and DATE_ADD(`ts`, INTERVAL `exp` DAY) < NOW()",
 			longURL,
@@ -83,6 +88,7 @@ func (t *TokenDB) New(longURL string, expiration int) (string, error) {
 			return "", fmt.Errorf("can't update token: %w", err)
 		}
 
+		// check the number of affected rows
 		if affected, _ := result.RowsAffected(); affected == 1 {
 			// the token is successfully updated
 			break
