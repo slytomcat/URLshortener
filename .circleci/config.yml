@@ -85,12 +85,12 @@ workflows:
       - upload_github:
           requires:
             - build
-          branches:
-            only:
-              - master
+          filters:
+            branches:
+              only: master
       - upload_docker:
           requires:
             - build
-          branches:
-            only:
-              - master
+          filters:
+            branches:
+              only: master
