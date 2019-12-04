@@ -1,4 +1,4 @@
-version: 2
+version: 2.1
 jobs:
   build:
     docker:
@@ -10,12 +10,13 @@ jobs:
           command: go build .
       - run:
           name: Store version
-          command: git describe --tags > VERSION
+          command: git describe --tags | sed "s/^\(v\.[0-9]\+\.[0-9]\+\.[0-9]\+\).*/\1/" > VERSION
       - persist_to_workspace:
           root: .
           paths:
             - ./URLshortener
             - ./VERSION
+
   test:
     docker:
       - image: circleci/golang:1.13.4
@@ -43,6 +44,9 @@ jobs:
           path: results
 
   upload_github:
+    branches:
+      only:
+        - master
     docker:
       - image: 'cibuilds/github:0.10'
     steps:
@@ -53,11 +57,13 @@ jobs:
           command: |
             TAG=$(cat ./artifacts/VERSION)
             echo "TAG: $TAG"
-            [[ $TAG =~  ^v\.[0-9]+\.[0-9]+\.[0-9]+$ ]] || exit 0
             cp ./artifacts/URLshortener ./URLshortener-amd64
             ghr -t ${GHAPITOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -delete ${TAG} ./URLshortener-amd64
 
   upload_docker:
+    branches:
+      only:
+        - master
     docker:
       - image: circleci/golang:1.13.4
     steps:
@@ -70,7 +76,6 @@ jobs:
           command: |
             TAG=$(cat ./artifacts/VERSION)
             echo "TAG: $TAG"
-            [[ $TAG =~  ^v\.[0-9]+\.[0-9]+\.[0-9]+$ ]] || exit 0
             cp ./artifacts/URLshortener .
             echo "$DOCKER_PASS" | docker login --username $DOCKER_USER --password-stdin
             docker image build -t slytomcat/urlshortener:latest .
@@ -78,7 +83,7 @@ jobs:
             docker push slytomcat/urlshortener
 
 workflows:
-  version: 2
+  version: 2.1
   build_test_upload:
     jobs:
       - build
