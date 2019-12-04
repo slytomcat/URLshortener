@@ -20,15 +20,14 @@ func ShortTokenNew() (string, error) {
 
 	b := make([]byte, 5)
 	if DEBUG {
-		b[0], b[1], b[2], b[3], b[4] = 0xff, 0xff, 0xff, 0xff, 0xf0
+		b[0], b[1], b[2], b[3], b[4] = 0xff, 0xff, 0xff, 0xff, 0xff
 	} else {
 		_, err := rand.Read(b) // get 5 secure random bytes
 		if err != nil {
 			return "", err
 		}
-		b[4] &= 0xf0 // zero last 4 bits as we need only 36 bits that equal to 6 BASE64 symbols
 	}
 
-	// shorten to 6 symbols without last 4 zero bits and padding ('A=')
+	// shorten BASE64 representation to 6 symbols (it removes last 4 bits and padding)
 	return base64.URLEncoding.EncodeToString(b)[:6], nil
 }
