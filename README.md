@@ -4,6 +4,8 @@
 
 URLshortener is a microservice to shorten long URLs and to handle the redirection by generated short URLs.
 
+The service requires and MsSQL server conection and database structure described in [schema.sql](https://github.com/slytomcat/URLshortener/blob/master/schema.sql)
+
 Docker image: https://hub.docker.com/r/slytomcat/urlshortener
 
 ### Request for short URL:
@@ -57,16 +59,17 @@ Response: simple home page and HTTP 200 OK in case of good service health or HTT
 
 Where:
 
-- DSN - MySQL connection string (can be also set via URLSHORTENER_DSN environment variable)
-- MaxOpenConns - DataBase connections pool size
-- ListenHostPort - host and port to listen on
-- DefaultExp - default token expiration period in days
-- ShortDomain - short domain name for short URL creation
-- Mode - service mode:
+- DSN - MySQL connection string (mandatory, also can set via URLSHORTENER_DSN environment variable)
+- MaxOpenConns - DataBase connections pool size (optional, default 10)
+- ListenHostPort - host and port to listen on (optional, default localhost:8080)
+- DefaultExp - default token expiration period in days (optional, default 1)
+- ShortDomain - short domain name for short URL creation (optional, default localhost:8080)
+- Mode - service mode (optional, default 0):
+
+   0 - service handles all requests
 
    1 - service handles only request for short URLs and health check request
-   
+
    2 - service handles only request for redirect and health check request
    
-   0 - (default) service handles all requests
 
