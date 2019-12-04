@@ -46,9 +46,6 @@ jobs:
   upload_github:
     docker:
       - image: 'cibuilds/github:0.10'
-    branches:
-      only:
-        - master
     steps:
       - attach_workspace:
           at: ./artifacts
@@ -63,9 +60,6 @@ jobs:
   upload_docker:
     docker:
       - image: circleci/golang:1.13.4
-    branches:
-      only:
-        - master
     steps:
       - checkout
       - attach_workspace:
@@ -91,6 +85,12 @@ workflows:
       - upload_github:
           requires:
             - build
+          branches:
+            only:
+              - master
       - upload_docker:
           requires:
             - build
+          branches:
+            only:
+              - master
