@@ -44,11 +44,11 @@ jobs:
           path: results
 
   upload_github:
+    docker:
+      - image: 'cibuilds/github:0.10'
     branches:
       only:
         - master
-    docker:
-      - image: 'cibuilds/github:0.10'
     steps:
       - attach_workspace:
           at: ./artifacts
@@ -61,11 +61,11 @@ jobs:
             ghr -t ${GHAPITOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -delete ${TAG} ./URLshortener-amd64
 
   upload_docker:
+    docker:
+      - image: circleci/golang:1.13.4
     branches:
       only:
         - master
-    docker:
-      - image: circleci/golang:1.13.4
     steps:
       - checkout
       - attach_workspace:
