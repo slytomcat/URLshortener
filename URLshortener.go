@@ -191,7 +191,6 @@ func getNewToken(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// parse JSON to parameters structure
-
 	// the requst parameters structure
 	var params struct {
 		URL string `json:"url"`                  // long URL
