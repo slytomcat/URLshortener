@@ -4,6 +4,8 @@
 
 URLshortener is a microservice to shorten long URLs and to handle the redirection by generated short URLs.
 
+The service requires and MsSQL server conection and database structure described in [schema.sql](https://github.com/slytomcat/URLshortener/blob/master/schema.sql)
+
 Docker image: https://hub.docker.com/r/slytomcat/urlshortener
 
 ### Request for short URL:
