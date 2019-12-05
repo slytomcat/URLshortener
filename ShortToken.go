@@ -2,32 +2,41 @@ package main
 
 // ShortToken is string of 6 BASE64 symbols from the url safe alphabet.
 // It represent 36 bits of data. ShortToken is not correct BASE64 data
-// representation. It should be extended by 'A=' (that provides additional
-// 4 zero bits) to decode into 5 bytes with 4 less significant bits equal to zero.
+// representation.
+// If you need longer/shorten token length adjust tokenLenS
 
 import (
 	"crypto/rand"
 	"encoding/base64"
+	"strings"
+)
+
+const (
+	// tokenLenS - number of BASE64 symbols in token
+	tokenLenS = 5
 )
 
 var (
-	// DEBUG = true sets token as constant
+	// DEBUG = true sets token as constant DEBUGToken
 	DEBUG = false
+	// DEBUGToken is token that returned in debug mode
+	DEBUGToken = strings.Repeat("_", tokenLenS)
 )
 
-// ShortTokenNew creates the token (6 BASE64 symbols) from random or debugging source
-func ShortTokenNew() (string, error) {
+// NewShortToken creates the token (tokenLength BASE64 symbols) from random or debugging source
+func NewShortToken() (string, error) {
 
-	b := make([]byte, 5)
 	if DEBUG {
-		b[0], b[1], b[2], b[3], b[4] = 0xff, 0xff, 0xff, 0xff, 0xff
-	} else {
-		_, err := rand.Read(b) // get 5 secure random bytes
-		if err != nil {
-			return "", err
-		}
+		return DEBUGToken, nil
 	}
 
-	// shorten BASE64 representation to 6 symbols (it removes last 4 bits and padding)
-	return base64.URLEncoding.EncodeToString(b)[:6], nil
+	buf := make([]byte, tokenLenS*6/8+1)
+
+	_, err := rand.Read(buf) // get secure random bytes
+	if err != nil {
+		return "", err
+	}
+
+	// shorten BASE64 representation to tokenLenS symbols
+	return base64.URLEncoding.EncodeToString(buf)[:tokenLenS], nil
 }

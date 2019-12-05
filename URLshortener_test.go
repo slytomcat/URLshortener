@@ -135,7 +135,7 @@ func Test62MainGetTokenWOexp(t *testing.T) {
 	defer func() { DEBUG = false }()
 
 	tx, _ := tokenDB.DB.Begin()
-	_, err := tx.Exec("DELETE FROM urls WHERE token='______'")
+	_, err := tx.Exec("DELETE FROM urls WHERE token=?", DEBUGToken)
 	if err != nil {
 		t.Errorf("Can't clear table: %v", err)
 	}
@@ -183,7 +183,7 @@ func Test70Main404(t *testing.T) {
 func Test73MainServiceMode1(t *testing.T) {
 	CONFIG.Mode = 1
 
-	resp, err := http.Get("http://" + CONFIG.ListenHostPort + "/______")
+	resp, err := http.Get("http://" + CONFIG.ListenHostPort + "/" + DEBUGToken)
 	if err != nil {
 		t.Errorf("redirect request error: %v", err)
 	}
