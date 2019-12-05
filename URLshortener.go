@@ -251,7 +251,7 @@ func myMUX(w http.ResponseWriter, r *http.Request) {
 		// request for new short url/token
 		getNewToken(w, r)
 	case "/favicon.ico":
-		// Chromium make such requests together with request for redirect to show the site icon on tab header
+		// WEB-brousers make such requests together with request for redirect to show the site icon on tab header
 		// In this code it is used for health check
 		return
 	default:
