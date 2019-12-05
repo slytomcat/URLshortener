@@ -55,7 +55,7 @@ func (t *TokenDB) New(longURL string, expiration int) (string, error) {
 	for tryCnt := 0; tryCnt < 3; tryCnt++ {
 
 		// get new token
-		sToken, err = ShortTokenNew()
+		sToken, err = NewShortToken()
 		if err != nil {
 			return "", err
 		}
@@ -112,12 +112,12 @@ func (t *TokenDB) New(longURL string, expiration int) (string, error) {
 
 // Get returns long url for given token
 func (t *TokenDB) Get(sToken string) (string, error) {
-	if len(sToken) != 6 {
+	if len(sToken) != tokenLenS {
 		return "", errors.New("wrong token length")
 	}
 
-	// get the url by token (ignore expiratinon)
-	row := t.DB.QueryRow("SELECT url FROM urls WHERE token = ?", sToken)
+	// get the url by token checking expiratinon
+	row := t.DB.QueryRow("SELECT url FROM urls WHERE token = ? and DATE_ADD(`ts`, INTERVAL `exp` DAY) > NOW()", sToken)
 
 	url := ""
 	err := row.Scan(&url)
