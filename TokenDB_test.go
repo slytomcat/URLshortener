@@ -32,7 +32,7 @@ func Test10NewTokenDB(t *testing.T) {
 // Clear the table - it is not a test
 func Test13ClearTable(t *testing.T) {
 	tx, _ := tDB.DB.Begin()
-	_, err := tx.Exec("DELETE FROM urls WHERE token='______'")
+	_, err := tx.Exec("DELETE FROM urls WHERE token=?", DEBUGToken)
 	if err != nil {
 		t.Errorf("Can't clear table: %v", err)
 	}
@@ -108,7 +108,7 @@ func Test17OneMoreToken(t *testing.T) {
 
 // try to make token expired
 func Test20ExpireToken(t *testing.T) {
-	err := tDB.Expire("______")
+	err := tDB.Expire(DEBUGToken)
 	if err != nil {
 		t.Error(err)
 	}
@@ -122,11 +122,11 @@ func Test23OneMoreTokenRace(t *testing.T) {
 // try to receive long URL by token
 func Test25GetToken(t *testing.T) {
 
-	lURL, err := tDB.Get("______")
+	lURL, err := tDB.Get(DEBUGToken)
 	if err != nil {
 		t.Error(err)
 	}
-	fmt.Printf("URL for token ______: %s\n", lURL)
+	fmt.Printf("URL for token %s: %s\n", DEBUGToken, lURL)
 }
 
 // try to prolong the token

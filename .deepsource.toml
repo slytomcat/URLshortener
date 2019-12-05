@@ -14,3 +14,16 @@ enabled = true
 
   [analyzers.meta]
   import_path = "https://https://github.com/slytomcat/URLshortener"
+
+[[analyzers]]
+name = "docker"
+enabled = true
+
+  [analyzers.meta]
+  dockerfile_paths = [
+    "dockerfile"
+  ]
+
+  trusted_registries = [
+    "docker.io"
+  ]
