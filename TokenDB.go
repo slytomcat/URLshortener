@@ -39,13 +39,7 @@ func TokenDBNew() (*TokenDB, error) {
 
 // New returns new token for given long URL and store the token expiration period (in days)
 func (t *TokenDB) New(longURL string, expiration int) (string, error) {
-
-	// Begin transaction
-	tran, err := t.DB.Begin()
-	if err != nil {
-		return "", fmt.Errorf("can't create transaction: %w", err)
-	}
-
+    var err error
 	// token of saved long URL
 	sToken := ""
 
@@ -59,6 +53,13 @@ func (t *TokenDB) New(longURL string, expiration int) (string, error) {
 		if err != nil {
 			return "", err
 		}
+
+		// begin transaction
+		tran, err := t.DB.Begin()
+		if err != nil {
+			return "", fmt.Errorf("can't create transaction: %w", err)
+		}
+
 		// try to store new token
 		_, err = tran.Exec(
 			"INSERT INTO urls (`token`, `url`, `exp`) VALUES (?, ?, ?)",
@@ -68,6 +69,7 @@ func (t *TokenDB) New(longURL string, expiration int) (string, error) {
 		)
 		if err == nil {
 			// the token is successfully stored
+			tran.Commit()
 			break
 		}
 
@@ -77,7 +79,7 @@ func (t *TokenDB) New(longURL string, expiration int) (string, error) {
 			return "", fmt.Errorf("can't insert token: %w", err)
 		}
 
-		// the token is already in use: try to update the token if it is expired
+		// the token is already exists: try to update the token if it is expired
 		result, err := tran.Exec("UPDATE `urls` SET `url`=?, `exp`=? WHERE `token` = ? and DATE_ADD(`ts`, INTERVAL `exp` DAY) < NOW()",
 			longURL,
 			expiration,
@@ -88,25 +90,28 @@ func (t *TokenDB) New(longURL string, expiration int) (string, error) {
 			return "", fmt.Errorf("can't update token: %w", err)
 		}
 
-		// check the number of affected rows
-		if affected, _ := result.RowsAffected(); affected == 1 {
-			// the token is successfully updated
+		// check affected rows
+		affected, err := result.RowsAffected()
+		if err == nil && affected == 1 {
+			// token successfully updated
+			tran.Commit()
 			break
 		}
-		// token is not expired, let's try to select a new one token
-
+		tran.Rollback()
+		if err != nil {
+			return "", fmt.Errorf("can't get affected rows: %w", err)
+		}
+		// token is not updated
 		// reset bad token
 		sToken = ""
-
 	}
 
 	if sToken == "" {
 		// if we can't insert random token for 3 tries, then it seems that all tokens are busy
-		tran.Rollback()
 		return "", fmt.Errorf("BD insert error; can't create new token")
 	}
 	// commit the successful insert or update
-	tran.Commit()
+
 	return sToken, nil
 }
 
@@ -131,16 +136,29 @@ func (t *TokenDB) Get(sToken string) (string, error) {
 // common function for update token expiration
 func (t *TokenDB) updateExpiration(sToken string, exp int) error {
 
+	// begin transaction
 	tran, err := t.DB.Begin()
 	if err != nil {
 		return fmt.Errorf("can't create transaction: %w", err)
 	}
 
-	_, err = tran.Exec("UPDATE `urls` SET `exp`=? WHERE `token` = ? ", exp, sToken)
+	// update token
+	result, err := tran.Exec("UPDATE `urls` SET `exp`=? WHERE `token` = ? ", exp, sToken)
 	if err != nil {
 		tran.Rollback()
 		return fmt.Errorf("can't update token: %w", err)
 	}
+
+	// check affected rows
+	if affected, err := result.RowsAffected(); err != nil || affected != 1 {
+		tran.Rollback()
+		if err != nil {
+			return fmt.Errorf("can't get affected rows: %w", err)
+		}
+		return errors.New("token is not found")
+	}
+
+	// commit transaction
 	tran.Commit()
 	return nil
 }

@@ -13,7 +13,7 @@ import (
 
 const (
 	// tokenLenS - number of BASE64 symbols in token
-	tokenLenS = 5
+	tokenLenS = 6
 )
 
 var (

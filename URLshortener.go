@@ -4,20 +4,27 @@ package main
 // and to handle the redirection by generated short URLs.
 //
 // Request for short URL:
-// URL: <host>[:<port>]/token
+// URL: <host>[:<port>]/api/v1/token
 // Method: POST
 // Body: JSON with following parameters:
 //   url - URL to shorten, mandatory
 //   exp - short URL expiration in days, optional
-// Response: JSON with following parameters:
+// Success response: JSON with following parameters:
 //   token - token for short URL
 //   url - short URL
+//
+// Request to expire token
+// URL: <host>[:<port>]/api/v1/expire
+// Method: POST
+// Body: JSON with following parameters:
+//   token - token for short URL
+// Success response: HTTP 200 OK
 //
 // Redirect to long URL:
 // URL: <host>[:<port>]/<token> - URL from response on request for short URL
 // Method: GET
 // No parameters
-// Response contain the redirection to long URL
+// Success response contain the redirection to long URL
 //
 // Helth-check:
 // URL: <host>[:<port>]/
@@ -36,6 +43,13 @@ import (
 	"strings"
 )
 
+const (
+	// Service modes
+	disableRedirect  = 1 << iota // disable redirect request
+	disableShortener             // disable request for short URL
+	disableExpire                // disable expire request
+)
+
 // simple home page to display on health check request
 var (
 	homePage = []byte(`
@@ -51,8 +65,13 @@ var (
 	Server  *http.Server
 )
 
+// healthCheck performs full self-test of service in all service modes
 func healthCheck() error {
+
+	// url for sef-check redirect
 	url := "http://" + CONFIG.ShortDomain + "/favicon.ico"
+
+	// replay parameters
 	var repl struct {
 		URL   string `json:"url"`
 		Token string `json:"token"`
@@ -60,7 +79,7 @@ func healthCheck() error {
 	var err error
 
 	// self-test part 1: get short URL
-	if CONFIG.Mode == 2 {
+	if CONFIG.Mode&disableShortener != 0 {
 		// use tokenDB inteface as web-interface is locked in this mode
 		if repl.Token, err = tokenDB.New(url, 1); err != nil {
 			return err
@@ -68,7 +87,7 @@ func healthCheck() error {
 		repl.URL = CONFIG.ShortDomain + "/" + repl.Token
 	} else {
 		// make the HTTP request for new token
-		resp, err := http.Post("http://"+CONFIG.ListenHostPort+"/token", "application/json",
+		resp, err := http.Post("http://"+CONFIG.ListenHostPort+"/api/v1/token", "application/json",
 			strings.NewReader(`{"url": "`+url+`", "exp": "1"}`))
 		if err != nil {
 			return err
@@ -89,7 +108,7 @@ func healthCheck() error {
 	}
 
 	// self-test part 2: check redirect
-	if CONFIG.Mode == 1 {
+	if CONFIG.Mode&disableRedirect != 0 {
 		// use tokenDB interface as web-interface is locked in this mode
 		if _, err = tokenDB.Get(repl.Token); err != nil {
 			return err
@@ -109,8 +128,23 @@ func healthCheck() error {
 	}
 
 	// self-test part 3: expire received token
-	if err := tokenDB.Expire(repl.Token); err != nil {
-		return err
+	if CONFIG.Mode&disableExpire != 0 {
+		if err := tokenDB.Expire(repl.Token); err != nil {
+			return err
+		}
+	} else {
+		// make the HTTP request to expire token
+		resp3, err := http.Post("http://"+CONFIG.ListenHostPort+"/api/v1/expire", "application/json",
+			strings.NewReader(`{"token": "`+repl.Token+`"}`))
+		if err != nil {
+			return err
+		}
+		defer resp3.Body.Close()
+
+		// check response status
+		if resp3.StatusCode != http.StatusOK {
+			return err
+		}
 	}
 	return nil
 }
@@ -119,7 +153,7 @@ func healthCheck() error {
 curl -i -v http://localhost:8080/
 */
 
-// Home shows simple home page
+// Home shows simple home page if self-check succesfuly passed
 func home(w http.ResponseWriter, r *http.Request) {
 	log.Printf("health-check request from %s (%s)\n", r.RemoteAddr, r.Referer())
 	// Perform self-test
@@ -142,7 +176,7 @@ func redirect(w http.ResponseWriter, r *http.Request) {
 	rMess := fmt.Sprintf("redirect request from %s (%s), token: %s", r.RemoteAddr, r.Referer(), sToken)
 
 	// check that service mode allows this request
-	if CONFIG.Mode == 1 {
+	if CONFIG.Mode&disableRedirect != 0 {
 		log.Printf("%s: this request is disabled by service mode\n", rMess)
 		// send 404 response
 		http.NotFound(w, r)
@@ -164,7 +198,7 @@ func redirect(w http.ResponseWriter, r *http.Request) {
 }
 
 /* test for test env:
-curl -v POST -H "Content-Type: application/json" -d '{"url":"https://www.w3schools.com/html/html_forms.asp","exp":"10"}' http://localhost:8080/token
+curl -v POST -H "Content-Type: application/json" -d '{"url":"https://www.w3schools.com/html/html_forms.asp","exp":"10"}' http://localhost:8080/api/v1/token
 */
 
 // getNewToken handle the new token creation for passed url and sets expiration for it
@@ -174,7 +208,7 @@ func getNewToken(w http.ResponseWriter, r *http.Request) {
 	rMess := fmt.Sprintf("token request from %s (%s)", r.RemoteAddr, r.Referer())
 
 	// Check that service mode allows this request
-	if CONFIG.Mode == 2 {
+	if CONFIG.Mode&disableShortener != 0 {
 		log.Printf("%s: this request is disabled by service mode\n", rMess)
 		// request is not supported: send 404 response
 		http.NotFound(w, r)
@@ -234,11 +268,64 @@ func getNewToken(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+
 	// log new token record
 	log.Printf("%s: URL saved, token: %s , exp: %d\n", rMess, sToken, params.Exp)
-
 	// send response
 	w.Write(resp)
+}
+
+/* test for test env:
+curl -v POST -H "Content-Type: application/json" -d '{"token":"<token>"}' http://localhost:8080/api/v1/expire
+*/
+
+// expireToken makes token-longURL record as expired
+func expireToken(w http.ResponseWriter, r *http.Request) {
+
+	rMess := fmt.Sprintf("expire request from %s (%s)", r.RemoteAddr, r.Referer())
+
+	// Check that service mode allows this request
+	if CONFIG.Mode&disableExpire != 0 {
+		log.Printf("%s: this request is disabled by service mode\n", rMess)
+		// request is not supported: send 404 response
+		http.NotFound(w, r)
+		return
+	}
+
+	// read the request body
+	buf := make([]byte, r.ContentLength)
+	_, err := r.Body.Read(buf)
+	if err != nil && !errors.Is(err, io.EOF) {
+		log.Printf("%s: request body reading error: %v", rMess, err)
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	// parse JSON to parameters structure
+	// the requst parameters structure
+	var params struct {
+		Token string `json:"token"` // long URL
+	}
+
+	err = json.Unmarshal(buf, &params)
+	if err != nil || params.Token == "" {
+		log.Printf("%s: bad request parameters:%s", rMess, buf)
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	// expire token
+	err = tokenDB.Expire(params.Token)
+	if err != nil {
+		log.Printf("%s: token expiration error: %s", rMess, err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	// log result
+	log.Printf("%s: token %s has been expired\n", rMess, params.Token)
+	// send response
+	w.WriteHeader(http.StatusOK)
 }
 
 // myMUX selects the handler function according to request URL
@@ -247,11 +334,14 @@ func myMUX(w http.ResponseWriter, r *http.Request) {
 	case "/":
 		// request for health-check
 		home(w, r)
-	case "/token":
+	case "/api/v1/token":
 		// request for new short url/token
 		getNewToken(w, r)
+	case "/api/v1/expire":
+		// request for new short url/token
+		expireToken(w, r)
 	case "/favicon.ico":
-		// WEB-brousers make such requests together with request for redirect to show the site icon on tab header
+		// WEB-brousers make such requests together with main request to show the site icon on tab header
 		// In this code it is used for health check
 		return
 	default:
@@ -262,13 +352,11 @@ func myMUX(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 
-	var err error
-
 	// set logging format
 	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
 
 	// get the configuratin variables
-	err = readConfig("cnf.json")
+	err := readConfig("cnf.json")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -282,7 +370,7 @@ func main() {
 	// register the handler
 	http.HandleFunc("/", myMUX)
 
-	// start server
+	// create and start server
 	log.Println("starting server at", CONFIG.ListenHostPort)
 	Server = &http.Server{
 		Addr:    CONFIG.ListenHostPort,
