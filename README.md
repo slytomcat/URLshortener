@@ -2,9 +2,9 @@
 [![CircleCI](https://circleci.com/gh/slytomcat/URLshortener.svg?style=svg)](https://circleci.com/gh/slytomcat/URLshortener)
 [![DeepSource](https://static.deepsource.io/deepsource-badge-light.svg)](https://deepsource.io/gh/slytomcat/URLshortener/?ref=repository-badge)
 
-URLshortener is a microservice to shorten long URLs and to handle the redirection by generated short URLs.
+URLshortener is a micro-service to shorten long URLs and to handle the redirection by generated short URLs.
 
-The service requires and MsSQL server conection and database structure described in [schema.sql](https://github.com/slytomcat/URLshortener/blob/master/schema.sql)
+The service requires and MsSQL server connection and database structure described in [schema.sql](https://github.com/slytomcat/URLshortener/blob/master/schema.sql)
 
 Docker image: https://hub.docker.com/r/slytomcat/urlshortener
 
@@ -19,10 +19,22 @@ Body: JSON with following parameters:
 - url: URL to shorten, mandatory
 - exp: short URL expiration in days, optional
 
-Response: JSON with following parameters:
+Success response: HTTP 200 OK with body: JSON with following parameters:
 
 - token: token for short URL
 - url: short URL
+
+### Request to expire token:
+
+URL: `<host>[:<port>]/expire`
+
+Method: `POST`
+
+Body: JSON with following parameter:
+
+- token: token for short URL
+
+Success response: HTTP 200 OK
 
 ### Redirect to long URL:
 URL: `<host>[:<port>]/<token>` - URL from response on request for short URL
@@ -31,7 +43,7 @@ Method: `GET`
 
 Response contain the redirection to long URL (response code: HTTP 301 'Moved permanently' with 'Location' = long URL in header)
 
-### Helth-check:
+### Health-check:
 URL: `<host>[:<port>]/`
 
 Method: `GET`
@@ -42,19 +54,19 @@ Response: simple home page and HTTP 200 OK in case of good service health or HTT
 ### Configuration file
 
     {
-    
+
     "DSN":"shortener:<password>@<protocol>(<host>:<port>)/shortener_DB",
-    
+
     "MaxOpenConns":"33",
-    
+
     "ListenHostPort":"0.0.0.0:80",
-    
+
     "DefaultExp":"30",
-    
+
     "ShortDomain":"<shortDomain>",
-    
+
     "Mode":"0"
-    
+
     }
 
 Where:
@@ -68,8 +80,10 @@ Where:
 
    0 - service handles all requests
 
-   1 - service handles only request for short URLs and health check request
+   1 - request for redirect is disabled
 
-   2 - service handles only request for redirect and health check request
-   
+   2 - request for short URL is disabled
 
+   4 - request for token expiration is disabled
+
+Mode value can be a sum of several modes, for example Mode=6 disables requests for short URL and for redirect

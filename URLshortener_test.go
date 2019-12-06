@@ -32,7 +32,7 @@ func Test50mainStart(t *testing.T) {
 	if !bytes.Contains(buf, []byte("starting server at")) {
 		t.Errorf("received not expected output: %s", buf)
 	}
-	log.Printf("%s", buf[20:])
+	log.Printf("%s", buf)
 
 }
 
@@ -40,7 +40,7 @@ func Test50mainStart(t *testing.T) {
 func Test55MainFullSuccess(t *testing.T) {
 	// use health check as long url
 	resp, err := http.Post("http://"+CONFIG.ListenHostPort+"/token", "application/json",
-		strings.NewReader(`{"url": "http://`+CONFIG.ShortDomain+`", "exp": "3"}`))
+		strings.NewReader(`{"url": "http://` + CONFIG.ShortDomain + `/favicon.ico", "exp": "3"}`))
 	if err != nil {
 		t.Errorf("token request error: %v", err)
 	}
@@ -64,19 +64,26 @@ func Test55MainFullSuccess(t *testing.T) {
 		t.Errorf("redirect request error: %v", err)
 	}
 	defer resp2.Body.Close()
-	buf = make([]byte, resp2.ContentLength)
-	_, err = resp2.Body.Read(buf)
-	if err != nil && !errors.Is(err, io.EOF) {
-		t.Errorf("response body reading error: %v", err)
-	}
 
-	if !bytes.Contains(buf, []byte("Home page of URLshortener")) {
-		t.Error("wrong response body on helth check request")
+	if  resp2.ContentLength != 0 {
+		t.Error("response body not empty")
 	}
 
 	if resp2.StatusCode != http.StatusOK {
 		t.Errorf("wrong status : %d", resp.StatusCode)
 	}
+
+	resp3, err := http.Post("http://"+CONFIG.ListenHostPort+"/expire", "application/json",
+	strings.NewReader(`{"token": "`+repl.Token+`"}`))
+	if err != nil {
+		t.Errorf("expire request error: %v", err)
+	}
+	defer resp3.Body.Close()
+
+	if resp3.StatusCode != http.StatusOK {
+		t.Errorf("wrong status : %d", resp.StatusCode)
+	}
+
 
 }
 
@@ -179,9 +186,9 @@ func Test70Main404(t *testing.T) {
 	}
 }
 
-// try unsupported request in mode = 1
-func Test73MainServiceMode1(t *testing.T) {
-	CONFIG.Mode = 1
+// try unsupported request in mode = disableRedirect
+func Test73MainServiceModeDisableRedirect(t *testing.T) {
+	CONFIG.Mode = disableRedirect
 
 	resp, err := http.Get("http://" + CONFIG.ListenHostPort + "/" + DEBUGToken)
 	if err != nil {
@@ -193,9 +200,9 @@ func Test73MainServiceMode1(t *testing.T) {
 	}
 }
 
-// try unsupported request in mode = 2
-func Test73MainServiceMode2(t *testing.T) {
-	CONFIG.Mode = 2
+// try unsupported request in mode = disableShortener
+func Test73MainServiceModeDisableShortener(t *testing.T) {
+	CONFIG.Mode = disableShortener
 
 	resp, err := http.Post("http://"+CONFIG.ListenHostPort+"/token", "application/json",
 		strings.NewReader(`{"url": "http://someother.url"}`))
@@ -208,13 +215,28 @@ func Test73MainServiceMode2(t *testing.T) {
 	}
 }
 
-// try health check in service mode 1
-func Test75MainHealthCheckMode1(t *testing.T) {
-	CONFIG.Mode = 1
+// try unsupported request in mode = disableExpire
+func Test74MainServiceModeDisableExpire(t *testing.T) {
+	CONFIG.Mode = disableExpire
+
+	resp, err := http.Post("http://"+CONFIG.ListenHostPort+"/expire", "application/json",
+		strings.NewReader(`{"token": "`+DEBUGToken+`"}`))
+	if err != nil {
+		t.Errorf("expire request error: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusNotFound {
+		t.Errorf("wrong status : %d", resp.StatusCode)
+	}
+}
+
+// try health check in service mode disableRedirect
+func Test75MainHealthCheckModeDisableRedirect(t *testing.T) {
+	CONFIG.Mode = disableRedirect
 
 	resp, err := http.Get("http://" + CONFIG.ListenHostPort)
 	if err != nil {
-		t.Errorf("health check mode1 request error: %v", err)
+		t.Errorf("health check in disableRedirect mode request error: %v", err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
@@ -222,19 +244,33 @@ func Test75MainHealthCheckMode1(t *testing.T) {
 	}
 }
 
-// try health check in service mode 1
-func Test77MainHealthCheckMode2(t *testing.T) {
-	CONFIG.Mode = 2
+// try health check in service mode disableShortener
+func Test77MainHealthCheckModeDisableShortener(t *testing.T) {
+	CONFIG.Mode = disableShortener
 
 	resp, err := http.Get("http://" + CONFIG.ListenHostPort)
 	if err != nil {
-		t.Errorf("health check mode1 request error: %v", err)
+		t.Errorf("health check in disableShortener mode request error: %v", err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("wrong status : %d", resp.StatusCode)
 	}
 }
+
+func Test78MainHealthCheckModeDisableExpire(t *testing.T) {
+	CONFIG.Mode = disableExpire
+
+	resp, err := http.Get("http://" + CONFIG.ListenHostPort)
+	if err != nil {
+		t.Errorf("health check in disableExpire mode request error: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("wrong status : %d", resp.StatusCode)
+	}
+}
+
 
 // try to stop service
 func Test99MainKill(t *testing.T) {
@@ -254,5 +290,5 @@ func Test99MainKill(t *testing.T) {
 	if !bytes.Contains(buf, []byte("http: Server closed")) {
 		t.Errorf("received not expected output: %s", buf)
 	}
-	log.Printf("%s", buf[20:])
+	log.Printf("%s", buf)
 }
