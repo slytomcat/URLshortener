@@ -10,27 +10,27 @@ Docker image: https://hub.docker.com/r/slytomcat/urlshortener
 
 ### Request for short URL:
 
-URL: `<host>[:<port>]/token`
+URL: `<host>[:<port>]/api/v1/token`
 
 Method: `POST`
 
-Body: JSON with following parameters:
+Request body: JSON with following parameters:
 
 - url: URL to shorten, mandatory
 - exp: short URL expiration in days, optional
 
-Success response: HTTP 200 OK with body: JSON with following parameters:
+Success response: HTTP 200 OK with body containing JSON with following parameters:
 
 - token: token for short URL
 - url: short URL
 
 ### Request to expire token:
 
-URL: `<host>[:<port>]/expire`
+URL: `<host>[:<port>]/api/v1/expire`
 
 Method: `POST`
 
-Body: JSON with following parameter:
+Request body: JSON with following parameter:
 
 - token: token for short URL
 
