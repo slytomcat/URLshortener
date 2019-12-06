@@ -39,7 +39,7 @@ func Test50mainStart(t *testing.T) {
 // Full success test: get short URL and make redirect by it
 func Test55MainFullSuccess(t *testing.T) {
 	// use health check as long url
-	resp, err := http.Post("http://"+CONFIG.ListenHostPort+"/token", "application/json",
+	resp, err := http.Post("http://"+CONFIG.ListenHostPort+"/api/v1/token", "application/json",
 		strings.NewReader(`{"url": "http://` + CONFIG.ShortDomain + `/favicon.ico", "exp": "3"}`))
 	if err != nil {
 		t.Errorf("token request error: %v", err)
@@ -73,7 +73,7 @@ func Test55MainFullSuccess(t *testing.T) {
 		t.Errorf("wrong status : %d", resp.StatusCode)
 	}
 
-	resp3, err := http.Post("http://"+CONFIG.ListenHostPort+"/expire", "application/json",
+	resp3, err := http.Post("http://"+CONFIG.ListenHostPort+"/api/v1/expire", "application/json",
 	strings.NewReader(`{"token": "`+repl.Token+`"}`))
 	if err != nil {
 		t.Errorf("expire request error: %v", err)
@@ -112,7 +112,7 @@ func Test57MainHome(t *testing.T) {
 
 // test request for short URL with empty request body
 func Test60MainBadRequest(t *testing.T) {
-	resp, err := http.Post("http://"+CONFIG.ListenHostPort+"/token", "application/json",
+	resp, err := http.Post("http://"+CONFIG.ListenHostPort+"/api/v1/token", "application/json",
 		strings.NewReader(``))
 	if err != nil {
 		t.Errorf("token request error: %v", err)
@@ -125,7 +125,7 @@ func Test60MainBadRequest(t *testing.T) {
 
 // test request for short URL with empty JSON
 func Test61MainBadRequest2(t *testing.T) {
-	resp, err := http.Post("http://"+CONFIG.ListenHostPort+"/token", "application/json",
+	resp, err := http.Post("http://"+CONFIG.ListenHostPort+"/api/v1/token", "application/json",
 		strings.NewReader(`{}`))
 	if err != nil {
 		t.Errorf("token request error: %v", err)
@@ -148,7 +148,7 @@ func Test62MainGetTokenWOexp(t *testing.T) {
 	}
 	tx.Commit()
 
-	resp, err := http.Post("http://"+CONFIG.ListenHostPort+"/token", "application/json",
+	resp, err := http.Post("http://"+CONFIG.ListenHostPort+"/api/v1/token", "application/json",
 		strings.NewReader(`{"url": "http://`+CONFIG.ShortDomain+`"}`))
 	if err != nil {
 		t.Errorf("token request error: %v", err)
@@ -163,7 +163,7 @@ func Test62MainGetTokenWOexp(t *testing.T) {
 func Test62MainGetTokenTwice(t *testing.T) {
 	DEBUG = true
 	defer func() { DEBUG = false }()
-	resp, err := http.Post("http://"+CONFIG.ListenHostPort+"/token", "application/json",
+	resp, err := http.Post("http://"+CONFIG.ListenHostPort+"/api/v1/token", "application/json",
 		strings.NewReader(`{"url": "http://`+CONFIG.ShortDomain+`"}`))
 	if err != nil {
 		t.Errorf("token request error: %v", err)
@@ -204,7 +204,7 @@ func Test73MainServiceModeDisableRedirect(t *testing.T) {
 func Test73MainServiceModeDisableShortener(t *testing.T) {
 	CONFIG.Mode = disableShortener
 
-	resp, err := http.Post("http://"+CONFIG.ListenHostPort+"/token", "application/json",
+	resp, err := http.Post("http://"+CONFIG.ListenHostPort+"/api/v1/token", "application/json",
 		strings.NewReader(`{"url": "http://someother.url"}`))
 	if err != nil {
 		t.Errorf("token request error: %v", err)
@@ -219,7 +219,7 @@ func Test73MainServiceModeDisableShortener(t *testing.T) {
 func Test74MainServiceModeDisableExpire(t *testing.T) {
 	CONFIG.Mode = disableExpire
 
-	resp, err := http.Post("http://"+CONFIG.ListenHostPort+"/expire", "application/json",
+	resp, err := http.Post("http://"+CONFIG.ListenHostPort+"/api/v1/expire", "application/json",
 		strings.NewReader(`{"token": "`+DEBUGToken+`"}`))
 	if err != nil {
 		t.Errorf("expire request error: %v", err)

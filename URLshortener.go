@@ -4,20 +4,27 @@ package main
 // and to handle the redirection by generated short URLs.
 //
 // Request for short URL:
-// URL: <host>[:<port>]/token
+// URL: <host>[:<port>]/api/v1/token
 // Method: POST
 // Body: JSON with following parameters:
 //   url - URL to shorten, mandatory
 //   exp - short URL expiration in days, optional
-// Response: JSON with following parameters:
+// Success response: JSON with following parameters:
 //   token - token for short URL
 //   url - short URL
+//
+// Request to expire token
+// URL: <host>[:<port>]/api/v1/expire
+// Method: POST
+// Body: JSON with following parameters:
+//   token - token for short URL
+// Success response: HTTP 200 OK
 //
 // Redirect to long URL:
 // URL: <host>[:<port>]/<token> - URL from response on request for short URL
 // Method: GET
 // No parameters
-// Response contain the redirection to long URL
+// Success response contain the redirection to long URL
 //
 // Helth-check:
 // URL: <host>[:<port>]/
@@ -37,6 +44,7 @@ import (
 )
 
 const (
+	// Service modes
 	disableRedirect  = 1 << iota // disable redirect request
 	disableShortener             // disable request for short URL
 	disableExpire                // disable expire request
@@ -57,6 +65,7 @@ var (
 	Server  *http.Server
 )
 
+// healthCheck performs full self-test of service in all service modes
 func healthCheck() error {
 
 	// url for sef-check redirect
@@ -78,7 +87,7 @@ func healthCheck() error {
 		repl.URL = CONFIG.ShortDomain + "/" + repl.Token
 	} else {
 		// make the HTTP request for new token
-		resp, err := http.Post("http://"+CONFIG.ListenHostPort+"/token", "application/json",
+		resp, err := http.Post("http://"+CONFIG.ListenHostPort+"/api/v1/token", "application/json",
 			strings.NewReader(`{"url": "`+url+`", "exp": "1"}`))
 		if err != nil {
 			return err
@@ -125,7 +134,7 @@ func healthCheck() error {
 		}
 	} else {
 		// make the HTTP request to expire token
-		resp3, err := http.Post("http://"+CONFIG.ListenHostPort+"/expire", "application/json",
+		resp3, err := http.Post("http://"+CONFIG.ListenHostPort+"/api/v1/expire", "application/json",
 			strings.NewReader(`{"token": "`+repl.Token+`"}`))
 		if err != nil {
 			return err
@@ -189,7 +198,7 @@ func redirect(w http.ResponseWriter, r *http.Request) {
 }
 
 /* test for test env:
-curl -v POST -H "Content-Type: application/json" -d '{"url":"https://www.w3schools.com/html/html_forms.asp","exp":"10"}' http://localhost:8080/token
+curl -v POST -H "Content-Type: application/json" -d '{"url":"https://www.w3schools.com/html/html_forms.asp","exp":"10"}' http://localhost:8080/api/v1/token
 */
 
 // getNewToken handle the new token creation for passed url and sets expiration for it
@@ -267,7 +276,7 @@ func getNewToken(w http.ResponseWriter, r *http.Request) {
 }
 
 /* test for test env:
-curl -v POST -H "Content-Type: application/json" -d '{"url":"https://www.w3schools.com/html/html_forms.asp","exp":"10"}' http://localhost:8080/token
+curl -v POST -H "Content-Type: application/json" -d '{"token":"<token>"}' http://localhost:8080/api/v1/expire
 */
 
 // expireToken makes token-longURL record as expired
@@ -325,10 +334,10 @@ func myMUX(w http.ResponseWriter, r *http.Request) {
 	case "/":
 		// request for health-check
 		home(w, r)
-	case "/token":
+	case "/api/v1/token":
 		// request for new short url/token
 		getNewToken(w, r)
-	case "/expire":
+	case "/api/v1/expire":
 		// request for new short url/token
 		expireToken(w, r)
 	case "/favicon.ico":

@@ -15,7 +15,7 @@ type Config struct {
 	ListenHostPort string // host and port to listen on
 	DefaultExp     int    `json:",string"` // Default expiration of token (days)
 	ShortDomain    string // Short domain name for short URL creation
-	Mode           int    `json:",string"` // Service mode: 1 - TokenCreator, 2 - Redirector, 0 - both (default)
+	Mode           int    `json:",string"` // Service mode (see README.md)
 }
 
 // CONFIG - structure with the configuration variables

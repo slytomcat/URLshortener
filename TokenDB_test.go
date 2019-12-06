@@ -144,11 +144,11 @@ func Test25GetToken(t *testing.T) {
 
 // try to prolong the token
 func Test27Prolong(t *testing.T) {
-	err := tDB.Expire("______")
+	err := tDB.Expire(DEBUGToken)
 	if err != nil {
 		t.Error(err)
 	}
-	err = tDB.Prolong("______", 1)
+	err = tDB.Prolong(DEBUGToken, 1)
 	if err != nil {
 		t.Error(err)
 	}
@@ -161,7 +161,7 @@ func Test27Prolong(t *testing.T) {
 	if err != nil {
 		fmt.Printf("expected error (don't panic): %v\n", err)
 	} else {
-		fmt.Printf("Token for %s: %v\n", url, token1)
+		t.Errorf("unexpected response: token for %s: %v\n", url, token1)
 	}
 
 }
