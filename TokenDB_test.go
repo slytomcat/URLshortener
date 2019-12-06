@@ -30,9 +30,36 @@ func Test10NewTokenDB(t *testing.T) {
 }
 
 // Clear the table - it is not a test
-func Test13ClearTable(t *testing.T) {
+func Test11ClearTable(t *testing.T) {
 	tx, _ := tDB.DB.Begin()
 	_, err := tx.Exec("DELETE FROM urls WHERE token=?", DEBUGToken)
+	if err != nil {
+		t.Errorf("Can't clear table: %v", err)
+	}
+	tx.Commit()
+}
+
+// Try to insert the same token twice (error expected)
+func Test13OneTokenTwice(t *testing.T) {
+	DEBUG = true
+	defer func() { DEBUG = false }()
+
+	url := "https://golang.org/pkg/time/"
+	token, err := tDB.New(url, 1)
+	if err != nil {
+		t.Errorf("unexpected error: %s", err)
+	} else {
+		fmt.Printf("expected result: token for %s: %v\n", url, token)
+	}
+	token1, err := tDB.New(url, 1)
+	if err != nil {
+		fmt.Printf("expected error: %s\n", err)
+	} else {
+		t.Errorf("wrong result: token for %s: %v\n", url, token1)
+	}
+
+	tx, _ := tDB.DB.Begin()
+	_, err = tx.Exec("DELETE FROM urls WHERE token=?", DEBUGToken)
 	if err != nil {
 		t.Errorf("Can't clear table: %v", err)
 	}
@@ -90,20 +117,6 @@ func raceNewToken(url string, t *testing.T) {
 // try to insert new token from concurrent goroutines
 func Test15NewTokenRace(t *testing.T) {
 	raceNewToken("https://golang.org", t)
-}
-
-// Try to insert one more the same token (error expected)
-func Test17OneMoreToken(t *testing.T) {
-	DEBUG = true
-	defer func() { DEBUG = false }()
-
-	url := "https://golang.org/pkg/time/"
-	token1, err := tDB.New(url, 1)
-	if err != nil {
-		fmt.Println("expected error (don't panic): ", err)
-	} else {
-		fmt.Printf("Token for %s: %v\n", url, token1)
-	}
 }
 
 // try to make token expired
