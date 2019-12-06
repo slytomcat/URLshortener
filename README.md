@@ -86,4 +86,4 @@ Where:
 
    4 - request for token expiration is disabled
 
-Mode value can be a sum of several modes, for example Mode=6 disables requests for short URL and for redirect
+Mode value can be a sum of several modes, for example Mode=6 disables requests for short URL and for token expiration.
