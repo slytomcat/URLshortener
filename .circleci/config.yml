@@ -33,7 +33,7 @@ jobs:
       - run:
           name: Prepare mysql
           command: |
-            .cirlceci/mysqlsetup.sh
+            ./.cirlceci/mysqlsetup.sh
             export URLSHORTENER_DSN="shortener:test@tcp(localhost:3306)/shortener_DB"
       - run:
           name: Tests
