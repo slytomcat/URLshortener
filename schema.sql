@@ -13,6 +13,9 @@ USE shortener_DB
 -- works independently on used timezone. But let it be UTC.  
 SET time_zone = '+00:00';
 
+-- If you need longer/shorten token then adjust the tokenLenS constant 
+-- in ShortToken.go in accordance to length of `token` field 
+
 DROP TABLE IF EXISTS `urls`;
 CREATE TABLE `urls` (
   `token` CHAR(6) NOT NULL ,
@@ -24,12 +27,14 @@ CREATE TABLE `urls` (
 
 
 -- keep the generated password to use in in DSN (DB connection string)
+
+DROP USER IF EXISTS `shortener`; 
 CREATE USER `shortener`@`%` IDENTIFIED BY RANDOM PASSWORD;
 
 -- NOTE:
 -- DELETE right required only for test purpose. Do not grant DELETE right in production environment.
 
 -- GRANT command for test environment:
---GRANT DELETE, SELECT, INSERT(`token`, `url`, `exp`), UPDATE(`token`, `url`, `exp`) ON `shortener_DB`.`urls` TO `shortener`@`%`;
+-- GRANT DELETE, SELECT, INSERT(`token`, `url`, `exp`), UPDATE(`token`, `url`, `exp`) ON `shortener_DB`.`urls` TO `shortener`@`%`;
 -- GRANT command for production environment:
 GRANT SELECT, INSERT(`token`, `url`, `exp`), UPDATE(`token`, `url`, `exp`) ON `shortener_DB`.`urls` TO `shortener`@`%`;

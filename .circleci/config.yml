@@ -25,10 +25,16 @@ jobs:
     steps:
       - checkout
       - run:
-          name: Prepare
+          name: Prepare reports
           command: |
             go get -u github.com/jstemmer/go-junit-report;
             mkdir results;
+      - setup_remote_docker
+      - run:
+          name: Prepare mysql
+          command: |
+            ./mysqlsetup.sh
+            export URLSHORTENER_DSN="shortener:test@tcp(localhost:3306)/shortener_DB"
       - run:
           name: Tests
           command: go test -v -race -coverprofile cover.out 2>&1 | tee /dev/tty | go-junit-report > results/results.xml

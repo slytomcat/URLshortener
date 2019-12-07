@@ -3,7 +3,10 @@ package main
 // ShortToken is string of 6 BASE64 symbols from the url safe alphabet.
 // It represent 36 bits of data. ShortToken is not correct BASE64 data
 // representation.
-// If you need longer/shorten token length adjust tokenLenS
+//
+// If you need longer/shorten token then adjust tokenLenS and the length
+// of token field in schema.sql file accordingly.
+//
 
 import (
 	"crypto/rand"

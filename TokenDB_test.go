@@ -53,7 +53,11 @@ func Test13OneTokenTwice(t *testing.T) {
 	}
 	token1, err := tDB.New(url, 1)
 	if err != nil {
-		fmt.Printf("expected error: %s\n", err)
+		if err.Error() != "can't create new token" {
+			t.Errorf("wrong error. Expected: 'can't create new token' but received: '%s'\n", err)
+		} else {
+			fmt.Printf("expected error: %s\n", err)
+		}
 	} else {
 		t.Errorf("wrong result: token for %s: %v\n", url, token1)
 	}
