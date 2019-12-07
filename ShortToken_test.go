@@ -8,13 +8,14 @@ import (
 // try to create new token from debugging source
 func Test05NewShortTokenFake(t *testing.T) {
 	DEBUG = true
+	defer func() { DEBUG = true }()
 	tc, err := NewShortToken()
 	if err != nil {
-		t.Error("error of ShortToken creation from debug source:", err)
+		t.Error("error of token creation from debug source:", err)
 	}
 
 	if tc != strings.Repeat("_", tokenLenS) {
-		t.Error("wrong token BASE64 representation")
+		t.Error("wrong BASE64 representation of debug token")
 	}
 }
 
@@ -33,6 +34,15 @@ func Test07NewShortTokenReal(t *testing.T) {
 	}
 
 	if tc == tc1 {
-		t.Error("2 sequential token are equal by BASE64")
+		t.Error("2 sequential token are equal")
+	}
+
+	for i := 0; i < 300; i++ {
+		if tci, err := NewShortToken(); err != nil {
+			t.Errorf("error of %d token creation: %s\n", i, err)
+			if tci == tc {
+				t.Error("2 tokens are equal")
+			}
+		}
 	}
 }

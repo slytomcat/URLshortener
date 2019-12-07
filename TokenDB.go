@@ -39,7 +39,7 @@ func TokenDBNew() (*TokenDB, error) {
 
 // New returns new token for given long URL and store the token expiration period (in days)
 func (t *TokenDB) New(longURL string, expiration int) (string, error) {
-    var err error
+	var err error
 	// token of saved long URL
 	sToken := ""
 
@@ -108,7 +108,7 @@ func (t *TokenDB) New(longURL string, expiration int) (string, error) {
 
 	if sToken == "" {
 		// if we can't insert random token for 3 tries, then it seems that all tokens are busy
-		return "", fmt.Errorf("BD insert error; can't create new token")
+		return "", fmt.Errorf("can't create new token")
 	}
 	// commit the successful insert or update
 

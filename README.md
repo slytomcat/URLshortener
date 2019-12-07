@@ -4,7 +4,7 @@
 
 URLshortener is a micro-service to shorten long URLs and to handle the redirection by generated short URLs.
 
-The service requires and MySQL server connection and database structure described in [schema.sql](https://github.com/slytomcat/URLshortener/blob/master/schema.sql)
+The service requires and MySQL server connection and database structure described in [schema.sql](https://github.com/slytomcat/URLshortener/blob/master/schema.sql). Look in [.circleci/mysqlsetup.sh](https://github.com/slytomcat/URLshortener/blob/master/.cirleci/mysqlsetup.sh) how setup MySQL in docker for tests. 
 
 Docker image: https://hub.docker.com/r/slytomcat/urlshortener
 
@@ -16,13 +16,13 @@ Method: `POST`
 
 Request body: JSON with following parameters:
 
-- url: URL to shorten, mandatory
-- exp: short URL expiration in days, optional
+- `url`: URL to shorten, mandatory
+- `exp`: short URL expiration in days, optional
 
 Success response: HTTP 200 OK with body containing JSON with following parameters:
 
-- token: token for short URL
-- url: short URL
+- `token`: token for short URL
+- `url`: short URL
 
 ### Request to expire token:
 
@@ -32,7 +32,7 @@ Method: `POST`
 
 Request body: JSON with following parameter:
 
-- token: token for short URL
+- `token`: token for short URL
 
 Success response: HTTP 200 OK
 
@@ -71,12 +71,12 @@ Response: simple home page and HTTP 200 OK in case of good service health or HTT
 
 Where:
 
-- DSN - MySQL connection string (mandatory, also can set via URLSHORTENER_DSN environment variable)
-- MaxOpenConns - DataBase connections pool size (optional, default 10)
-- ListenHostPort - host and port to listen on (optional, default localhost:8080)
-- DefaultExp - default token expiration period in days (optional, default 1)
-- ShortDomain - short domain name for short URL creation (optional, default localhost:8080)
-- Mode - service mode (optional, default 0):
+- `DSN` - MySQL connection string (mandatory, also can set via URLSHORTENER_DSN environment variable)
+- `MaxOpenConns` - DataBase connections pool size (optional, default 10)
+- `ListenHostPort` - host and port to listen on (optional, default localhost:8080)
+- `DefaultExp` - default token expiration period in days (optional, default 1)
+- `ShortDomain` - short domain name for short URL creation (optional, default localhost:8080)
+- `Mode` - service mode (optional, default 0):
 
    0 - service handles all requests
 
