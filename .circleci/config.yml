@@ -34,7 +34,7 @@ jobs:
           name: Prepare mysql
           command: |
             .circleci/mysqlsetup.sh
-            echo '{"DSN"="shortener:test@tcp(localhost:3306)/shortener_DB"}' > cnf.json
+            echo '{"DSN":"shortener:test@tcp(localhost:3306)/shortener_DB"}' > cnf.json
             docker ps
       - run:
           name: Tests
