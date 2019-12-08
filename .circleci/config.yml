@@ -21,7 +21,7 @@ jobs:
 
   test:
     machine: 
-      - image: circleci/golang:1.13.4
+      image: circleci/golang:1.13.4
     steps:
       - checkout
       - run:
