@@ -26,9 +26,9 @@ jobs:
       - run: 
           name: install go
           command: |
-            add-apt-repository ppa:longsleep/golang-backports
-            apt update
-            apt install golan-go
+            sudo add-apt-repository ppa:longsleep/golang-backports
+            sudo apt update
+            sudo apt install golan-go
       - run:
           name: Prepare reports
           command: |
