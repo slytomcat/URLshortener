@@ -20,23 +20,25 @@ jobs:
             - ./VERSION
 
   test:
-    docker:
-      - image: circleci/golang:1.13.4
+    machine: true
     steps:
       - checkout
+      - run: 
+          name: install go
+          command: |
+            add-apt-repository ppa:longsleep/golang-backports
+            apt update
+            apt install golan-go
       - run:
           name: Prepare reports
           command: |
             go get -u github.com/jstemmer/go-junit-report;
             mkdir results;
-      - setup_remote_docker
       - run:
           name: Prepare mysql
           command: |
             .circleci/mysqlsetup.sh
             echo '{"DSN":"shortener:test@tcp(localhost:3306)/shortener_DB"}' > cnf.json
-            docker ps
-            echo remote-docker
       - run:
           name: Tests
           command: go test -v -race -coverprofile cover.out 2>&1 | tee /dev/tty | go-junit-report > results/results.xml
