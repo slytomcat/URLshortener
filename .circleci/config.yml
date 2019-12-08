@@ -20,15 +20,10 @@ jobs:
             - ./VERSION
 
   test:
-    machine: true
+    machine: 
+      - image: circleci/golang:1.13.4
     steps:
       - checkout
-      - run: 
-          name: install go
-          command: |
-            sudo add-apt-repository ppa:longsleep/golang-backports
-            sudo apt update
-            sudo apt install golang-1.13
       - run:
           name: Prepare reports
           command: |
