@@ -129,7 +129,7 @@ func healthCheck() error {
 
 	// self-test part 3: expire received token
 	if CONFIG.Mode&disableExpire != 0 {
-		if err := tokenDB.Expire(repl.Token); err != nil {
+		if err := tokenDB.Expire(repl.Token, -1); err != nil {
 			return err
 		}
 	} else {
@@ -304,7 +304,8 @@ func expireToken(w http.ResponseWriter, r *http.Request) {
 	// parse JSON to parameters structure
 	// the requst parameters structure
 	var params struct {
-		Token string `json:"token"` // long URL
+		Token string `json:"token"`                // Token of short URL token
+		Exp   int    `json:"exp,string,omitempty"` // Expiration
 	}
 
 	err = json.Unmarshal(buf, &params)
@@ -314,16 +315,16 @@ func expireToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// expire token
-	err = tokenDB.Expire(params.Token)
+	// update token expiration
+	err = tokenDB.Expire(params.Token, params.Exp)
 	if err != nil {
-		log.Printf("%s: token expiration error: %s", rMess, err)
+		log.Printf("%s: updating token expiration error: %s", rMess, err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
 	// log result
-	log.Printf("%s: token %s has been expired\n", rMess, params.Token)
+	log.Printf("%s: token expiration of %s has set to %d\n", rMess, params.Token, params.Exp)
 	// send response
 	w.WriteHeader(http.StatusOK)
 }

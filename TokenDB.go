@@ -39,14 +39,18 @@ func TokenDBNew() (*TokenDB, error) {
 
 // New returns new token for given long URL and store the token expiration period (in days)
 func (t *TokenDB) New(longURL string, expiration int) (string, error) {
-    var err error
+	var err error
 	// token of saved long URL
 	sToken := ""
 
-	// Try 3 times to create new token and insert it into DB table.
+	// Try several times to create new token and insert it into DB table.
 	// The token field is unique in DB so it's not possible to insert the same token twice.
-	// But if the token is already expired then try to update it (url and expiration).
-	for tryCnt := 0; tryCnt < 3; tryCnt++ {
+	// But if the token is already expired then try to update it (set new url and expiration).
+
+	// Using 10 attempts to insert/update token dramatically increases maximum amount of
+	// used tokens as :
+	// probability of the failure of n attempts = (probability of failure of single attempt)^n.
+	for tryCnt := 0; tryCnt < 10; tryCnt++ {
 
 		// get new token
 		sToken, err = NewShortToken()
@@ -107,11 +111,12 @@ func (t *TokenDB) New(longURL string, expiration int) (string, error) {
 	}
 
 	if sToken == "" {
-		// if we can't insert random token for 3 tries, then it seems that all tokens are busy
-		return "", fmt.Errorf("BD insert error; can't create new token")
+		// if we can't insert random token for several tries, then
+		// it seems that all tokens are busy
+		return "", fmt.Errorf("can't store a new token")
 	}
-	// commit the successful insert or update
 
+	// return the successfully inserted or updated token
 	return sToken, nil
 }
 
@@ -133,8 +138,9 @@ func (t *TokenDB) Get(sToken string) (string, error) {
 	return url, nil
 }
 
-// common function for update token expiration
-func (t *TokenDB) updateExpiration(sToken string, exp int) error {
+// Expire - set new expiration on the token
+// Use zero or negative exp to expire token
+func (t *TokenDB) Expire(sToken string, exp int) error {
 
 	// begin transaction
 	tran, err := t.DB.Begin()
@@ -161,14 +167,4 @@ func (t *TokenDB) updateExpiration(sToken string, exp int) error {
 	// commit transaction
 	tran.Commit()
 	return nil
-}
-
-// Expire - make the token as expired
-func (t *TokenDB) Expire(sToken string) error {
-	return t.updateExpiration(sToken, -1)
-}
-
-// Prolong prolongs token on specified number of days from current datetime
-func (t *TokenDB) Prolong(sToken string, exp int) error {
-	return t.updateExpiration(sToken, exp)
 }
