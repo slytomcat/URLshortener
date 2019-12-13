@@ -1,0 +1,5 @@
+FROM ubuntu:18.04
+RUN apt update && apt install -y docker.io gnupg2
+RUN apt-key adv --recv-keys --keyserver keyserver.ubuntu.com 52b59b1571a79dbc054901c0f6bc817356a3d45e && echo "deb http://ppa.launchpad.net/longsleep/golang-backports/ubuntu bionic main" > /etc/apt/sources.list.d/golang.list && apt update && apt install -y golang-1.13 && ln -s /usr/lib/go-1.13/bin/go /usr/bin/go
+LABEL com.circleci.preserve-entrypoint=true
+ENTRYPOINT ["/bin/bash"]
