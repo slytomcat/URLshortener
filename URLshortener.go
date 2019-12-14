@@ -71,7 +71,7 @@ func healthCheck() error {
 	// url for sef-check redirect
 	url := "http://" + CONFIG.ShortDomain + "/favicon.ico"
 
-	// replay parameters
+	// short URL request's replay parameters
 	var repl struct {
 		URL   string `json:"url"`
 		Token string `json:"token"`
@@ -80,7 +80,7 @@ func healthCheck() error {
 
 	// self-test part 1: get short URL
 	if CONFIG.Mode&disableShortener != 0 {
-		// use tokenDB inteface as web-interface is locked in this mode
+		// use tokenDB inteface as web-interface is locked in this service mode
 		if repl.Token, err = tokenDB.New(url, 1); err != nil {
 			return err
 		}
@@ -109,7 +109,7 @@ func healthCheck() error {
 
 	// self-test part 2: check redirect
 	if CONFIG.Mode&disableRedirect != 0 {
-		// use tokenDB interface as web-interface is locked in this mode
+		// use tokenDB interface as web-interface is locked in this service mode
 		if _, err = tokenDB.Get(repl.Token); err != nil {
 			return err
 		}
@@ -127,9 +127,10 @@ func healthCheck() error {
 		}
 	}
 
-	// self-test part 3: expire received token
+	// self-test part 3: make received token as expired
 	if CONFIG.Mode&disableExpire != 0 {
-		if err := tokenDB.Expire(repl.Token); err != nil {
+		// use tokenDB interface as web-interface is locked in this service mode
+		if err := tokenDB.Expire(repl.Token, -1); err != nil {
 			return err
 		}
 	} else {
@@ -184,9 +185,9 @@ func redirect(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// get the long URL
-	longURL, err := tokenDB.Get(r.URL.Path[1:])
+	longURL, err := tokenDB.Get(sToken)
 	if err != nil {
-		log.Printf("%s: token is not found\n", rMess)
+		log.Printf("%s: token was not found\n", rMess)
 		// send 404 response
 		http.NotFound(w, r)
 		return
@@ -304,7 +305,8 @@ func expireToken(w http.ResponseWriter, r *http.Request) {
 	// parse JSON to parameters structure
 	// the requst parameters structure
 	var params struct {
-		Token string `json:"token"` // long URL
+		Token string `json:"token"`                // Token of short URL token
+		Exp   int    `json:"exp,string,omitempty"` // Expiration
 	}
 
 	err = json.Unmarshal(buf, &params)
@@ -314,16 +316,16 @@ func expireToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// expire token
-	err = tokenDB.Expire(params.Token)
+	// update token expiration
+	err = tokenDB.Expire(params.Token, params.Exp)
 	if err != nil {
-		log.Printf("%s: token expiration error: %s", rMess, err)
+		log.Printf("%s: updating token expiration error: %s", rMess, err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
 	// log result
-	log.Printf("%s: token %s has been expired\n", rMess, params.Token)
+	log.Printf("%s: token expiration of %s has set to %d\n", rMess, params.Token, params.Exp)
 	// send response
 	w.WriteHeader(http.StatusOK)
 }

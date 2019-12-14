@@ -3,8 +3,8 @@ package main
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
 )
 
@@ -24,23 +24,24 @@ var CONFIG Config
 // readConfig reads config and also tries to get the DB connection string from environment variable
 func readConfig(cfgFile string) error {
 
+	// try to read DSN from evirinment
+	CONFIG.DSN = os.Getenv("URLSHORTENER_DSN")
+
 	// read config file into buffer
 	buf, err := ioutil.ReadFile(cfgFile)
 	if err == nil {
 		// parse config file
 		err = json.Unmarshal(buf, &CONFIG)
-		if err != nil {
-			return fmt.Errorf("configuration file '%s' parsing error: %w", cfgFile, err)
-		}
 	}
 
-	// check mandatory config variable
+	// log config readin/parsing error
+	if err != nil {
+		log.Printf("Warning: configuration file '%s' reading/parsing error: %s\n", cfgFile, err)
+	}
+
+	// check mandatory config variable DSN
 	if CONFIG.DSN == "" {
-		// try to read it from evirinment
-		CONFIG.DSN = os.Getenv("URLSHORTENER_DSN")
-		if CONFIG.DSN == "" {
-			return errors.New("DSN is not set")
-		}
+		return errors.New("DSN is not set")
 	}
 
 	// set default values for optional config variables
@@ -57,7 +58,7 @@ func readConfig(cfgFile string) error {
 		CONFIG.ShortDomain = "localhost:8080"
 	}
 
-	// do not set CONFIG.Mode as default is 0
+	// do not set CONFIG.Mode as default value is 0
 
 	return nil
 }
