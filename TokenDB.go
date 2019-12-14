@@ -7,6 +7,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"log"
 	"strings"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -48,9 +49,10 @@ func (t *TokenDB) New(longURL string, expiration int) (string, error) {
 	// But if the token is already expired then try to update it (set new url and expiration).
 
 	// Using 10 attempts to insert/update token dramatically increases maximum amount of
-	// used tokens as :
+	// used tokens since :
 	// probability of the failure of n attempts = (probability of failure of single attempt)^n.
-	for tryCnt := 0; tryCnt < 10; tryCnt++ {
+	attempt := 0
+	for ; attempt < 10; attempt++ {
 
 		// get new token
 		sToken, err = NewShortToken()
@@ -72,7 +74,7 @@ func (t *TokenDB) New(longURL string, expiration int) (string, error) {
 			expiration,
 		)
 		if err == nil {
-			// the token is successfully stored
+			// the token is successfully inserted
 			tran.Commit()
 			break
 		}
@@ -105,15 +107,20 @@ func (t *TokenDB) New(longURL string, expiration int) (string, error) {
 		if err != nil {
 			return "", fmt.Errorf("can't get affected rows: %w", err)
 		}
-		// token is not updated
+		// token is not insrted and not updated
 		// reset bad token
 		sToken = ""
 	}
 
 	if sToken == "" {
-		// if we can't insert random token for several tries, then
+		// if we can't insert/update random token for several tries, then
 		// it seems that all tokens are busy
 		return "", fmt.Errorf("can't store a new token")
+	}
+
+	// log the warning when the saving of new token took too many attempts
+	if attempt > 6 {
+		log.Printf("WARNING: It took %d attempts for saving the new token\n", attempt)
 	}
 
 	// return the successfully inserted or updated token
@@ -139,7 +146,7 @@ func (t *TokenDB) Get(sToken string) (string, error) {
 }
 
 // Expire - set new expiration on the token
-// Use zero or negative exp to expire token
+// Use zero or negative exp value to expire token
 func (t *TokenDB) Expire(sToken string, exp int) error {
 
 	// begin transaction

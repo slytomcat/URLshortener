@@ -13,6 +13,10 @@ USE shortener_DB
 -- works independently on used timezone. But let it be UTC.  
 SET time_zone = '+00:00';
 
+
+-- If you need longer/shorten token length adjust `token` field
+-- length and tokenLenS constant in ShortToken.go file
+
 DROP TABLE IF EXISTS `urls`;
 CREATE TABLE `urls` (
   `token` CHAR(6) NOT NULL ,
@@ -30,6 +34,7 @@ CREATE USER `shortener`@`%` IDENTIFIED BY RANDOM PASSWORD;
 -- DELETE right required only for test purpose. Do not grant DELETE right in production environment.
 
 -- GRANT command for test environment:
---GRANT DELETE, SELECT, INSERT(`token`, `url`, `exp`), UPDATE(`token`, `url`, `exp`) ON `shortener_DB`.`urls` TO `shortener`@`%`;
+-- GRANT DELETE, SELECT, INSERT(`token`, `url`, `exp`), UPDATE(`token`, `url`, `exp`) ON `shortener_DB`.`urls` TO `shortener`@`%`;
+
 -- GRANT command for production environment:
 GRANT SELECT, INSERT(`token`, `url`, `exp`), UPDATE(`token`, `url`, `exp`) ON `shortener_DB`.`urls` TO `shortener`@`%`;

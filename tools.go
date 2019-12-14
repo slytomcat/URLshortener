@@ -29,18 +29,19 @@ func readConfig(cfgFile string) error {
 	if err == nil {
 		// parse config file
 		err = json.Unmarshal(buf, &CONFIG)
-		if err != nil {
-			return fmt.Errorf("configuration file '%s' parsing error: %w", cfgFile, err)
+		if err == nil {
+			// check mandatory config variable
+			if CONFIG.DSN == "" {
+				// try to read it from evirinment
+				CONFIG.DSN = os.Getenv("URLSHORTENER_DSN")
+				if CONFIG.DSN == "" {
+					return errors.New("DSN is not set")
+				}
+			}
 		}
 	}
-
-	// check mandatory config variable
-	if CONFIG.DSN == "" {
-		// try to read it from evirinment
-		CONFIG.DSN = os.Getenv("URLSHORTENER_DSN")
-		if CONFIG.DSN == "" {
-			return errors.New("DSN is not set")
-		}
+	if err != nil {
+		return fmt.Errorf("configuration file '%s' reading/parsing error: %w", cfgFile, err)
 	}
 
 	// set default values for optional config variables
@@ -57,7 +58,7 @@ func readConfig(cfgFile string) error {
 		CONFIG.ShortDomain = "localhost:8080"
 	}
 
-	// do not set CONFIG.Mode as default is 0
+	// do not set CONFIG.Mode as default value is 0
 
 	return nil
 }
