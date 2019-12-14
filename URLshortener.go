@@ -71,7 +71,7 @@ func healthCheck() error {
 	// url for sef-check redirect
 	url := "http://" + CONFIG.ShortDomain + "/favicon.ico"
 
-	// replay parameters
+	// short URL request's replay parameters
 	var repl struct {
 		URL   string `json:"url"`
 		Token string `json:"token"`
@@ -80,7 +80,7 @@ func healthCheck() error {
 
 	// self-test part 1: get short URL
 	if CONFIG.Mode&disableShortener != 0 {
-		// use tokenDB inteface as web-interface is locked in this mode
+		// use tokenDB inteface as web-interface is locked in this service mode
 		if repl.Token, err = tokenDB.New(url, 1); err != nil {
 			return err
 		}
@@ -109,7 +109,7 @@ func healthCheck() error {
 
 	// self-test part 2: check redirect
 	if CONFIG.Mode&disableRedirect != 0 {
-		// use tokenDB interface as web-interface is locked in this mode
+		// use tokenDB interface as web-interface is locked in this service mode
 		if _, err = tokenDB.Get(repl.Token); err != nil {
 			return err
 		}
@@ -127,8 +127,9 @@ func healthCheck() error {
 		}
 	}
 
-	// self-test part 3: expire received token
+	// self-test part 3: make received token as expired
 	if CONFIG.Mode&disableExpire != 0 {
+		// use tokenDB interface as web-interface is locked in this service mode
 		if err := tokenDB.Expire(repl.Token, -1); err != nil {
 			return err
 		}
@@ -184,9 +185,9 @@ func redirect(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// get the long URL
-	longURL, err := tokenDB.Get(r.URL.Path[1:])
+	longURL, err := tokenDB.Get(sToken)
 	if err != nil {
-		log.Printf("%s: token is not found\n", rMess)
+		log.Printf("%s: token was not found\n", rMess)
 		// send 404 response
 		http.NotFound(w, r)
 		return
