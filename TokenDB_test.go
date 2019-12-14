@@ -121,7 +121,7 @@ func Test15NewTokenRace(t *testing.T) {
 
 // try to make token expired
 func Test20ExpireToken(t *testing.T) {
-	err := tDB.Expire(DEBUGToken)
+	err := tDB.Expire(DEBUGToken, -1)
 	if err != nil {
 		t.Error(err)
 	}
@@ -144,11 +144,11 @@ func Test25GetToken(t *testing.T) {
 
 // try to prolong the token
 func Test27Prolong(t *testing.T) {
-	err := tDB.Expire(DEBUGToken)
+	err := tDB.Expire(DEBUGToken, -1)
 	if err != nil {
 		t.Error(err)
 	}
-	err = tDB.Prolong(DEBUGToken, 1)
+	err = tDB.Expire(DEBUGToken, 1)
 	if err != nil {
 		t.Error(err)
 	}

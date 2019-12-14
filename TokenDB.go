@@ -7,6 +7,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"log"
 	"strings"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -39,14 +40,19 @@ func TokenDBNew() (*TokenDB, error) {
 
 // New returns new token for given long URL and store the token expiration period (in days)
 func (t *TokenDB) New(longURL string, expiration int) (string, error) {
-    var err error
+	var err error
 	// token of saved long URL
 	sToken := ""
 
-	// Try 3 times to create new token and insert it into DB table.
+	// Try several times to create new token and insert it into DB table.
 	// The token field is unique in DB so it's not possible to insert the same token twice.
-	// But if the token is already expired then try to update it (url and expiration).
-	for tryCnt := 0; tryCnt < 3; tryCnt++ {
+	// But if the token is already expired then try to update it (set new url and expiration).
+
+	// Using 10 attempts to insert/update token dramatically increases maximum amount of
+	// used tokens since :
+	// probability of the failure of n attempts = (probability of failure of single attempt)^n.
+	attempt := 0
+	for ; attempt < 10; attempt++ {
 
 		// get new token
 		sToken, err = NewShortToken()
@@ -68,7 +74,7 @@ func (t *TokenDB) New(longURL string, expiration int) (string, error) {
 			expiration,
 		)
 		if err == nil {
-			// the token is successfully stored
+			// the token is successfully inserted
 			tran.Commit()
 			break
 		}
@@ -101,17 +107,23 @@ func (t *TokenDB) New(longURL string, expiration int) (string, error) {
 		if err != nil {
 			return "", fmt.Errorf("can't get affected rows: %w", err)
 		}
-		// token is not updated
+		// token is not insrted and not updated
 		// reset bad token
 		sToken = ""
 	}
 
 	if sToken == "" {
-		// if we can't insert random token for 3 tries, then it seems that all tokens are busy
-		return "", fmt.Errorf("BD insert error; can't create new token")
+		// if we can't insert/update random token for several tries, then
+		// it seems that all tokens are busy
+		return "", fmt.Errorf("can't store a new token")
 	}
-	// commit the successful insert or update
 
+	// log the warning when the saving of new token took too many attempts
+	if attempt > 6 {
+		log.Printf("WARNING: It took %d attempts for saving the new token\n", attempt)
+	}
+
+	// return the successfully inserted or updated token
 	return sToken, nil
 }
 
@@ -133,8 +145,9 @@ func (t *TokenDB) Get(sToken string) (string, error) {
 	return url, nil
 }
 
-// common function for update token expiration
-func (t *TokenDB) updateExpiration(sToken string, exp int) error {
+// Expire - set new expiration on the token
+// Use zero or negative exp value to expire token
+func (t *TokenDB) Expire(sToken string, exp int) error {
 
 	// begin transaction
 	tran, err := t.DB.Begin()
@@ -161,14 +174,4 @@ func (t *TokenDB) updateExpiration(sToken string, exp int) error {
 	// commit transaction
 	tran.Commit()
 	return nil
-}
-
-// Expire - make the token as expired
-func (t *TokenDB) Expire(sToken string) error {
-	return t.updateExpiration(sToken, -1)
-}
-
-// Prolong prolongs token on specified number of days from current datetime
-func (t *TokenDB) Prolong(sToken string, exp int) error {
-	return t.updateExpiration(sToken, exp)
 }
