@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
 )
 
@@ -41,7 +42,11 @@ func readConfig(cfgFile string) error {
 		}
 	}
 	if err != nil {
-		return fmt.Errorf("configuration file '%s' reading/parsing error: %w", cfgFile, err)
+		err = fmt.Errorf("configuration file '%s' reading/parsing error: %w", cfgFile, err)
+		if CONFIG.DSN == "" {
+			return err
+		}
+		log.Println(err)
 	}
 
 	// set default values for optional config variables
