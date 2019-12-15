@@ -155,7 +155,7 @@ func (t *TokenDB) Expire(sToken string, exp int) error {
 		return fmt.Errorf("can't create transaction: %w", err)
 	}
 
-	// update token
+	// try update token
 	result, err := tran.Exec("UPDATE `urls` SET `exp`=? WHERE `token` = ? ", exp, sToken)
 	if err != nil {
 		tran.Rollback()

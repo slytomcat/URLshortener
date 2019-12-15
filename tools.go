@@ -34,7 +34,7 @@ func readConfig(cfgFile string) error {
 		err = json.Unmarshal(buf, &CONFIG)
 	}
 
-	// log config readin/parsing error
+	// log config reading/parsing error
 	if err != nil {
 		log.Printf("Warning: configuration file '%s' reading/parsing error: %s\n", cfgFile, err)
 	}
