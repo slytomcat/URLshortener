@@ -76,7 +76,7 @@ Configuration file must have a name `cnf.json` and it should be placed in the sa
 
 Where:
 
-- `DSN - MySQL` connection string (mandatory, also can set via URLSHORTENER_DSN environment variable)
+- `DSN` - MySQL connection string (mandatory, also can set via URLSHORTENER_DSN environment variable)
 - `MaxOpenConns` - DataBase connections pool size (optional, default 10)
 - `ListenHostPort` - host and port to listen on (optional, default localhost:8080)
 - `DefaultExp` - default token expiration period in days (optional, default 1)
