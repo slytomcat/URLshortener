@@ -1,14 +1,14 @@
 # URLshortener
 [![CircleCI](https://circleci.com/gh/slytomcat/URLshortener.svg?style=svg)](https://circleci.com/gh/slytomcat/URLshortener)
+[![DeepSource](https://img.shields.io/badge/Deepsource-Passed-brightgreen)](https://deepsource.io/gh/slytomcat/URLshortener)
+[![Platform: linux-64](https://img.shields.io/badge/Platform-linux--64-blue)]()
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
-
-[![DeepSource](https://static.deepsource.io/deepsource-badge-light.svg)](https://deepsource.io/gh/slytomcat/URLshortener/?ref=repository-badge)
+[![Docker image](https://img.shields.io/badge/Docker-image-blue)](https://hub.docker.com/r/slytomcat/urlshortener)
 
 URLshortener is a micro-service to shorten long URLs and to handle the redirection by generated short URLs.
 
 The service requires and MySQL server connection and database structure described in [schema.sql](https://github.com/slytomcat/URLshortener/blob/master/schema.sql)
 
-Docker image: https://hub.docker.com/r/slytomcat/urlshortener
 
 ### Request for short URL:
 
