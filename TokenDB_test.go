@@ -57,7 +57,7 @@ func Test13OneTokenTwice(t *testing.T) {
 	} else {
 		t.Errorf("wrong result: token for %s: %v\n", url, token1)
 	}
-
+	// clear
 	tx, _ := tDB.DB.Begin()
 	_, err = tx.Exec("DELETE FROM urls WHERE token=?", DEBUGToken)
 	if err != nil {
@@ -73,7 +73,7 @@ func raceNewToken(url string, t *testing.T) {
 
 	var wg sync.WaitGroup
 	var succes, fail, cnt, i int64
-	cnt = 5
+	cnt = 4
 	var start sync.RWMutex
 
 	start.Lock()
@@ -83,9 +83,8 @@ func raceNewToken(url string, t *testing.T) {
 		defer wg.Done()
 
 		time.Sleep(time.Duration(rand.Intn(42)) * time.Microsecond * 100)
-		startTime := time.Now()
+		fmt.Printf("%v Racer %d: Ready!\n", time.Now(), i)
 		start.RLock()
-		fmt.Printf("%v Racer %d: Ready!\n", startTime, i)
 
 		Token, err := tDB.New(url, 1)
 
