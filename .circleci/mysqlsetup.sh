@@ -1,7 +1,7 @@
 #! /bin/bash
 
 # run mysql container
-docker run --name=mysql1 -e MYSQL_ROOT_PASSWORD=root -p 127.0.0.1:3306:3306 -d mysql/mysql-server:latest
+docker run --name=mysql1 -e MYSQL_ROOT_PASSWORD=root -p 127.0.0.1:3306:3306 -d --restart=always mysql/mysql-server:latest
 
 # wait initialisation  
 while [[ $(docker ps | grep "(healthy)") == "" ]]
