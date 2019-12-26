@@ -40,7 +40,7 @@ func Test50mainStart(t *testing.T) {
 func Test55MainFullSuccess(t *testing.T) {
 	// use health check as long url
 	resp, err := http.Post("http://"+CONFIG.ListenHostPort+"/api/v1/token", "application/json",
-		strings.NewReader(`{"url": "http://` + CONFIG.ShortDomain + `/favicon.ico", "exp": "3"}`))
+		strings.NewReader(`{"url": "http://`+CONFIG.ShortDomain+`/favicon.ico", "exp": "3"}`))
 	if err != nil {
 		t.Errorf("token request error: %v", err)
 	}
@@ -65,7 +65,7 @@ func Test55MainFullSuccess(t *testing.T) {
 	}
 	defer resp2.Body.Close()
 
-	if  resp2.ContentLength != 0 {
+	if resp2.ContentLength != 0 {
 		t.Error("response body not empty")
 	}
 
@@ -74,7 +74,7 @@ func Test55MainFullSuccess(t *testing.T) {
 	}
 
 	resp3, err := http.Post("http://"+CONFIG.ListenHostPort+"/api/v1/expire", "application/json",
-	strings.NewReader(`{"token": "`+repl.Token+`"}`))
+		strings.NewReader(`{"token": "`+repl.Token+`"}`))
 	if err != nil {
 		t.Errorf("expire request error: %v", err)
 	}
@@ -83,7 +83,6 @@ func Test55MainFullSuccess(t *testing.T) {
 	if resp3.StatusCode != http.StatusOK {
 		t.Errorf("wrong status : %d", resp.StatusCode)
 	}
-
 
 }
 
@@ -159,8 +158,24 @@ func Test62MainGetTokenWOexp(t *testing.T) {
 	}
 }
 
+// request expire without parameters
+func Test64MainExpireTokenWOparams(t *testing.T) {
+
+	resp, err := http.Post("http://"+CONFIG.ListenHostPort+"/api/v1/expire", "application/json",
+		strings.NewReader(`{}`))
+	if err != nil {
+		t.Errorf("expire request error: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Errorf("wrong status : %d", resp.StatusCode)
+	}
+
+}
+
 // try to get the same (debugging) token twice
-func Test62MainGetTokenTwice(t *testing.T) {
+func Test68MainGetTokenTwice(t *testing.T) {
 	DEBUG = true
 	defer func() { DEBUG = false }()
 	resp, err := http.Post("http://"+CONFIG.ListenHostPort+"/api/v1/token", "application/json",
@@ -258,6 +273,7 @@ func Test77MainHealthCheckModeDisableShortener(t *testing.T) {
 	}
 }
 
+// try health check in service mode disableExpire
 func Test78MainHealthCheckModeDisableExpire(t *testing.T) {
 	CONFIG.Mode = disableExpire
 
@@ -270,7 +286,6 @@ func Test78MainHealthCheckModeDisableExpire(t *testing.T) {
 		t.Errorf("wrong status : %d", resp.StatusCode)
 	}
 }
-
 
 // try to stop service
 func Test99MainKill(t *testing.T) {
