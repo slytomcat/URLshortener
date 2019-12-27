@@ -3,35 +3,7 @@ package main
 // URLshortener is a microservice to shorten long URLs
 // and to handle the redirection by generated short URLs.
 //
-// Request for short URL:
-// URL: <host>[:<port>]/api/v1/token
-// Method: POST
-// Body: JSON with following parameters:
-//   url - URL to shorten, mandatory
-//   exp - short URL expiration in days, optional
-// Success response: JSON with following parameters:
-//   token - token for short URL
-//   url - short URL
-//
-// Request to expire token
-// URL: <host>[:<port>]/api/v1/expire
-// Method: POST
-// Body: JSON with following parameters:
-//   token - token for short URL
-// Success response: HTTP 200 OK
-//
-// Redirect to long URL:
-// URL: <host>[:<port>]/<token> - URL from response on request for short URL
-// Method: GET
-// No parameters
-// Success response contain the redirection to long URL
-//
-// Helth-check:
-// URL: <host>[:<port>]/
-// Method: GET
-// No parameters
-// Response: simple home page and HTTP 200 OK in case of good service health
-// or HTTP 500 Server error in case of bad service health
+// See details in README.md
 
 import (
 	"encoding/json"
