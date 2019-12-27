@@ -50,8 +50,8 @@ const (
 	disableExpire                // disable expire request
 )
 
-// simple home page to display on health check request
 var (
+	// simple home page to display on health check request
 	homePage = []byte(`
 <html>
 	<body>
@@ -61,8 +61,10 @@ var (
 	</body>
 </html>
 `)
-	tokenDB *TokenDB
-	Server  *http.Server
+	// Database interface
+	tokenDB *TokenDB 
+	// Server - HTTP server
+	Server  *http.Server 
 )
 
 // healthCheck performs full self-test of service in all service modes
@@ -82,7 +84,7 @@ func healthCheck() error {
 	if CONFIG.Mode&disableShortener != 0 {
 		// use tokenDB inteface as web-interface is locked in this service mode
 		if repl.Token, err = tokenDB.New(url, 1); err != nil {
-			return err
+			return fmt.Errorf("new token creation error: %w", err)
 		}
 		repl.URL = CONFIG.ShortDomain + "/" + repl.Token
 	} else {
@@ -90,7 +92,7 @@ func healthCheck() error {
 		resp, err := http.Post("http://"+CONFIG.ListenHostPort+"/api/v1/token", "application/json",
 			strings.NewReader(`{"url": "`+url+`", "exp": "1"}`))
 		if err != nil {
-			return err
+			return fmt.Errorf("new token request error: %w", err)
 		}
 		defer resp.Body.Close()
 
@@ -98,12 +100,12 @@ func healthCheck() error {
 		buf := make([]byte, resp.ContentLength)
 		_, err = resp.Body.Read(buf)
 		if err != nil && !errors.Is(err, io.EOF) {
-			return err
+			return fmt.Errorf("new token response body reading error : %w", err)
 		}
 
 		// parse response body
 		if err = json.Unmarshal(buf, &repl); err != nil {
-			return err
+			return fmt.Errorf("new token response body parsing error: %w", err)
 		}
 	}
 
@@ -111,19 +113,19 @@ func healthCheck() error {
 	if CONFIG.Mode&disableRedirect != 0 {
 		// use tokenDB interface as web-interface is locked in this service mode
 		if _, err = tokenDB.Get(repl.Token); err != nil {
-			return err
+			return fmt.Errorf("URL receiving error: %w", err)
 		}
 	} else {
 		// try to make the HTTP request for redirect by short URL
 		resp2, err := http.Get("http://" + repl.URL)
 		if err != nil {
-			return err
+			return fmt.Errorf("redirect request error: %w", err)
 		}
 		defer resp2.Body.Close()
 
 		// check redirect response status
 		if resp2.StatusCode != http.StatusOK {
-			return err
+			return fmt.Errorf("redirect request: unexpected responce status: %v", resp2.StatusCode)
 		}
 	}
 
@@ -131,20 +133,20 @@ func healthCheck() error {
 	if CONFIG.Mode&disableExpire != 0 {
 		// use tokenDB interface as web-interface is locked in this service mode
 		if err := tokenDB.Expire(repl.Token, -1); err != nil {
-			return err
+			return fmt.Errorf("expire request error: %w", err)
 		}
 	} else {
 		// make the HTTP request to expire token
 		resp3, err := http.Post("http://"+CONFIG.ListenHostPort+"/api/v1/expire", "application/json",
 			strings.NewReader(`{"token": "`+repl.Token+`"}`))
 		if err != nil {
-			return err
+			return fmt.Errorf("expire request error: %w", err)
 		}
 		defer resp3.Body.Close()
 
 		// check response status
 		if resp3.StatusCode != http.StatusOK {
-			return err
+			return fmt.Errorf("expire request: unexpected response status: %v", resp3.StatusCode)
 		}
 	}
 	return nil
@@ -156,13 +158,15 @@ curl -i -v http://localhost:8080/
 
 // Home shows simple home page if self-check succesfuly passed
 func home(w http.ResponseWriter, r *http.Request) {
-	log.Printf("health-check request from %s (%s)\n", r.RemoteAddr, r.Referer())
+	rMess := fmt.Sprintf("health-check request from %s (%s)", r.RemoteAddr, r.Referer())
 	// Perform self-test
 	if err := healthCheck(); err != nil {
 		// report error
+		log.Printf("%s: error: %v\n", rMess, err)
 		w.WriteHeader(http.StatusInternalServerError)
 	} else {
 		// show the home page if self-test was successfully passed
+		log.Printf("%s: success\n", rMess)
 		w.Write(homePage)
 	}
 }
@@ -178,7 +182,7 @@ func redirect(w http.ResponseWriter, r *http.Request) {
 
 	// check that service mode allows this request
 	if CONFIG.Mode&disableRedirect != 0 {
-		log.Printf("%s: this request is disabled by service mode\n", rMess)
+		log.Printf("%s: this request is disabled by current service mode\n", rMess)
 		// send 404 response
 		http.NotFound(w, r)
 		return
@@ -210,7 +214,7 @@ func getNewToken(w http.ResponseWriter, r *http.Request) {
 
 	// Check that service mode allows this request
 	if CONFIG.Mode&disableShortener != 0 {
-		log.Printf("%s: this request is disabled by service mode\n", rMess)
+		log.Printf("%s: this request is disabled by current service mode\n", rMess)
 		// request is not supported: send 404 response
 		http.NotFound(w, r)
 		return
@@ -287,7 +291,7 @@ func expireToken(w http.ResponseWriter, r *http.Request) {
 
 	// Check that service mode allows this request
 	if CONFIG.Mode&disableExpire != 0 {
-		log.Printf("%s: this request is disabled by service mode\n", rMess)
+		log.Printf("%s: this request is disabled by current service mode\n", rMess)
 		// request is not supported: send 404 response
 		http.NotFound(w, r)
 		return
