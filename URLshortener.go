@@ -320,7 +320,7 @@ func expireToken(w http.ResponseWriter, r *http.Request) {
 	err = tokenDB.Expire(params.Token, params.Exp)
 	if err != nil {
 		log.Printf("%s: updating token expiration error: %s", rMess, err)
-		w.WriteHeader(http.StatusInternalServerError)
+		w.WriteHeader(http.StatusNotModified)
 		return
 	}
 

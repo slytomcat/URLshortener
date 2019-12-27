@@ -174,6 +174,22 @@ func Test64MainExpireTokenWOparams(t *testing.T) {
 
 }
 
+// request expire for not existing token
+func Test65MainExpireNotExistingToken(t *testing.T) {
+
+	resp, err := http.Post("http://"+CONFIG.ListenHostPort+"/api/v1/expire", "application/json",
+		strings.NewReader(`{"token":"$%#@*"}`)) // use non Base64 symbols
+	if err != nil {
+		t.Errorf("expire request error: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusNotModified {
+		t.Errorf("wrong status : %d", resp.StatusCode)
+	}
+
+}
+
 // try to get the same (debugging) token twice
 func Test68MainGetTokenTwice(t *testing.T) {
 	DEBUG = true
