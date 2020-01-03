@@ -11,7 +11,7 @@ import (
 
 // Config - configuration structure
 type Config struct {
-	DBdriver       string // database driver
+	DBdriver       string // database driver ("MySQL" or "Redis")
 	DSN            string // MySQL or Redis connection string
 	MaxOpenConns   int    `json:",string"` // DB connections pool size for MySQL
 	ListenHostPort string // host and port to listen on
@@ -36,7 +36,7 @@ const (
 // CONFIG - structure with the configuration variables
 var CONFIG Config
 
-// readConfig reads config and also tries to get the DB connection string from environment variable
+// readConfig reads configuration file and also tries to get data from environment variables
 func readConfig(cfgFile string) error {
 	var err error
 	// try to read config data from evirinment
@@ -57,7 +57,7 @@ func readConfig(cfgFile string) error {
 	}
 	CONFIG.ShortDomain = os.Getenv("URLSHORTENER_ShortDomain")
 	if mode := os.Getenv("URLSHORTENER_Mode"); mode != "" {
-		CONFIG.Mode, err = strconv.Atoi(os.Getenv("URLSHORTENER_Mode"))
+		CONFIG.Mode, err = strconv.Atoi(mode)
 		if err != nil {
 			log.Printf("Warning: environments variable URLSHORTENER_Mode conversion error: %v\n", err)
 		}
@@ -77,7 +77,7 @@ func readConfig(cfgFile string) error {
 
 	// check mandatory config variable DSN
 	if CONFIG.DSN == "" || CONFIG.DBdriver == "" {
-		return errors.New("Mandatory config values DSN or DBdriver are not set")
+		return errors.New("Mandatory configuration values DSN or DBdriver are not set")
 	}
 
 	// set default values for optional config variables
