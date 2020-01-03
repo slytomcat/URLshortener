@@ -1,5 +1,6 @@
 {
     "DSN":"shortener:<password>@<protocol>(<host>:<port>)/shortener_DB",
+    "DBdriver":"MySQL",
     "MaxOpenConns":"33",
     "ListenHostPort":"0.0.0.0:80",
     "DefaultExp":"30",

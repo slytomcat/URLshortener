@@ -6,12 +6,14 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"strconv"
 )
 
 // Config - configuration structure
 type Config struct {
-	DSN            string // MySQL connection string
-	MaxOpenConns   int    `json:",string"` // DB connections pool size
+	DBdriver       string // database driver
+	DSN            string // MySQL or Redis connection string
+	MaxOpenConns   int    `json:",string"` // DB connections pool size for MySQL
 	ListenHostPort string // host and port to listen on
 	DefaultExp     int    `json:",string"` // Default expiration of token (days)
 	ShortDomain    string // Short domain name for short URL creation
@@ -23,10 +25,32 @@ var CONFIG Config
 
 // readConfig reads config and also tries to get the DB connection string from environment variable
 func readConfig(cfgFile string) error {
-
-	// try to read DSN from evirinment
+	var err error
+	// try to read config data from evirinment
+	CONFIG.DBdriver = os.Getenv("URLSHORTENER_DBdriver")
 	CONFIG.DSN = os.Getenv("URLSHORTENER_DSN")
+	if cons := os.Getenv("URLSHORTENER_MaxOpenConns"); cons != "" {
+		CONFIG.MaxOpenConns, err = strconv.Atoi(cons)
+		if err != nil {
+			log.Printf("Warning: environments variable URLSHORTENER_MaxOpenConns conversion error: %v\n", err)
+		}
+	}
+	CONFIG.ListenHostPort = os.Getenv("URLSHORTENER_ListenHostPort")
+	if exp := os.Getenv("URLSHORTENER_DefaultExp"); exp != "" {
+		CONFIG.DefaultExp, err = strconv.Atoi(exp)
+		if err != nil {
+			log.Printf("Warning: environments variable URLSHORTENER_DefaultExp conversion error: %v\n", err)
+		}
+	}
+	CONFIG.ShortDomain = os.Getenv("URLSHORTENER_ShortDomain")
+	if mode := os.Getenv("URLSHORTENER_Mode"); mode != "" {
+		CONFIG.Mode, err = strconv.Atoi(os.Getenv("URLSHORTENER_Mode"))
+		if err != nil {
+			log.Printf("Warning: environments variable URLSHORTENER_Mode conversion error: %v\n", err)
+		}
+	}
 
+	log.Println(CONFIG)
 	// read config file into buffer
 	buf, err := ioutil.ReadFile(cfgFile)
 	if err == nil {
@@ -40,8 +64,8 @@ func readConfig(cfgFile string) error {
 	}
 
 	// check mandatory config variable DSN
-	if CONFIG.DSN == "" {
-		return errors.New("DSN is not set")
+	if CONFIG.DSN == "" || CONFIG.DBdriver == "" {
+		return errors.New("Mandatory config values DSN or DBdriver are not set")
 	}
 
 	// set default values for optional config variables
