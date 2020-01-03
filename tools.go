@@ -20,6 +20,19 @@ type Config struct {
 	Mode           int    `json:",string"` // Service mode (see README.md)
 }
 
+const (
+	// DefaultMaxOpenConns - default pool size of DB connections for MySQL
+	DefaultMaxOpenConns = 10
+	// DefaultListenHostPort - default host and port to listen on
+	DefaultListenHostPort = "localhost:8080"
+	// DefaultDefaultExp - default token expiration
+	DefaultDefaultExp = 1
+	// DefaultShortDomain - default short domain
+	DefaultShortDomain = "localhost:8080"
+	// DefaultMode - default service mode
+	DefaultMode = 0
+)
+
 // CONFIG - structure with the configuration variables
 var CONFIG Config
 
@@ -50,7 +63,6 @@ func readConfig(cfgFile string) error {
 		}
 	}
 
-	log.Println(CONFIG)
 	// read config file into buffer
 	buf, err := ioutil.ReadFile(cfgFile)
 	if err == nil {
@@ -70,16 +82,16 @@ func readConfig(cfgFile string) error {
 
 	// set default values for optional config variables
 	if CONFIG.MaxOpenConns == 0 {
-		CONFIG.MaxOpenConns = 10
+		CONFIG.MaxOpenConns = DefaultMaxOpenConns
 	}
 	if CONFIG.ListenHostPort == "" {
-		CONFIG.ListenHostPort = "localhost:8080"
+		CONFIG.ListenHostPort = DefaultListenHostPort
 	}
 	if CONFIG.DefaultExp == 0 {
-		CONFIG.DefaultExp = 1
+		CONFIG.DefaultExp = DefaultDefaultExp
 	}
 	if CONFIG.ShortDomain == "" {
-		CONFIG.ShortDomain = "localhost:8080"
+		CONFIG.ShortDomain = DefaultShortDomain
 	}
 
 	// do not set CONFIG.Mode as default value is 0
