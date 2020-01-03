@@ -97,13 +97,16 @@ func Test02Tools15EmptyJSON_(t *testing.T) {
 	}
 
 	saveCONFIG := CONFIG
+	saveDriver := os.Getenv("URLSHORTENER_DBdriver")
 	saveDSN := os.Getenv("URLSHORTENER_DSN")
 	defer func() {
 		CONFIG = saveCONFIG
+		os.Setenv("URLSHORTENER_DBdriver", saveDriver)
 		os.Setenv("URLSHORTENER_DSN", saveDSN)
 	}()
 
 	CONFIG = Config{}
+	os.Setenv("URLSHORTENER_DBdriver", "testDBdriver")
 	os.Setenv("URLSHORTENER_DSN", "testDSNvalue")
 
 	err = readConfig(tmpfile.Name())
@@ -111,26 +114,30 @@ func Test02Tools15EmptyJSON_(t *testing.T) {
 	if err != nil {
 		t.Error("error for empty JSON with set URLSHORTENER_DSN")
 	}
-	if CONFIG.DSN != "testDSNvalue" ||
-		CONFIG.MaxOpenConns != 10 ||
-		CONFIG.ListenHostPort != "localhost:8080" ||
-		CONFIG.DefaultExp != 1 ||
-		CONFIG.ShortDomain != "localhost:8080" ||
-		CONFIG.Mode != 0 {
+	if CONFIG.DBdriver != "testDBdriver" ||
+		CONFIG.DSN != "testDSNvalue" ||
+		CONFIG.MaxOpenConns != DefaultMaxOpenConns ||
+		CONFIG.ListenHostPort != DefaultListenHostPort ||
+		CONFIG.DefaultExp != DefaultDefaultExp ||
+		CONFIG.ShortDomain != DefaultShortDomain ||
+		CONFIG.Mode != DefaultMode {
 		t.Error("Wrong default values set")
 	}
 }
 
-// test full success
+// test full success from example.cnf.json
 func Test03Tools20FullJSON(t *testing.T) {
 	saveCONFIG := CONFIG
+	saveDriver := os.Getenv("URLSHORTENER_DBdriver")
 	saveDSN := os.Getenv("URLSHORTENER_DSN")
 	defer func() {
 		CONFIG = saveCONFIG
+		os.Setenv("URLSHORTENER_DBdriver", saveDriver)
 		os.Setenv("URLSHORTENER_DSN", saveDSN)
 	}()
 
 	CONFIG = Config{}
+	os.Unsetenv("URLSHORTENER_DBdriver")
 	os.Unsetenv("URLSHORTENER_DSN")
 
 	err := readConfig("example.cnf.json")
@@ -138,12 +145,183 @@ func Test03Tools20FullJSON(t *testing.T) {
 	if err != nil {
 		t.Errorf("error reading of example.cnf.json: %v", err)
 	}
-	if CONFIG.DSN != "shortener:<password>@<protocol>(<host>:<port>)/shortener_DB" ||
+	if CONFIG.DBdriver != "MySQL" ||
+		CONFIG.DSN != "shortener:<password>@<protocol>(<host>:<port>)/shortener_DB" ||
 		CONFIG.MaxOpenConns != 33 ||
 		CONFIG.ListenHostPort != "0.0.0.0:80" ||
 		CONFIG.DefaultExp != 30 ||
 		CONFIG.ShortDomain != "<shortDomain>" ||
 		CONFIG.Mode != 1 {
+		t.Error("Wrong values set")
+	}
+}
+
+// test full success from environment variables
+func Test03Tools30FullEnv(t *testing.T) {
+	saveCONFIG := CONFIG
+	saveDriver := os.Getenv("URLSHORTENER_DBdriver")
+	saveDSN := os.Getenv("URLSHORTENER_DSN")
+	saveCons := os.Getenv("URLSHORTENER_MaxOpenConns")
+	saveHost := os.Getenv("URLSHORTENER_ListenHostPort")
+	saveExp := os.Getenv("URLSHORTENER_DefaultExp")
+	saveDomain := os.Getenv("URLSHORTENER_ShortDomain")
+	saveMode := os.Getenv("URLSHORTENER_Mode")
+
+	defer func() {
+		CONFIG = saveCONFIG
+		os.Setenv("URLSHORTENER_DBdriver", saveDriver)
+		os.Setenv("URLSHORTENER_DSN", saveDSN)
+		os.Setenv("URLSHORTENER_MaxOpenConns", saveCons)
+		os.Setenv("URLSHORTENER_ListenHostPort", saveHost)
+		os.Setenv("URLSHORTENER_DefaultExp", saveExp)
+		os.Setenv("URLSHORTENER_ShortDomain", saveDomain)
+		os.Setenv("URLSHORTENER_Mode", saveMode)
+	}()
+
+	CONFIG = Config{}
+	os.Setenv("URLSHORTENER_DBdriver", "TestDriver")
+	os.Setenv("URLSHORTENER_DSN", "TestDSN:DSN")
+	os.Setenv("URLSHORTENER_MaxOpenConns", "222")
+	os.Setenv("URLSHORTENER_ListenHostPort", "testHost:testPort")
+	os.Setenv("URLSHORTENER_DefaultExp", "42")
+	os.Setenv("URLSHORTENER_ShortDomain", "test.domain")
+	os.Setenv("URLSHORTENER_Mode", "66")
+
+	err := readConfig("wrong.wrong.wrong.file.json")
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+
+	if CONFIG.DBdriver != "TestDriver" ||
+		CONFIG.DSN != "TestDSN:DSN" ||
+		CONFIG.MaxOpenConns != 222 ||
+		CONFIG.ListenHostPort != "testHost:testPort" ||
+		CONFIG.DefaultExp != 42 ||
+		CONFIG.ShortDomain != "test.domain" ||
+		CONFIG.Mode != 66 {
+		t.Error("Wrong values set")
+	}
+}
+
+// test wromg enviroment variable URLSHORTENER_MaxOpenConns
+func Test03Tools35WrongEnvMaxOpenConns(t *testing.T) {
+	saveCONFIG := CONFIG
+	saveDriver := os.Getenv("URLSHORTENER_DBdriver")
+	saveDSN := os.Getenv("URLSHORTENER_DSN")
+	saveCons := os.Getenv("URLSHORTENER_MaxOpenConns")
+	saveHost := os.Getenv("URLSHORTENER_ListenHostPort")
+	saveExp := os.Getenv("URLSHORTENER_DefaultExp")
+	saveDomain := os.Getenv("URLSHORTENER_ShortDomain")
+	saveMode := os.Getenv("URLSHORTENER_Mode")
+
+	defer func() {
+		CONFIG = saveCONFIG
+		os.Setenv("URLSHORTENER_DBdriver", saveDriver)
+		os.Setenv("URLSHORTENER_DSN", saveDSN)
+		os.Setenv("URLSHORTENER_MaxOpenConns", saveCons)
+		os.Setenv("URLSHORTENER_ListenHostPort", saveHost)
+		os.Setenv("URLSHORTENER_DefaultExp", saveExp)
+		os.Setenv("URLSHORTENER_ShortDomain", saveDomain)
+		os.Setenv("URLSHORTENER_Mode", saveMode)
+	}()
+
+	CONFIG = Config{}
+	os.Setenv("URLSHORTENER_DBdriver", "TestDriver")
+	os.Setenv("URLSHORTENER_DSN", "TestDSN:DSN")
+	os.Setenv("URLSHORTENER_MaxOpenConns", "@#1$")
+	os.Setenv("URLSHORTENER_ListenHostPort", "testHost:testPort")
+	os.Setenv("URLSHORTENER_DefaultExp", "42")
+	os.Setenv("URLSHORTENER_ShortDomain", "test.domain")
+	os.Setenv("URLSHORTENER_Mode", "66")
+
+	err := readConfig("wrong.wrong.wrong.file.json")
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+
+	if CONFIG.MaxOpenConns != 10 {
+		t.Error("Wrong values set")
+	}
+}
+
+// test wromg enviroment variable URLSHORTENER_DefaultExp
+func Test03Tools40WrongEnvDefaultExp(t *testing.T) {
+	saveCONFIG := CONFIG
+	saveDriver := os.Getenv("URLSHORTENER_DBdriver")
+	saveDSN := os.Getenv("URLSHORTENER_DSN")
+	saveCons := os.Getenv("URLSHORTENER_MaxOpenConns")
+	saveHost := os.Getenv("URLSHORTENER_ListenHostPort")
+	saveExp := os.Getenv("URLSHORTENER_DefaultExp")
+	saveDomain := os.Getenv("URLSHORTENER_ShortDomain")
+	saveMode := os.Getenv("URLSHORTENER_Mode")
+
+	defer func() {
+		CONFIG = saveCONFIG
+		os.Setenv("URLSHORTENER_DBdriver", saveDriver)
+		os.Setenv("URLSHORTENER_DSN", saveDSN)
+		os.Setenv("URLSHORTENER_MaxOpenConns", saveCons)
+		os.Setenv("URLSHORTENER_ListenHostPort", saveHost)
+		os.Setenv("URLSHORTENER_DefaultExp", saveExp)
+		os.Setenv("URLSHORTENER_ShortDomain", saveDomain)
+		os.Setenv("URLSHORTENER_Mode", saveMode)
+	}()
+
+	CONFIG = Config{}
+	os.Setenv("URLSHORTENER_DBdriver", "TestDriver")
+	os.Setenv("URLSHORTENER_DSN", "TestDSN:DSN")
+	os.Setenv("URLSHORTENER_MaxOpenConns", "222")
+	os.Setenv("URLSHORTENER_ListenHostPort", "testHost:testPort")
+	os.Setenv("URLSHORTENER_DefaultExp", "@#2$")
+	os.Setenv("URLSHORTENER_ShortDomain", "test.domain")
+	os.Setenv("URLSHORTENER_Mode", "66")
+
+	err := readConfig("wrong.wrong.wrong.file.json")
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+
+	if CONFIG.DefaultExp != DefaultDefaultExp {
+		t.Error("Wrong values set")
+	}
+}
+
+// test wromg enviroment variable URLSHORTENER_Mode
+func Test03Tools45WrongEnvMode(t *testing.T) {
+	saveCONFIG := CONFIG
+	saveDriver := os.Getenv("URLSHORTENER_DBdriver")
+	saveDSN := os.Getenv("URLSHORTENER_DSN")
+	saveCons := os.Getenv("URLSHORTENER_MaxOpenConns")
+	saveHost := os.Getenv("URLSHORTENER_ListenHostPort")
+	saveExp := os.Getenv("URLSHORTENER_DefaultExp")
+	saveDomain := os.Getenv("URLSHORTENER_ShortDomain")
+	saveMode := os.Getenv("URLSHORTENER_Mode")
+
+	defer func() {
+		CONFIG = saveCONFIG
+		os.Setenv("URLSHORTENER_DBdriver", saveDriver)
+		os.Setenv("URLSHORTENER_DSN", saveDSN)
+		os.Setenv("URLSHORTENER_MaxOpenConns", saveCons)
+		os.Setenv("URLSHORTENER_ListenHostPort", saveHost)
+		os.Setenv("URLSHORTENER_DefaultExp", saveExp)
+		os.Setenv("URLSHORTENER_ShortDomain", saveDomain)
+		os.Setenv("URLSHORTENER_Mode", saveMode)
+	}()
+
+	CONFIG = Config{}
+	os.Setenv("URLSHORTENER_DBdriver", "TestDriver")
+	os.Setenv("URLSHORTENER_DSN", "TestDSN:DSN")
+	os.Setenv("URLSHORTENER_MaxOpenConns", "222")
+	os.Setenv("URLSHORTENER_ListenHostPort", "testHost:testPort")
+	os.Setenv("URLSHORTENER_DefaultExp", "42")
+	os.Setenv("URLSHORTENER_ShortDomain", "test.domain")
+	os.Setenv("URLSHORTENER_Mode", "@#4$")
+
+	err := readConfig("wrong.wrong.wrong.file.json")
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+
+	if CONFIG.Mode != DefaultMode {
 		t.Error("Wrong values set")
 	}
 }
