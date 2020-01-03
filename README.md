@@ -59,6 +59,8 @@ Response: simple home page and HTTP 200 OK in case of good service health or HTT
 Configuration file must have a name `cnf.json` and it should be placed in the same folder where URLshortener was run. The file content must be the following correct JSON value: 
 
     {
+    
+    "DBdriver":"MySQL",
 
     "DSN":"shortener:<password>@<protocol>(<host>:<port>)/shortener_DB",
 
@@ -76,7 +78,8 @@ Configuration file must have a name `cnf.json` and it should be placed in the sa
 
 Where:
 
-- `DSN` - MySQL connection string (mandatory, also can set via URLSHORTENER_DSN environment variable)
+- `DBdriver` - database driver to use (Mandatory, "MySQL" or "Redis")
+- `DSN` - MySQL or Redis connection string (mandatory)
 - `MaxOpenConns` - DataBase connections pool size (optional, default 10)
 - `ListenHostPort` - host and port to listen on (optional, default localhost:8080)
 - `DefaultExp` - default token expiration period in days (optional, default 1)
@@ -92,3 +95,7 @@ Where:
    4 - request for set new expiration of token is disabled
 
 Value of `Mode` can be a sum of several modes, for example `"Mode":"6"` disables two requests: request for short URL and request to set new expiration of token.
+
+Configuration data can be also provided via environment variables URLSHORTENER_DBdriver, URLSHORTENER_DSN, URLSHORTENER_MaxOpenConns, URLSHORTENER_ListenHostPort, URLSHORTENER_DefaultExp, URLSHORTENER_ShortDomain and URLSHORTENER_Mode. 
+
+Configuration file values have more priority then environment variables.
