@@ -12,20 +12,20 @@ func main() {
 		log.Fatalln(err)
 	}
 	// create new data base interface
-	if CONFIG.DBdriver == "MySQL" {
+	switch CONFIG.DBdriver {
+	case "MySQL":
 		tokenDB, err := TokenDBNewM()
 		if err != nil {
 			log.Fatalln(err)
 		}
 		log.Println(ServiceStart(tokenDB))
-		// } else {
-		// 	if 	if CONFIG.DBdriver == "Redis" {
-		// 		tokenDB, err := TokenDBNewR()
-		// 		if err != nil {
-		// 			log.Fatalln(err)
-		// 		}
-		// 		log.Println(ServiceStart(tokenDB))
-		// 	}
+	case "Redis":
+		tokenDB, err := TokenDBNewM()
+		if err != nil {
+			log.Fatalln(err)
+		}
+		log.Println(ServiceStart(tokenDB))
+	default:
+		log.Fatalln("error: wrong walue of DBdriver configuration value.")
 	}
-
 }

@@ -31,12 +31,10 @@ func Test10NewTokenDB(t *testing.T) {
 
 // Clear the table - it is not a test
 func Test11ClearTable(t *testing.T) {
-	tx, _ := tDB.DB.Begin()
-	_, err := tx.Exec("DELETE FROM urls WHERE token=?", DEBUGToken)
+	err := tDB.Delete(DEBUGToken)
 	if err != nil {
 		t.Errorf("Can't clear table: %v", err)
 	}
-	tx.Commit()
 }
 
 // Try to insert the same token twice (error expected)
@@ -58,12 +56,10 @@ func Test13OneTokenTwice(t *testing.T) {
 		t.Errorf("wrong result: token for %s: %v\n", url, token1)
 	}
 	// clear
-	tx, _ := tDB.DB.Begin()
-	_, err = tx.Exec("DELETE FROM urls WHERE token=?", DEBUGToken)
+	err = tDB.Delete(DEBUGToken)
 	if err != nil {
 		t.Errorf("Can't clear table: %v", err)
 	}
-	tx.Commit()
 }
 
 // Concurrent goroutines tries to make new short URL in the same time with the same token (debugging)
