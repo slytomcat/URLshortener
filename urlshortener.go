@@ -11,21 +11,11 @@ func main() {
 	if err != nil {
 		log.Fatalln(err)
 	}
-	// create new data base interface
-	switch CONFIG.DBdriver {
-	case "MySQL":
-		tokenDB, err := TokenDBNewM()
-		if err != nil {
-			log.Fatalln(err)
-		}
-		log.Println(ServiceStart(tokenDB))
-	case "Redis":
-		tokenDB, err := TokenDBNewM()
-		if err != nil {
-			log.Fatalln(err)
-		}
-		log.Println(ServiceStart(tokenDB))
-	default:
-		log.Fatalln("error: wrong walue of DBdriver configuration value.")
+
+	if err = NewTokenDB(); err != nil {
+		log.Fatalf("error database iteface creation: %v\n", err)
 	}
+
+	log.Println(ServiceStart())
+
 }

@@ -15,14 +15,6 @@ import (
 	"strings"
 )
 
-// Token is the interface to token database
-type Token interface {
-	New(longURL string, expiration int) (string, error)
-	Get(sToken string) (string, error)
-	Expire(sToken string, expiration int) error
-	Delete(sToken string) error
-}
-
 const (
 	// Service modes
 	disableRedirect  = 1 << iota // disable redirect request
@@ -41,8 +33,6 @@ var (
 	</body>
 </html>
 `)
-	// Database interface
-	tokenDB Token
 	// Server - HTTP server
 	Server *http.Server
 )
@@ -63,7 +53,7 @@ func healthCheck() error {
 	// self-test part 1: get short URL
 	if CONFIG.Mode&disableShortener != 0 {
 		// use tokenDB inteface as web-interface is locked in this service mode
-		if repl.Token, err = tokenDB.New(url, 1); err != nil {
+		if repl.Token, err = TokenDB.New(url, 1); err != nil {
 			return fmt.Errorf("new token creation error: %w", err)
 		}
 		repl.URL = CONFIG.ShortDomain + "/" + repl.Token
@@ -92,7 +82,7 @@ func healthCheck() error {
 	// self-test part 2: check redirect
 	if CONFIG.Mode&disableRedirect != 0 {
 		// use tokenDB interface as web-interface is locked in this service mode
-		if _, err = tokenDB.Get(repl.Token); err != nil {
+		if _, err = TokenDB.Get(repl.Token); err != nil {
 			return fmt.Errorf("URL receiving error: %w", err)
 		}
 	} else {
@@ -112,7 +102,7 @@ func healthCheck() error {
 	// self-test part 3: make received token as expired
 	if CONFIG.Mode&disableExpire != 0 {
 		// use tokenDB interface as web-interface is locked in this service mode
-		if err := tokenDB.Expire(repl.Token, -1); err != nil {
+		if err := TokenDB.Expire(repl.Token, -1); err != nil {
 			return fmt.Errorf("expire request error: %w", err)
 		}
 	} else {
@@ -169,7 +159,7 @@ func redirect(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// get the long URL
-	longURL, err := tokenDB.Get(sToken)
+	longURL, err := TokenDB.Get(sToken)
 	if err != nil {
 		log.Printf("%s: token was not found\n", rMess)
 		// send 404 response
@@ -232,7 +222,7 @@ func getNewToken(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// create new token
-	sToken, err := tokenDB.New(params.URL, params.Exp)
+	sToken, err := TokenDB.New(params.URL, params.Exp)
 	if err != nil {
 		log.Printf("%s: token creation error: %v\n", rMess, err)
 		w.WriteHeader(http.StatusGatewayTimeout)
@@ -301,7 +291,7 @@ func expireToken(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// update token expiration
-	err = tokenDB.Expire(params.Token, params.Exp)
+	err = TokenDB.Expire(params.Token, params.Exp)
 	if err != nil {
 		log.Printf("%s: updating token expiration error: %s", rMess, err)
 		w.WriteHeader(http.StatusNotModified)
@@ -337,8 +327,7 @@ func myMUX(w http.ResponseWriter, r *http.Request) {
 }
 
 // ServiceStart starts new service with provided database interface
-func ServiceStart(token Token) error {
-	tokenDB = token
+func ServiceStart() error {
 
 	// register the handler
 	http.HandleFunc("/", myMUX)

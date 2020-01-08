@@ -100,7 +100,7 @@ func Test62MainGetTokenWOexp(t *testing.T) {
 	DEBUG = true
 	defer func() { DEBUG = false }()
 
-	err := tokenDB.Delete(DEBUGToken)
+	err := TokenDB.Delete(DEBUGToken)
 	if err != nil {
 		t.Errorf("Can't clear table: %v", err)
 	}
