@@ -13,13 +13,13 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 )
 
-// TokenDB is a structure to handle the DB token operations
-type TokenDB struct {
-	DB *sql.DB // database connection
+// TokenDBM is a structure to handle the DB token operations
+type TokenDBM struct {
+	db *sql.DB // database connection
 }
 
 // TokenDBNewM - creates new TokenDB struct and connect to mysql server
-func TokenDBNewM() (*TokenDB, error) {
+func TokenDBNewM() (*TokenDBM, error) {
 
 	db, err := sql.Open("mysql", CONFIG.DSN)
 	if err != nil {
@@ -35,11 +35,11 @@ func TokenDBNewM() (*TokenDB, error) {
 		return nil, err
 	}
 
-	return &TokenDB{db}, nil
+	return &TokenDBM{db}, nil
 }
 
 // New returns new token for given long URL and store the token expiration period (in days)
-func (t *TokenDB) New(longURL string, expiration int) (string, error) {
+func (t *TokenDBM) New(longURL string, expiration int) (string, error) {
 	var err error
 	// token of saved long URL
 	sToken := ""
@@ -61,7 +61,7 @@ func (t *TokenDB) New(longURL string, expiration int) (string, error) {
 		}
 
 		// begin transaction
-		tran, err := t.DB.Begin()
+		tran, err := t.db.Begin()
 		if err != nil {
 			return "", fmt.Errorf("can't create transaction: %w", err)
 		}
@@ -128,13 +128,13 @@ func (t *TokenDB) New(longURL string, expiration int) (string, error) {
 }
 
 // Get returns long url for given token
-func (t *TokenDB) Get(sToken string) (string, error) {
+func (t *TokenDBM) Get(sToken string) (string, error) {
 	if len(sToken) != tokenLenS {
 		return "", errors.New("wrong token length")
 	}
 
 	// get the url by token checking expiratinon
-	row := t.DB.QueryRow("SELECT url FROM urls WHERE token = ? and DATE_ADD(`ts`, INTERVAL `exp` DAY) > NOW()", sToken)
+	row := t.db.QueryRow("SELECT url FROM urls WHERE token = ? and DATE_ADD(`ts`, INTERVAL `exp` DAY) > NOW()", sToken)
 
 	url := ""
 	err := row.Scan(&url)
@@ -147,10 +147,10 @@ func (t *TokenDB) Get(sToken string) (string, error) {
 
 // Expire - set new expiration on the token
 // Use zero or negative exp value to expire token
-func (t *TokenDB) Expire(sToken string, exp int) error {
+func (t *TokenDBM) Expire(sToken string, exp int) error {
 
 	// begin transaction
-	tran, err := t.DB.Begin()
+	tran, err := t.db.Begin()
 	if err != nil {
 		return fmt.Errorf("can't create transaction: %w", err)
 	}
@@ -177,8 +177,8 @@ func (t *TokenDB) Expire(sToken string, exp int) error {
 }
 
 // Delete deletes specified token. It requered mostly for tests
-func (t *TokenDB) Delete(sToken string) error {
-	tx, _ := t.DB.Begin()
+func (t *TokenDBM) Delete(sToken string) error {
+	tx, _ := t.db.Begin()
 	_, err := tx.Exec("DELETE FROM urls WHERE token=?", DEBUGToken)
 	if err != nil {
 		tx.Rollback()
