@@ -16,6 +16,8 @@ import (
 )
 
 const (
+	newTokenTimeOut = 500 // time out for new token creation (ms)
+
 	// Service modes
 	disableRedirect  = 1 << iota // disable redirect request
 	disableShortener             // disable request for short URL
@@ -53,7 +55,7 @@ func healthCheck() error {
 	// self-test part 1: get short URL
 	if CONFIG.Mode&disableShortener != 0 {
 		// use tokenDB inteface as web-interface is locked in this service mode
-		if repl.Token, err = TokenDB.New(url, 1); err != nil {
+		if repl.Token, err = TokenDB.New(url, 1, newTokenTimeOut); err != nil {
 			return fmt.Errorf("new token creation error: %w", err)
 		}
 		repl.URL = CONFIG.ShortDomain + "/" + repl.Token
@@ -222,7 +224,7 @@ func getNewToken(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// create new token
-	sToken, err := TokenDB.New(params.URL, params.Exp)
+	sToken, err := TokenDB.New(params.URL, params.Exp, newTokenTimeOut)
 	if err != nil {
 		log.Printf("%s: token creation error: %v\n", rMess, err)
 		w.WriteHeader(http.StatusGatewayTimeout)

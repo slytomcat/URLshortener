@@ -6,7 +6,7 @@ import (
 
 // Token is the interface to token database
 type Token interface {
-	New(longURL string, expiration int) (string, error)
+	New(longURL string, expiration int, timeout int) (string, error)
 	Get(sToken string) (string, error)
 	Expire(sToken string, expiration int) error
 	Delete(sToken string) error
