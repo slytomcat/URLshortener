@@ -20,7 +20,7 @@ func TokenDBNewR() (*TokenDBR, error) {
 	var err error
 	d := 0
 
-	res := regexp.MustCompile(`.*:(.*)@(.*)\((.*)\)/(.*)`).FindAllStringSubmatch(":pass@tcp(localhost:6379)/0", -1)
+	res := regexp.MustCompile(`.*:(.*)@(.*)\((.*)\)/(.*)`).FindAllStringSubmatch(CONFIG.DSN, -1)
 	if len(res) == 0 {
 		return nil, errors.New("wrong format of DSN config parameter")
 	}
@@ -31,10 +31,10 @@ func TokenDBNewR() (*TokenDBR, error) {
 	}
 
 	db := redis.NewClient(&redis.Options{
-		Network: res[0][2],
-		Addr:    res[0][3],
-		// Password: res[0][1],
-		DB: d,
+		Network:  res[0][2],
+		Addr:     res[0][3],
+		Password: res[0][1],
+		DB:       d,
 	})
 
 	if _, err := db.Ping().Result(); err != nil {
