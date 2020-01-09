@@ -45,7 +45,7 @@ func (t *TokenDBM) New(longURL string, expiration int, timeout int) (string, err
 	// The token field is unique in DB so it's not possible to insert the same token twice.
 	// But if the token is already expired then try to update it (set new url and expiration).
 
-	// Using 10 attempts to insert/update token dramatically increases maximum amount of
+	// Using several attempts to store new token dramatically increases maximum amount of
 	// used tokens since :
 	// probability of the failure of n attempts = (probability of failure of single attempt)^n.
 
@@ -61,9 +61,10 @@ func (t *TokenDBM) New(longURL string, expiration int, timeout int) (string, err
 	go func() {
 		attempt := 0
 		sToken := ""
+		var err error
 		for {
 			attempt++
-			sToken, err := NewShortToken()
+			sToken, err = NewShortToken()
 			if err != nil {
 				rep <- replay{sToken, err}
 				return

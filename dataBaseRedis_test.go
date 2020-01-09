@@ -47,6 +47,30 @@ func Test10DBRNewTokenDB(t *testing.T) {
 	tDBr.Delete(DEBUGToken)
 }
 
+func Test13DBROneTokenTwice(t *testing.T) {
+	DEBUG = true
+	defer func() { DEBUG = false }()
+
+	url := "https://golang.org/pkg/time/"
+	token, err := tDBr.New(url, 1, newTokenTimeOut)
+	if err != nil || token == "" {
+		t.Errorf("unexpected error: %s; token: %s", err, token)
+	} else {
+		t.Logf("expected result: token for %s: %v\n", url, token)
+	}
+	token1, err := tDBr.New(url, 1, newTokenTimeOut)
+	if err != nil {
+		t.Logf("expected error: %s\n", err)
+	} else {
+		t.Errorf("wrong result: token for %s: %v\n", url, token1)
+	}
+	// clear
+	err = tDBr.Delete(DEBUGToken)
+	if err != nil {
+		t.Errorf("Can't delete token: %v", err)
+	}
+}
+
 // try to insert new token from concurrent goroutines
 func Test15DBRNewTokenRace(t *testing.T) {
 	raceNewToken(tDBr, "https://golang.org", t)

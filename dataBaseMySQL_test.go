@@ -43,8 +43,8 @@ func Test13DBMOneTokenTwice(t *testing.T) {
 
 	url := "https://golang.org/pkg/time/"
 	token, err := tDB.New(url, 1, newTokenTimeOut)
-	if err != nil {
-		t.Errorf("unexpected error: %s", err)
+	if err != nil || token == "" {
+		t.Errorf("unexpected error: %s; token: %s", err, token)
 	} else {
 		t.Logf("expected result: token for %s: %v\n", url, token)
 	}
