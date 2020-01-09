@@ -14,10 +14,12 @@ func Test10DBRNewTokenDB(t *testing.T) {
 	saveCONFIG := CONFIG
 	saveDriver := os.Getenv("URLSHORTENER_DBdriver")
 	saveDSN := os.Getenv("URLSHORTENER_DSN")
+	saveTokenDB := TokenDB
 	defer func() {
 		CONFIG = saveCONFIG
 		os.Setenv("URLSHORTENER_DBdriver", saveDriver)
 		os.Setenv("URLSHORTENER_DSN", saveDSN)
+		TokenDB = saveTokenDB
 	}()
 
 	os.Setenv("URLSHORTENER_DSN", os.Getenv("URLSHORTENER_DSNR"))
@@ -28,10 +30,20 @@ func Test10DBRNewTokenDB(t *testing.T) {
 		t.Error(err)
 	}
 
-	tDBr, err = TokenDBNewR()
+	err = NewTokenDB()
 	if err != nil {
 		t.Error(err)
 	}
+
+	tDBr = TokenDB
+
+	CONFIG.DBdriver = "wrongValue"
+
+	err = NewTokenDB()
+	if err == nil {
+		t.Error("No error when expected")
+	}
+
 	tDBr.Delete(DEBUGToken)
 }
 
