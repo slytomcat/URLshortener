@@ -11,14 +11,17 @@ var tDBr Token
 func Test10DBRNewTokenDB(t *testing.T) {
 	var err error
 
-	saveDSN := os.Getenv("URLSHORTENER_DSN")
 	saveCONFIG := CONFIG
+	saveDriver := os.Getenv("URLSHORTENER_DBdriver")
+	saveDSN := os.Getenv("URLSHORTENER_DSN")
 	defer func() {
 		CONFIG = saveCONFIG
+		os.Setenv("URLSHORTENER_DBdriver", saveDriver)
 		os.Setenv("URLSHORTENER_DSN", saveDSN)
 	}()
 
 	os.Setenv("URLSHORTENER_DSN", os.Getenv("URLSHORTENER_DSNR"))
+	os.Setenv("URLSHORTENER_DBdriver", "Redis")
 
 	err = readConfig("cnfr.json")
 	if err != nil {
