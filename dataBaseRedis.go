@@ -46,71 +46,58 @@ func TokenDBNewR() (*TokenDBR, error) {
 // New creates new token for given long URL
 func (t *TokenDBR) New(longURL string, expiration int, timeout int) (string, error) {
 
-	// Using many attempts to setNX token dramatically increases maximum amount of
+	// Using many attempts to store the new random token dramatically increases maximum amount of
 	// used tokens since:
 	// probability of the failure of n attempts = (probability of failure of single attempt)^n.
 
-	// Limit attempts by time not by count
-	type replay struct {
-		sToken string
-		err    error
-	}
+	// Limit number of attempts by time not by count
 
-	rep := make(chan replay)                                      // replay chanel
 	stop := time.After(time.Millisecond * time.Duration(timeout)) // time-out chanel
 
-	// start trying to store new token in separate goroutine
-	go func() {
-		attempt := 0
-		for {
-			attempt++
-			sToken, err := NewShortToken()
-			if err != nil {
-				rep <- replay{sToken, err}
-				return
-			}
-
-			ok, err := t.db.SetNX(sToken, longURL, time.Hour*24*time.Duration(expiration)).Result()
-			if err == nil && ok {
-				// Token stored successfully
-				rep <- replay{sToken, nil}
-				return
-			}
-			if err != nil {
-				rep <- replay{"", err}
-				return
-			}
-
-			// stop loop if timeout exceeded
-			select {
-			case <-stop:
-				rep <- replay{"", fmt.Errorf("can't store a new token for %d attempts", attempt)}
-				return
-			default:
-			}
+	// start trying to store new token
+	attempt := 0
+	for {
+		attempt++
+		sToken, err := NewShortToken()
+		if err != nil {
+			return sToken, err
 		}
-	}()
 
-	r := <-rep
+		// try to store token
+		ok, err := t.db.SetNX(sToken, longURL, time.Hour*24*time.Duration(expiration)).Result()
+		if err == nil && ok {
+			// token stored successfully
+			return sToken, nil
+		}
+		if err != nil {
+			return "", err
+		}
+		// !ok mean that duplicate detected
 
-	if r.err != nil {
-		return "", r.err
+		select {
+		case <-stop:
+			// stop loop if timeout exceeded
+			return "", fmt.Errorf("can't store a new token for %d attempts", attempt)
+		default:
+			// make next attempt as timeout is not exceeded yet
+		}
 	}
-
-	return r.sToken, nil
 }
 
 // Get returns the long URL for given token
 func (t *TokenDBR) Get(sToken string) (string, error) {
+	// just return result of standard call
 	return t.db.Get(sToken).Result()
 }
 
 // Expire sets new expire datetime for given token
 func (t *TokenDBR) Expire(sToken string, expiration int) error {
+	// just return error of standard call
 	return t.db.Expire(sToken, time.Hour*24*time.Duration(expiration)).Err()
 }
 
 // Delete removes token from database
 func (t *TokenDBR) Delete(sToken string) error {
+	// just return error of standard call
 	return t.db.Del(sToken).Err()
 }

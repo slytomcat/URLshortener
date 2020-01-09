@@ -50,109 +50,82 @@ func (t *TokenDBM) New(longURL string, expiration int, timeout int) (string, err
 	// probability of the failure of n attempts = (probability of failure of single attempt)^n.
 
 	// Limit attempts by time not by count
-	type replay struct {
-		sToken string
-		err    error
-	}
-
-	rep := make(chan replay)
 	stop := time.After(time.Millisecond * time.Duration(timeout))
 
-	go func() {
-		attempt := 0
-		sToken := ""
-		var err error
-		for {
-			attempt++
-			sToken, err = NewShortToken()
-			if err != nil {
-				rep <- replay{sToken, err}
-				return
-			}
-
-			// begin transaction
-			tran, err := t.db.Begin()
-			if err != nil {
-				rep <- replay{"", fmt.Errorf("can't create transaction: %w", err)}
-				return
-			}
-
-			// try to store new token
-			_, err = tran.Exec(
-				"INSERT INTO urls (`token`, `url`, `exp`) VALUES (?, ?, ?)",
-				sToken,
-				longURL,
-				expiration,
-			)
-			if err == nil {
-				// the token is successfully inserted
-				tran.Commit()
-				break
-			}
-
-			// handle error if it is not Duplicate entry error
-			if !strings.Contains(err.Error(), "Duplicate entry") {
-				tran.Rollback()
-				rep <- replay{"", fmt.Errorf("can't insert token: %w", err)}
-				return
-			}
-
-			// close unsuccessful transaction and create new one to avoid deadlocks
-			tran.Rollback()
-			tran, err = t.db.Begin()
-			if err != nil {
-				rep <- replay{"", fmt.Errorf("can't create transaction: %w", err)}
-				return
-			}
-
-			// the token is already exists: try to update the token if it is expired
-			result, err := tran.Exec("UPDATE `urls` SET `url`=?, `exp`=? WHERE `token` = ? and DATE_ADD(`ts`, INTERVAL `exp` DAY) < NOW()",
-				longURL,
-				expiration,
-				sToken,
-			)
-			if err != nil {
-				tran.Rollback()
-				rep <- replay{"", fmt.Errorf("can't update token: %w", err)}
-				return
-			}
-
-			// check affected rows
-			affected, err := result.RowsAffected()
-			if err == nil && affected == 1 {
-				// token successfully updated
-				tran.Commit()
-				break
-			}
-			tran.Rollback()
-			if err != nil {
-				rep <- replay{"", fmt.Errorf("can't get affected rows: %w", err)}
-				return
-			}
-
-			// stop loop if timeout exceeded
-			select {
-			case <-stop:
-				rep <- replay{"", fmt.Errorf("can't store a new token for %d attempts", attempt)}
-				return
-			default:
-			}
-
+	attempt := 0
+	for {
+		attempt++
+		sToken, err := NewShortToken()
+		if err != nil {
+			return sToken, err
 		}
 
-		// return the successfully inserted or updated token
-		rep <- replay{sToken, nil}
-		return
-	}()
+		// begin transaction
+		tran, err := t.db.Begin()
+		if err != nil {
+			return "", fmt.Errorf("can't create transaction: %w", err)
+		}
 
-	r := <-rep
+		// try to store new token
+		_, err = tran.Exec(
+			"INSERT INTO urls (`token`, `url`, `exp`) VALUES (?, ?, ?)",
+			sToken,
+			longURL,
+			expiration,
+		)
+		if err == nil {
+			// the token is successfully inserted
+			tran.Commit()
+			return sToken, nil
+		}
 
-	if r.err != nil {
-		return "", r.err
+		// handle error if it is not Duplicate entry error
+		if !strings.Contains(err.Error(), "Duplicate entry") {
+			tran.Rollback()
+			return "", fmt.Errorf("can't insert token: %w", err)
+		}
+
+		// close unsuccessful transaction and create new one to avoid deadlocks
+		tran.Rollback()
+		tran, err = t.db.Begin()
+		if err != nil {
+			return "", fmt.Errorf("can't create transaction: %w", err)
+		}
+
+		// the token is already exists: try to update the token if it is expired
+		result, err := tran.Exec("UPDATE `urls` SET `url`=?, `exp`=? WHERE `token` = ? and DATE_ADD(`ts`, INTERVAL `exp` DAY) < NOW()",
+			longURL,
+			expiration,
+			sToken,
+		)
+		if err != nil {
+			tran.Rollback()
+			return "", fmt.Errorf("can't update token: %w", err)
+		}
+
+		// check affected rows
+		affected, err := result.RowsAffected()
+		if err == nil && affected == 1 {
+			// token successfully updated
+			tran.Commit()
+			return sToken, nil
+		}
+		tran.Rollback()
+		if err != nil {
+			return "", fmt.Errorf("can't get affected rows: %w", err)
+		}
+
+		// we didn't manage to insert or update the token
+
+		select {
+		case <-stop:
+			// stop loop if time-out exceeded
+			return "", fmt.Errorf("can't store a new token for %d attempts", attempt)
+		default:
+			// make next attempt as time-out is not exceeded yet
+		}
+
 	}
-
-	return r.sToken, nil
-
 }
 
 // Get returns long url for given token
