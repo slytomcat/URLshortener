@@ -7,8 +7,8 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"log"
 	"strings"
+	"time"
 
 	_ "github.com/go-sql-driver/mysql"
 )
@@ -39,10 +39,7 @@ func TokenDBNewM() (*TokenDBM, error) {
 }
 
 // New returns new token for given long URL and store the token expiration period (in days)
-func (t *TokenDBM) New(longURL string, expiration int) (string, error) {
-	var err error
-	// token of saved long URL
-	sToken := ""
+func (t *TokenDBM) New(longURL string, expiration int, timeout int) (string, error) {
 
 	// Try several times to create new token and insert it into DB table.
 	// The token field is unique in DB so it's not possible to insert the same token twice.
@@ -51,80 +48,110 @@ func (t *TokenDBM) New(longURL string, expiration int) (string, error) {
 	// Using 10 attempts to insert/update token dramatically increases maximum amount of
 	// used tokens since :
 	// probability of the failure of n attempts = (probability of failure of single attempt)^n.
-	attempt := 0
-	for ; attempt < 10; attempt++ {
 
-		// get new token
-		sToken, err = NewShortToken()
-		if err != nil {
-			return "", err
-		}
+	// Limit attempts by time not by count
+	type replay struct {
+		sToken string
+		err    error
+	}
 
-		// begin transaction
-		tran, err := t.db.Begin()
-		if err != nil {
-			return "", fmt.Errorf("can't create transaction: %w", err)
-		}
+	rep := make(chan replay)
+	stop := time.After(time.Millisecond * time.Duration(timeout))
 
-		// try to store new token
-		_, err = tran.Exec(
-			"INSERT INTO urls (`token`, `url`, `exp`) VALUES (?, ?, ?)",
-			sToken,
-			longURL,
-			expiration,
-		)
-		if err == nil {
-			// the token is successfully inserted
-			tran.Commit()
-			break
-		}
+	go func() {
+		attempt := 0
+		sToken := ""
+		for {
+			attempt++
+			sToken, err := NewShortToken()
+			if err != nil {
+				rep <- replay{sToken, err}
+				return
+			}
 
-		// handle error if it is not Duplicate entry error
-		if !strings.Contains(err.Error(), "Duplicate entry") {
+			// begin transaction
+			tran, err := t.db.Begin()
+			if err != nil {
+				rep <- replay{"", fmt.Errorf("can't create transaction: %w", err)}
+				return
+			}
+
+			// try to store new token
+			_, err = tran.Exec(
+				"INSERT INTO urls (`token`, `url`, `exp`) VALUES (?, ?, ?)",
+				sToken,
+				longURL,
+				expiration,
+			)
+			if err == nil {
+				// the token is successfully inserted
+				tran.Commit()
+				break
+			}
+
+			// handle error if it is not Duplicate entry error
+			if !strings.Contains(err.Error(), "Duplicate entry") {
+				tran.Rollback()
+				rep <- replay{"", fmt.Errorf("can't insert token: %w", err)}
+				return
+			}
+
+			// close unsuccessful transaction and create new one to avoid deadlocks
 			tran.Rollback()
-			return "", fmt.Errorf("can't insert token: %w", err)
-		}
+			tran, err = t.db.Begin()
+			if err != nil {
+				rep <- replay{"", fmt.Errorf("can't create transaction: %w", err)}
+				return
+			}
 
-		// the token is already exists: try to update the token if it is expired
-		result, err := tran.Exec("UPDATE `urls` SET `url`=?, `exp`=? WHERE `token` = ? and DATE_ADD(`ts`, INTERVAL `exp` DAY) < NOW()",
-			longURL,
-			expiration,
-			sToken,
-		)
-		if err != nil {
+			// the token is already exists: try to update the token if it is expired
+			result, err := tran.Exec("UPDATE `urls` SET `url`=?, `exp`=? WHERE `token` = ? and DATE_ADD(`ts`, INTERVAL `exp` DAY) < NOW()",
+				longURL,
+				expiration,
+				sToken,
+			)
+			if err != nil {
+				tran.Rollback()
+				rep <- replay{"", fmt.Errorf("can't update token: %w", err)}
+				return
+			}
+
+			// check affected rows
+			affected, err := result.RowsAffected()
+			if err == nil && affected == 1 {
+				// token successfully updated
+				tran.Commit()
+				break
+			}
 			tran.Rollback()
-			return "", fmt.Errorf("can't update token: %w", err)
+			if err != nil {
+				rep <- replay{"", fmt.Errorf("can't get affected rows: %w", err)}
+				return
+			}
+
+			// stop loop if timeout exceeded
+			select {
+			case <-stop:
+				rep <- replay{"", fmt.Errorf("can't store a new token for %d attempts", attempt)}
+				return
+			default:
+			}
+
 		}
 
-		// check affected rows
-		affected, err := result.RowsAffected()
-		if err == nil && affected == 1 {
-			// token successfully updated
-			tran.Commit()
-			break
-		}
-		tran.Rollback()
-		if err != nil {
-			return "", fmt.Errorf("can't get affected rows: %w", err)
-		}
-		// token is not insrted and not updated
-		// reset bad token
-		sToken = ""
+		// return the successfully inserted or updated token
+		rep <- replay{sToken, nil}
+		return
+	}()
+
+	r := <-rep
+
+	if r.err != nil {
+		return "", r.err
 	}
 
-	if sToken == "" {
-		// if we can't insert/update random token for several tries, then
-		// it seems that all tokens are busy
-		return "", fmt.Errorf("can't store a new token")
-	}
+	return r.sToken, nil
 
-	// log the warning when the saving of new token took too many attempts
-	if attempt > 6 {
-		log.Printf("WARNING: It took %d attempts for saving the new token\n", attempt)
-	}
-
-	// return the successfully inserted or updated token
-	return sToken, nil
 }
 
 // Get returns long url for given token
