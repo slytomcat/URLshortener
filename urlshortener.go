@@ -12,8 +12,9 @@ func main() {
 		log.Fatalln(err)
 	}
 
+	// initialize database connection
 	if err = NewTokenDB(); err != nil {
-		log.Fatalf("error database iteface creation: %v\n", err)
+		log.Fatalf("error database interface creation: %v\n", err)
 	}
 
 	log.Println(ServiceStart())

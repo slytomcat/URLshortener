@@ -92,12 +92,18 @@ func (t *TokenDBR) Get(sToken string) (string, error) {
 
 // Expire sets new expire datetime for given token
 func (t *TokenDBR) Expire(sToken string, expiration int) error {
-	// just return error of standard call
-	return t.db.Expire(sToken, time.Hour*24*time.Duration(expiration)).Err()
+	ok, err := t.db.Expire(sToken, time.Hour*24*time.Duration(expiration)).Result()
+	if !ok {
+		return errors.New("Token is not exists")
+	}
+	return err
 }
 
 // Delete removes token from database
 func (t *TokenDBR) Delete(sToken string) error {
-	// just return error of standard call
-	return t.db.Del(sToken).Err()
+	deleted, err := t.db.Del(sToken).Result()
+	if deleted == 0 {
+		return errors.New("Token is not exists")
+	}
+	return err
 }
