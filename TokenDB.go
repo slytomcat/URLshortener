@@ -78,14 +78,21 @@ func (t *TokenDB) New(longURL string, expiration int) (string, error) {
 			tran.Commit()
 			break
 		}
+		tran.Rollback()
 
 		// handle error if it is not Duplicate entry error
 		if !strings.Contains(err.Error(), "Duplicate entry") {
-			tran.Rollback()
 			return "", fmt.Errorf("can't insert token: %w", err)
 		}
 
-		// the token is already exists: try to update the token if it is expired
+		// the token is already exists
+		// begin one more transaction
+		tran, err = t.DB.Begin()
+		if err != nil {
+			return "", fmt.Errorf("can't create transaction: %w", err)
+		}
+
+		// try to update the token if it is expired
 		result, err := tran.Exec("UPDATE `urls` SET `url`=?, `exp`=? WHERE `token` = ? and DATE_ADD(`ts`, INTERVAL `exp` DAY) < NOW()",
 			longURL,
 			expiration,
@@ -155,8 +162,8 @@ func (t *TokenDB) Expire(sToken string, exp int) error {
 		return fmt.Errorf("can't create transaction: %w", err)
 	}
 
-	// try update token
-	result, err := tran.Exec("UPDATE `urls` SET `exp`=? WHERE `token` = ? ", exp, sToken)
+	// try to update token
+	result, err := tran.Exec("UPDATE `urls` SET `exp`=? WHERE `token` = ? and DATE_ADD(`ts`, INTERVAL `exp` DAY) > NOW()", exp, sToken)
 	if err != nil {
 		tran.Rollback()
 		return fmt.Errorf("can't update token: %w", err)
