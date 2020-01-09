@@ -46,8 +46,8 @@ func Test13OneTokenTwice(t *testing.T) {
 
 	url := "https://golang.org/pkg/time/"
 	token, err := tDB.New(url, 1)
-	if err != nil {
-		t.Errorf("unexpected error: %s", err)
+	if err != nil || token == "" {
+		t.Errorf("unexpected error: %s; token: %s", err, token)
 	} else {
 		fmt.Printf("expected result: token for %s: %v\n", url, token)
 	}
@@ -89,7 +89,7 @@ func raceNewToken(url string, t *testing.T) {
 		Token, err := tDB.New(url, 1)
 
 		if err != nil {
-			fmt.Printf("%v Racer %d: can't get token\n", time.Now(), i)
+			fmt.Printf("%v Racer %d: %v\n", time.Now(), i, err)
 			atomic.AddInt64(&fail, 1)
 			return
 		}
@@ -141,26 +141,10 @@ func Test25GetToken(t *testing.T) {
 	fmt.Printf("URL for token %s: %s\n", DEBUGToken, lURL)
 }
 
-// try to prolong the token
-func Test27Prolong(t *testing.T) {
-	err := tDB.Expire(DEBUGToken, -1)
-	if err != nil {
-		t.Error(err)
+// try to expire unexisting token
+func Test30ExpireUnexisting(t *testing.T) {
+	err := tDB.Expire("$%#@&(", 0)
+	if err == nil {
+		t.Error("No error when expected")
 	}
-	err = tDB.Expire(DEBUGToken, 1)
-	if err != nil {
-		t.Error(err)
-	}
-
-	DEBUG = true
-	defer func() { DEBUG = false }()
-
-	url := "https://golang.org/pkg/sometime/"
-	token1, err := tDB.New(url, 1)
-	if err != nil {
-		fmt.Printf("expected error (don't panic): %v\n", err)
-	} else {
-		t.Errorf("unexpected response: token for %s: %v\n", url, token1)
-	}
-
 }
