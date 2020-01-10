@@ -48,9 +48,9 @@ func readConfig(cfgFile string) error {
 	var err error
 	// try to read config data from evirinment
 
-	if ConnectOptions := os.Getenv("URLSHORTENER_ConnectOptions"); ConnectOptions != "" {
+	if value := os.Getenv("URLSHORTENER_ConnectOptions"); value != "" {
 		// parse JSON value of ConnectOptions
-		CONFIG.ConnectOptions = parseConOpt(ConnectOptions)
+		CONFIG.ConnectOptions = parseConOpt(value)
 	}
 	if value := os.Getenv("URLSHORTENER_Timeout"); value != "" {
 		CONFIG.Timeout, err = strconv.Atoi(value)
