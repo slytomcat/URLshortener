@@ -11,9 +11,7 @@ import (
 
 // Config - configuration structure
 type Config struct {
-	DBdriver       string // database driver ("MySQL" or "Redis")
-	DSN            string // MySQL or Redis connection string
-	MaxOpenConns   int    `json:",string"` // DB connections pool size for MySQL
+	DSN            string // Redis connection string
 	Timeout        int    `json:",string"` // New token creation timeout in ms
 	ListenHostPort string // host and port to listen on
 	DefaultExp     int    `json:",string"` // Default expiration of token (days)
@@ -22,8 +20,6 @@ type Config struct {
 }
 
 const (
-	// DefaultMaxOpenConns - default pool size of DB connections for MySQL
-	DefaultMaxOpenConns = 10
 	// DefaultTimeout - default timeout of new token creation
 	DefaultTimeout = 500
 	// DefaultListenHostPort - default host and port to listen on
@@ -43,14 +39,7 @@ var CONFIG Config
 func readConfig(cfgFile string) error {
 	var err error
 	// try to read config data from evirinment
-	CONFIG.DBdriver = os.Getenv("URLSHORTENER_DBdriver")
 	CONFIG.DSN = os.Getenv("URLSHORTENER_DSN")
-	if value := os.Getenv("URLSHORTENER_MaxOpenConns"); value != "" {
-		CONFIG.MaxOpenConns, err = strconv.Atoi(value)
-		if err != nil {
-			log.Printf("Warning: environments variable URLSHORTENER_MaxOpenConns conversion error: %v\n", err)
-		}
-	}
 	if value := os.Getenv("URLSHORTENER_Timeout"); value != "" {
 		CONFIG.Timeout, err = strconv.Atoi(value)
 		if err != nil {
@@ -85,14 +74,11 @@ func readConfig(cfgFile string) error {
 	}
 
 	// check mandatory config variable DSN
-	if CONFIG.DSN == "" || CONFIG.DBdriver == "" {
-		return errors.New("Mandatory configuration values DSN or DBdriver are not set")
+	if CONFIG.DSN == "" {
+		return errors.New("Mandatory configuration values DSN is not set")
 	}
 
 	// set default values for optional config variables
-	if CONFIG.MaxOpenConns == 0 {
-		CONFIG.MaxOpenConns = DefaultMaxOpenConns
-	}
 	if CONFIG.Timeout == 0 {
 		CONFIG.Timeout = DefaultTimeout
 	}

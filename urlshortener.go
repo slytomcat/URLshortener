@@ -7,7 +7,7 @@ func main() {
 	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
 
 	// get the configuratin variables
-	err := readConfig("cnf.json")
+	err := readConfig("cnfr.json")
 	if err != nil {
 		log.Fatalln(err)
 	}

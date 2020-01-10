@@ -1,9 +1,5 @@
 package main
 
-import (
-	"errors"
-)
-
 // Token is the interface to token database
 type Token interface {
 	New(longURL string, expiration int, timeout int) (string, error)
@@ -19,17 +15,6 @@ var (
 
 // NewTokenDB creates new data base interface
 func NewTokenDB() (err error) {
-	switch CONFIG.DBdriver {
-	case "MySQL":
-		if TokenDB, err = TokenDBNewM(); err != nil {
-			return err
-		}
-	case "Redis":
-		if TokenDB, err = TokenDBNewR(); err != nil {
-			return err
-		}
-	default:
-		return errors.New("wrong value of DBdriver configuration parameter")
-	}
-	return nil
+	TokenDB, err = TokenDBNewR()
+	return err
 }

@@ -114,9 +114,7 @@ func Test02Tools15EmptyJSON_(t *testing.T) {
 	if err != nil {
 		t.Error("error for empty JSON with set URLSHORTENER_DSN")
 	}
-	if CONFIG.DBdriver != "testDBdriver" ||
-		CONFIG.DSN != "testDSNvalue" ||
-		CONFIG.MaxOpenConns != DefaultMaxOpenConns ||
+	if CONFIG.DSN != "testDSNvalue" ||
 		CONFIG.Timeout != DefaultTimeout ||
 		CONFIG.ListenHostPort != DefaultListenHostPort ||
 		CONFIG.DefaultExp != DefaultDefaultExp ||
@@ -146,9 +144,7 @@ func Test03Tools20FullJSON(t *testing.T) {
 	if err != nil {
 		t.Errorf("error reading of example.cnf.json: %v", err)
 	}
-	if CONFIG.DBdriver != "MySQL" ||
-		CONFIG.DSN != "shortener:<password>@<protocol>(<host>:<port>)/shortener_DB" ||
-		CONFIG.MaxOpenConns != 33 ||
+	if CONFIG.DSN != "shortener:<password>@<protocol>(<host>:<port>)/shortener_DB" ||
 		CONFIG.Timeout != 777 ||
 		CONFIG.ListenHostPort != "0.0.0.0:80" ||
 		CONFIG.DefaultExp != 30 ||
@@ -160,9 +156,7 @@ func Test03Tools20FullJSON(t *testing.T) {
 
 func saveEnv() func() {
 	saveCONFIG := CONFIG
-	saveDriver := os.Getenv("URLSHORTENER_DBdriver")
 	saveDSN := os.Getenv("URLSHORTENER_DSN")
-	saveCons := os.Getenv("URLSHORTENER_MaxOpenConns")
 	saveTimeout := os.Getenv("URLSHORTENER_Timeout")
 	saveHost := os.Getenv("URLSHORTENER_ListenHostPort")
 	saveExp := os.Getenv("URLSHORTENER_DefaultExp")
@@ -171,9 +165,7 @@ func saveEnv() func() {
 
 	return func() {
 		CONFIG = saveCONFIG
-		os.Setenv("URLSHORTENER_DBdriver", saveDriver)
 		os.Setenv("URLSHORTENER_DSN", saveDSN)
-		os.Setenv("URLSHORTENER_MaxOpenConns", saveCons)
 		os.Setenv("URLSHORTENER_Timeout", saveTimeout)
 		os.Setenv("URLSHORTENER_ListenHostPort", saveHost)
 		os.Setenv("URLSHORTENER_DefaultExp", saveExp)
@@ -188,9 +180,8 @@ func Test03Tools30FullEnv(t *testing.T) {
 	defer saveEnv()()
 
 	CONFIG = Config{}
-	os.Setenv("URLSHORTENER_DBdriver", "TestDriver")
 	os.Setenv("URLSHORTENER_DSN", "TestDSN:DSN")
-	os.Setenv("URLSHORTENER_MaxOpenConns", "222")
+	os.Setenv("URLSHORTENER_Timeout", "787")
 	os.Setenv("URLSHORTENER_ListenHostPort", "testHost:testPort")
 	os.Setenv("URLSHORTENER_DefaultExp", "42")
 	os.Setenv("URLSHORTENER_ShortDomain", "test.domain")
@@ -201,32 +192,12 @@ func Test03Tools30FullEnv(t *testing.T) {
 		t.Errorf("unexpected error: %v", err)
 	}
 
-	if CONFIG.DBdriver != "TestDriver" ||
-		CONFIG.DSN != "TestDSN:DSN" ||
-		CONFIG.MaxOpenConns != 222 ||
+	if CONFIG.DSN != "TestDSN:DSN" ||
+		CONFIG.Timeout != 787 ||
 		CONFIG.ListenHostPort != "testHost:testPort" ||
 		CONFIG.DefaultExp != 42 ||
 		CONFIG.ShortDomain != "test.domain" ||
 		CONFIG.Mode != 66 {
-		t.Error("Wrong values set")
-	}
-}
-
-// test wromg enviroment variable URLSHORTENER_MaxOpenConns
-func Test03Tools35WrongEnvMaxOpenConns(t *testing.T) {
-	defer saveEnv()()
-
-	CONFIG = Config{}
-	os.Setenv("URLSHORTENER_DBdriver", "TestDriver")
-	os.Setenv("URLSHORTENER_DSN", "TestDSN:DSN")
-	os.Setenv("URLSHORTENER_MaxOpenConns", "@#2$")
-
-	err := readConfig("wrong.wrong.wrong.file.json")
-	if err != nil {
-		t.Errorf("unexpected error: %v", err)
-	}
-
-	if CONFIG.MaxOpenConns != DefaultMaxOpenConns {
 		t.Error("Wrong values set")
 	}
 }
