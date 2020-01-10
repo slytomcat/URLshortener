@@ -8,13 +8,13 @@ import (
 
 // test config reading from nonexistent file
 func Test01Tools00WrongFile(t *testing.T) {
-	saveDSN := os.Getenv("URLSHORTENER_DSN")
+	saveConnectOptions := os.Getenv("URLSHORTENER_ConnectOptions")
 	saveCONFIG := CONFIG
 	defer func() {
 		CONFIG = saveCONFIG
-		os.Setenv("URLSHORTENER_DSN", saveDSN)
+		os.Setenv("URLSHORTENER_ConnectOptions", saveConnectOptions)
 	}()
-	os.Unsetenv("URLSHORTENER_DSN")
+	os.Unsetenv("URLSHORTENER_ConnectOptions")
 	CONFIG = Config{}
 
 	err := readConfig("wrong.wrong.wrong.file.json")
@@ -37,13 +37,13 @@ func Test01Tools05EmptyFile(t *testing.T) {
 		t.Errorf("temp file closing error: %w", err)
 	}
 
-	saveDSN := os.Getenv("URLSHORTENER_DSN")
+	saveConnectOptions := os.Getenv("URLSHORTENER_ConnectOptions")
 	saveCONFIG := CONFIG
 	defer func() {
 		CONFIG = saveCONFIG
-		os.Setenv("URLSHORTENER_DSN", saveDSN)
+		os.Setenv("URLSHORTENER_ConnectOptions", saveConnectOptions)
 	}()
-	os.Unsetenv("URLSHORTENER_DSN")
+	os.Unsetenv("URLSHORTENER_ConnectOptions")
 	CONFIG = Config{}
 
 	err = readConfig(tmpfile.Name())
@@ -66,19 +66,20 @@ func Test01Tools10EmptyJSON(t *testing.T) {
 	if err != nil {
 		t.Errorf("temp file write error: %v", err)
 	}
-	saveDSN := os.Getenv("URLSHORTENER_DSN")
+
+	saveConnectOptions := os.Getenv("URLSHORTENER_ConnectOptions")
 	saveCONFIG := CONFIG
 	defer func() {
 		CONFIG = saveCONFIG
-		os.Setenv("URLSHORTENER_DSN", saveDSN)
+		os.Setenv("URLSHORTENER_ConnectOptions", saveConnectOptions)
 	}()
-	os.Unsetenv("URLSHORTENER_DSN")
+	os.Unsetenv("URLSHORTENER_ConnectOptions")
 	CONFIG = Config{}
 
 	err = readConfig(tmpfile.Name())
 
 	if err == nil {
-		t.Error("no error for empty JSON with URLSHORTENER_DSN unset")
+		t.Error("no error for empty JSON with URLSHORTENER_ConnectOptions unset")
 	}
 	t.Logf("Receved: %v", err)
 }
@@ -96,25 +97,21 @@ func Test02Tools15EmptyJSON_(t *testing.T) {
 		t.Errorf("temp file write error: %v", err)
 	}
 
+	saveConnectOptions := os.Getenv("URLSHORTENER_ConnectOptions")
 	saveCONFIG := CONFIG
-	saveDriver := os.Getenv("URLSHORTENER_DBdriver")
-	saveDSN := os.Getenv("URLSHORTENER_DSN")
 	defer func() {
 		CONFIG = saveCONFIG
-		os.Setenv("URLSHORTENER_DBdriver", saveDriver)
-		os.Setenv("URLSHORTENER_DSN", saveDSN)
+		os.Setenv("URLSHORTENER_ConnectOptions", saveConnectOptions)
 	}()
-
 	CONFIG = Config{}
-	os.Setenv("URLSHORTENER_DBdriver", "testDBdriver")
-	os.Setenv("URLSHORTENER_DSN", "testDSNvalue")
+	os.Setenv("URLSHORTENER_ConnectOptions", `{"Addrs":["testhost:6379"]}`)
 
 	err = readConfig(tmpfile.Name())
 
 	if err != nil {
-		t.Error("error for empty JSON with set URLSHORTENER_DSN")
+		t.Error("error for empty JSON with set URLSHORTENER_ConnectOptions")
 	}
-	if CONFIG.DSN != "testDSNvalue" ||
+	if !(len(CONFIG.ConnectOptions.Addrs) == 1 && CONFIG.ConnectOptions.Addrs[0] == "testhost:6379") ||
 		CONFIG.Timeout != DefaultTimeout ||
 		CONFIG.ListenHostPort != DefaultListenHostPort ||
 		CONFIG.DefaultExp != DefaultDefaultExp ||
@@ -126,25 +123,23 @@ func Test02Tools15EmptyJSON_(t *testing.T) {
 
 // test full success from example.cnf.json
 func Test03Tools20FullJSON(t *testing.T) {
+	saveConnectOptions := os.Getenv("URLSHORTENER_ConnectOptions")
 	saveCONFIG := CONFIG
-	saveDriver := os.Getenv("URLSHORTENER_DBdriver")
-	saveDSN := os.Getenv("URLSHORTENER_DSN")
 	defer func() {
 		CONFIG = saveCONFIG
-		os.Setenv("URLSHORTENER_DBdriver", saveDriver)
-		os.Setenv("URLSHORTENER_DSN", saveDSN)
+		os.Setenv("URLSHORTENER_ConnectOptions", saveConnectOptions)
 	}()
-
 	CONFIG = Config{}
-	os.Unsetenv("URLSHORTENER_DBdriver")
-	os.Unsetenv("URLSHORTENER_DSN")
+	os.Unsetenv("URLSHORTENER_ConnectOptions")
 
 	err := readConfig("example.cnf.json")
 
 	if err != nil {
 		t.Errorf("error reading of example.cnf.json: %v", err)
 	}
-	if CONFIG.DSN != "shortener:<password>@<protocol>(<host>:<port>)/shortener_DB" ||
+	if !(len(CONFIG.ConnectOptions.Addrs) == 1 &&
+		CONFIG.ConnectOptions.Addrs[0] == "<RedisHost>:6379" &&
+		CONFIG.ConnectOptions.DB == 7) ||
 		CONFIG.Timeout != 777 ||
 		CONFIG.ListenHostPort != "0.0.0.0:80" ||
 		CONFIG.DefaultExp != 30 ||
@@ -156,7 +151,7 @@ func Test03Tools20FullJSON(t *testing.T) {
 
 func saveEnv() func() {
 	saveCONFIG := CONFIG
-	saveDSN := os.Getenv("URLSHORTENER_DSN")
+	saveConnectOptions := os.Getenv("URLSHORTENER_ConnectOptions")
 	saveTimeout := os.Getenv("URLSHORTENER_Timeout")
 	saveHost := os.Getenv("URLSHORTENER_ListenHostPort")
 	saveExp := os.Getenv("URLSHORTENER_DefaultExp")
@@ -165,7 +160,7 @@ func saveEnv() func() {
 
 	return func() {
 		CONFIG = saveCONFIG
-		os.Setenv("URLSHORTENER_DSN", saveDSN)
+		os.Setenv("URLSHORTENER_ConnectOptions", saveConnectOptions)
 		os.Setenv("URLSHORTENER_Timeout", saveTimeout)
 		os.Setenv("URLSHORTENER_ListenHostPort", saveHost)
 		os.Setenv("URLSHORTENER_DefaultExp", saveExp)
@@ -180,7 +175,7 @@ func Test03Tools30FullEnv(t *testing.T) {
 	defer saveEnv()()
 
 	CONFIG = Config{}
-	os.Setenv("URLSHORTENER_DSN", "TestDSN:DSN")
+	os.Setenv("URLSHORTENER_ConnectOptions", `{"Addrs":["TestHost:6379"]}`)
 	os.Setenv("URLSHORTENER_Timeout", "787")
 	os.Setenv("URLSHORTENER_ListenHostPort", "testHost:testPort")
 	os.Setenv("URLSHORTENER_DefaultExp", "42")
@@ -192,7 +187,7 @@ func Test03Tools30FullEnv(t *testing.T) {
 		t.Errorf("unexpected error: %v", err)
 	}
 
-	if CONFIG.DSN != "TestDSN:DSN" ||
+	if !(len(CONFIG.ConnectOptions.Addrs) == 1 && CONFIG.ConnectOptions.Addrs[0] == "TestHost:6379") ||
 		CONFIG.Timeout != 787 ||
 		CONFIG.ListenHostPort != "testHost:testPort" ||
 		CONFIG.DefaultExp != 42 ||
@@ -207,8 +202,7 @@ func Test03Tools35WrongTimeout(t *testing.T) {
 	defer saveEnv()()
 
 	CONFIG = Config{}
-	os.Setenv("URLSHORTENER_DBdriver", "TestDriver")
-	os.Setenv("URLSHORTENER_DSN", "TestDSN:DSN")
+	os.Setenv("URLSHORTENER_ConnectOptions", `{"Addrs":["TestHost:6379"]}`)
 	os.Setenv("URLSHORTENER_Timeout", "@#2$")
 
 	err := readConfig("wrong.wrong.wrong.file.json")
@@ -226,8 +220,7 @@ func Test03Tools40WrongEnvDefaultExp(t *testing.T) {
 	defer saveEnv()()
 
 	CONFIG = Config{}
-	os.Setenv("URLSHORTENER_DBdriver", "TestDriver")
-	os.Setenv("URLSHORTENER_DSN", "TestDSN:DSN")
+	os.Setenv("URLSHORTENER_ConnectOptions", `{"Addrs":["TestHost:6379"]}`)
 	os.Setenv("URLSHORTENER_DefaultExp", "@#2$")
 
 	err := readConfig("wrong.wrong.wrong.file.json")
@@ -245,8 +238,7 @@ func Test03Tools45WrongEnvMode(t *testing.T) {
 	defer saveEnv()()
 
 	CONFIG = Config{}
-	os.Setenv("URLSHORTENER_DBdriver", "TestDriver")
-	os.Setenv("URLSHORTENER_DSN", "TestDSN:DSN")
+	os.Setenv("URLSHORTENER_ConnectOptions", `{"Addrs":["TestHost:6379"]}`)
 	os.Setenv("URLSHORTENER_Mode", "@#4$")
 
 	err := readConfig("wrong.wrong.wrong.file.json")

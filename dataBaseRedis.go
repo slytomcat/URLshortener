@@ -3,8 +3,6 @@ package main
 import (
 	"errors"
 	"fmt"
-	"regexp"
-	"strconv"
 	"time"
 
 	"github.com/go-redis/redis/v7"
@@ -31,22 +29,7 @@ type tokenDBR struct {
 // NewTokenDB creates new database interface to Redis database
 func NewTokenDB() error {
 
-	var err error
-	d := 0
-
-	res := regexp.MustCompile(`.*:(.*)@(.*)\((.*)\)/(.*)`).FindAllStringSubmatch(CONFIG.DSN, -1)
-	if len(res) > 0 {
-		d, err = strconv.Atoi(res[0][4])
-	}
-	if err != nil || len(res) == 0 {
-		return errors.New("wrong format of DSN config parameter")
-	}
-
-	db := redis.NewUniversalClient(&redis.UniversalOptions{
-		Addrs:    []string{res[0][3]},
-		Password: res[0][1],
-		DB:       d,
-	})
+	db := redis.NewUniversalClient(&CONFIG.ConnectOptions)
 
 	if _, err := db.Ping().Result(); err != nil {
 		return err
