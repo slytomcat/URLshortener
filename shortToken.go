@@ -1,11 +1,8 @@
 package main
 
-// ShortToken is string of tokenLenS BASE64 symbols from the url safe alphabet.
-// It represent 6*tokenLenS bits of data. ShortToken is not correct BASE64 data
+// ShortToken is string of the number of BASE64 symbols from the url safe alphabet.
+// It represent 6*len(token) bits of data. ShortToken is not correct BASE64 data
 // representation as number of bits is not always a multiple of 8 (1 byte).
-
-// If you need longer/shorten token length adjust tokenLenS constant and `token`
-// field length in schema.sql file
 
 import (
 	"crypto/rand"
@@ -14,35 +11,37 @@ import (
 	"strings"
 )
 
-const (
-	// tokenLenS - number of BASE64 symbols in token
-	tokenLenS = 6
-)
-
 var (
 	// DEBUG = true sets token as constant DEBUGToken
 	DEBUG = false
 	// DEBUGToken is token that returned in debug mode
-	DEBUGToken = strings.Repeat("_", tokenLenS)
+	DEBUGToken = ""
 )
 
-// NewShortToken creates the token (tokenLength BASE64 symbols) from random or debugging source
-func NewShortToken() (string, error) {
+// NewShortToken creates the token (`length` BASE64 symbols) from random or debugging source
+func NewShortToken(length int) (string, error) {
 
 	if DEBUG {
 		if DEBUGToken == "error" {
+			DEBUGToken = strings.Repeat("_", length)
+			// handle debugging error
 			return "", errors.New("debug error")
+		}
+		// setub debuggig token
+		if DEBUGToken == "" {
+			DEBUGToken = strings.Repeat("_", length)
 		}
 		return DEBUGToken, nil
 	}
 
-	buf := make([]byte, tokenLenS*6/8+1)
+	buf := make([]byte, length*6/8+1)
 
-	_, err := rand.Read(buf) // get secure random bytes
+	// get secure random bytes
+	_, err := rand.Read(buf)
 	if err != nil {
 		return "", err
 	}
 
 	// shorten BASE64 representation to tokenLenS symbols
-	return base64.URLEncoding.EncodeToString(buf)[:tokenLenS], nil
+	return base64.URLEncoding.EncodeToString(buf)[:length], nil
 }

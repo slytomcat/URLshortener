@@ -99,6 +99,21 @@ func healthCheck() error {
 		}
 	}
 
+	// measure the number of store attempts for CONFIG.Timeout time
+	DEBUG = true // activate debugging
+	defer func() {
+		DEBUG = false
+	}()
+	// setub debugging token as existing one
+	DEBUGToken = repl.Token
+
+	// try to store debug token (always the same) to receive the number of attempts that can be made during the timeout
+	_, err = TokenDB.New("URL", 1, CONFIG.Timeout)
+	if err == nil {
+		return errors.New("measuring the number of store attempts error")
+	}
+	log.Printf("measuring attempts EXPECTED error: %v", err)
+
 	// self-test part 3: make received token as expired
 	if CONFIG.Mode&disableExpire != 0 {
 		// use tokenDB interface as web-interface is locked in this service mode
