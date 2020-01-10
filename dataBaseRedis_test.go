@@ -10,9 +10,7 @@ import (
 	"time"
 )
 
-var tDBr Token
-
-// test new TokenDBR creation errors
+// test new TokenDB creation errors
 func Test05DBRNewTokenDBErrors(t *testing.T) {
 	defer saveEnv()()
 
@@ -43,12 +41,12 @@ func Test10DBRNewTokenDB(t *testing.T) {
 		t.Error(err)
 	}
 
-	tDBr, err = TokenDBNewR()
+	err = NewTokenDB()
 	if err != nil {
 		t.Error(err)
 	}
 
-	tDBr.Delete(DEBUGToken)
+	TokenDB.Delete(DEBUGToken)
 }
 
 func Test13DBROneTokenTwice(t *testing.T) {
@@ -58,20 +56,20 @@ func Test13DBROneTokenTwice(t *testing.T) {
 	t.Log(CONFIG.Timeout)
 
 	url := "https://golang.org/pkg/time/"
-	token, err := tDBr.New(url, 1, CONFIG.Timeout)
+	token, err := TokenDB.New(url, 1, CONFIG.Timeout)
 	if err != nil || token == "" {
 		t.Errorf("unexpected error: %s; token: %s", err, token)
 	} else {
 		t.Logf("expected result: token for %s: %v\n", url, token)
 	}
-	token1, err := tDBr.New(url, 1, CONFIG.Timeout)
+	token1, err := TokenDB.New(url, 1, CONFIG.Timeout)
 	if err != nil {
 		t.Logf("expected error: %s\n", err)
 	} else {
 		t.Errorf("wrong result: token for %s: %v\n", url, token1)
 	}
 	// clear
-	err = tDBr.Delete(DEBUGToken)
+	err = TokenDB.Delete(DEBUGToken)
 	if err != nil {
 		t.Errorf("Can't delete token: %v", err)
 	}
@@ -126,12 +124,12 @@ func raceNewToken(db Token, url string, t *testing.T) {
 
 // try to insert new token from concurrent goroutines
 func Test15DBRNewTokenRace(t *testing.T) {
-	raceNewToken(tDBr, "https://golang.org", t)
+	raceNewToken(TokenDB, "https://golang.org", t)
 }
 
 // try to make token expired
 func Test20DBRExpireToken(t *testing.T) {
-	err := tDBr.Expire(DEBUGToken, -1)
+	err := TokenDB.Expire(DEBUGToken, -1)
 	if err != nil {
 		t.Error(err)
 	}
@@ -139,13 +137,13 @@ func Test20DBRExpireToken(t *testing.T) {
 
 // try to update expired token from several concurrent goroutines
 func Test23DBROneMoreTokenRace(t *testing.T) {
-	raceNewToken(tDBr, "https://golang.org/pkg/time/error", t)
+	raceNewToken(TokenDB, "https://golang.org/pkg/time/error", t)
 }
 
 // try to receive long URL by token
 func Test25DBRGetToken(t *testing.T) {
 
-	lURL, err := tDBr.Get(DEBUGToken)
+	lURL, err := TokenDB.Get(DEBUGToken)
 	if err != nil {
 		t.Error(err)
 	}
@@ -155,12 +153,12 @@ func Test25DBRGetToken(t *testing.T) {
 // try to delete token
 func Test30DBRDelToken(t *testing.T) {
 
-	err := tDBr.Delete(DEBUGToken)
+	err := TokenDB.Delete(DEBUGToken)
 	if err != nil {
 		t.Error(err)
 	}
 
-	_, err = tDBr.Get(DEBUGToken)
+	_, err = TokenDB.Get(DEBUGToken)
 	if err == nil {
 		t.Error("no error when expected")
 	}
@@ -168,7 +166,7 @@ func Test30DBRDelToken(t *testing.T) {
 
 // try to expire non existing token
 func Test35DBRExpNonExisting(t *testing.T) {
-	err := tDBr.Expire("#$%^&*(", -1)
+	err := TokenDB.Expire("#$%^&*(", -1)
 	if err == nil {
 		t.Error("no error when expected")
 	}
@@ -176,7 +174,7 @@ func Test35DBRExpNonExisting(t *testing.T) {
 
 // try to delete non existing token
 func Test40DBRDelNonExisting(t *testing.T) {
-	err := tDBr.Delete("#$%^&*(")
+	err := TokenDB.Delete("#$%^&*(")
 	if err == nil {
 		t.Error("no error when expected")
 	}
@@ -184,7 +182,7 @@ func Test40DBRDelNonExisting(t *testing.T) {
 
 // try to get non existing token
 func Test40DBRGetNonExisting(t *testing.T) {
-	_, err := tDBr.Get("#$%^&*(")
+	_, err := TokenDB.Get("#$%^&*(")
 	if err == nil {
 		t.Error("no error when expected")
 	}
@@ -198,7 +196,7 @@ func Test50DBRDebugError(t *testing.T) {
 		DEBUG = false
 		DEBUGToken = strings.Repeat("_", tokenLenS)
 	}()
-	_, err := tDBr.New("someUrl.com", 1, 10)
+	_, err := TokenDB.New("someUrl.com", 1, 10)
 	if err == nil {
 		t.Error("no error when expected")
 	}
