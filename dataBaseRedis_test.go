@@ -73,13 +73,13 @@ func Test13DBROneTokenTwice(t *testing.T) {
 	defer func() { DEBUG = false }()
 
 	url := "https://golang.org/pkg/time/"
-	token, err := tDBr.New(url, 1, newTokenTimeOut)
+	token, err := tDBr.New(url, 1, CONFIG.Timeout)
 	if err != nil || token == "" {
 		t.Errorf("unexpected error: %s; token: %s", err, token)
 	} else {
 		t.Logf("expected result: token for %s: %v\n", url, token)
 	}
-	token1, err := tDBr.New(url, 1, newTokenTimeOut)
+	token1, err := tDBr.New(url, 1, CONFIG.Timeout)
 	if err != nil {
 		t.Logf("expected error: %s\n", err)
 	} else {
@@ -112,7 +112,7 @@ func raceNewToken(db Token, url string, t *testing.T) {
 		t.Logf("%v Racer %d: Ready!\n", time.Now(), i)
 		start.RLock()
 
-		token, err := db.New(url, 1, newTokenTimeOut)
+		token, err := db.New(url, 1, CONFIG.Timeout)
 
 		if err != nil {
 			t.Logf("%v Racer %d: %v \n", time.Now(), i, err)

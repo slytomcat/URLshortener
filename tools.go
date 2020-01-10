@@ -14,6 +14,7 @@ type Config struct {
 	DBdriver       string // database driver ("MySQL" or "Redis")
 	DSN            string // MySQL or Redis connection string
 	MaxOpenConns   int    `json:",string"` // DB connections pool size for MySQL
+	Timeout        int    `json:",string"` // New token creation timeout in ms
 	ListenHostPort string // host and port to listen on
 	DefaultExp     int    `json:",string"` // Default expiration of token (days)
 	ShortDomain    string // Short domain name for short URL creation
@@ -23,6 +24,8 @@ type Config struct {
 const (
 	// DefaultMaxOpenConns - default pool size of DB connections for MySQL
 	DefaultMaxOpenConns = 10
+	// DefaultTimeout - default timeout of new token creation
+	DefaultTimeout = 500
 	// DefaultListenHostPort - default host and port to listen on
 	DefaultListenHostPort = "localhost:8080"
 	// DefaultDefaultExp - default token expiration
@@ -42,22 +45,28 @@ func readConfig(cfgFile string) error {
 	// try to read config data from evirinment
 	CONFIG.DBdriver = os.Getenv("URLSHORTENER_DBdriver")
 	CONFIG.DSN = os.Getenv("URLSHORTENER_DSN")
-	if cons := os.Getenv("URLSHORTENER_MaxOpenConns"); cons != "" {
-		CONFIG.MaxOpenConns, err = strconv.Atoi(cons)
+	if value := os.Getenv("URLSHORTENER_MaxOpenConns"); value != "" {
+		CONFIG.MaxOpenConns, err = strconv.Atoi(value)
 		if err != nil {
 			log.Printf("Warning: environments variable URLSHORTENER_MaxOpenConns conversion error: %v\n", err)
 		}
 	}
+	if value := os.Getenv("URLSHORTENER_Timeout"); value != "" {
+		CONFIG.Timeout, err = strconv.Atoi(value)
+		if err != nil {
+			log.Printf("Warning: environments variable URLSHORTENER_Timeout conversion error: %v\n", err)
+		}
+	}
 	CONFIG.ListenHostPort = os.Getenv("URLSHORTENER_ListenHostPort")
-	if exp := os.Getenv("URLSHORTENER_DefaultExp"); exp != "" {
-		CONFIG.DefaultExp, err = strconv.Atoi(exp)
+	if value := os.Getenv("URLSHORTENER_DefaultExp"); value != "" {
+		CONFIG.DefaultExp, err = strconv.Atoi(value)
 		if err != nil {
 			log.Printf("Warning: environments variable URLSHORTENER_DefaultExp conversion error: %v\n", err)
 		}
 	}
 	CONFIG.ShortDomain = os.Getenv("URLSHORTENER_ShortDomain")
-	if mode := os.Getenv("URLSHORTENER_Mode"); mode != "" {
-		CONFIG.Mode, err = strconv.Atoi(mode)
+	if value := os.Getenv("URLSHORTENER_Mode"); value != "" {
+		CONFIG.Mode, err = strconv.Atoi(value)
 		if err != nil {
 			log.Printf("Warning: environments variable URLSHORTENER_Mode conversion error: %v\n", err)
 		}
@@ -83,6 +92,9 @@ func readConfig(cfgFile string) error {
 	// set default values for optional config variables
 	if CONFIG.MaxOpenConns == 0 {
 		CONFIG.MaxOpenConns = DefaultMaxOpenConns
+	}
+	if CONFIG.Timeout == 0 {
+		CONFIG.Timeout = DefaultTimeout
 	}
 	if CONFIG.ListenHostPort == "" {
 		CONFIG.ListenHostPort = DefaultListenHostPort
