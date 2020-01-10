@@ -100,10 +100,8 @@ func Test62MainGetTokenWOexp(t *testing.T) {
 	DEBUG = true
 	defer func() { DEBUG = false }()
 
-	err := TokenDB.Delete(DEBUGToken)
-	if err != nil {
-		t.Errorf("Can't clear table: %v", err)
-	}
+	// clear debug token
+	TokenDB.Delete(DEBUGToken)
 
 	resp, err := http.Post("http://"+CONFIG.ListenHostPort+"/api/v1/token", "application/json",
 		strings.NewReader(`{"url": "http://`+CONFIG.ShortDomain+`"}`))

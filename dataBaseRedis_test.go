@@ -16,23 +16,19 @@ var tDBr Token
 func Test05DBRNewTokenDBErrors(t *testing.T) {
 	defer saveEnv()()
 
-	CONFIG.DBdriver = "wrongValue"
+	CONFIG.DSN = "wrongValue"
 
 	err := NewTokenDB()
 	if err == nil {
 		t.Error("No error when expected")
 	}
 
-	CONFIG.DBdriver = "Redis"
-	CONFIG.DSN = "wrongValue"
+	CONFIG.DSN = ":wrongPass@tcp(wrongHost:6379)/0"
 
 	err = NewTokenDB()
 	if err == nil {
 		t.Error("No error when expected")
 	}
-
-	CONFIG.DBdriver = "Redis"
-	CONFIG.DSN = ":wrongPass@tcp(wrongHost:6379)/0"
 
 }
 
