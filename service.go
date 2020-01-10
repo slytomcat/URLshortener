@@ -24,19 +24,20 @@ const (
 
 var (
 	// simple home page to display on health check request
-	homePage = []byte(`
+	homePage = `
 <html>
 	<body>
 	   <h1>Home page of URLshortener</h1>
-
+	   <br>	   Service status: healthy, %s attempts per %v ms <br><br>
 	   See sources at <a href="https://github.com/slytomcat/URLshortener">https://github.com/slytomcat/URLshortener</a>
 	</body>
 </html>
-`)
-	// Database interface
-	tokenDB *TokenDB 
+`
 	// Server - HTTP server
-	Server  *http.Server 
+	Server *http.Server
+
+	attempts string // measured attempts during health-check
+
 )
 
 // healthCheck performs full self-test of service in all service modes
@@ -55,7 +56,7 @@ func healthCheck() error {
 	// self-test part 1: get short URL
 	if CONFIG.Mode&disableShortener != 0 {
 		// use tokenDB inteface as web-interface is locked in this service mode
-		if repl.Token, err = tokenDB.New(url, 1); err != nil {
+		if repl.Token, err = TokenDB.New(url, 1, CONFIG.Timeout); err != nil {
 			return fmt.Errorf("new token creation error: %w", err)
 		}
 		repl.URL = CONFIG.ShortDomain + "/" + repl.Token
@@ -84,7 +85,7 @@ func healthCheck() error {
 	// self-test part 2: check redirect
 	if CONFIG.Mode&disableRedirect != 0 {
 		// use tokenDB interface as web-interface is locked in this service mode
-		if _, err = tokenDB.Get(repl.Token); err != nil {
+		if _, err = TokenDB.Get(repl.Token); err != nil {
 			return fmt.Errorf("URL receiving error: %w", err)
 		}
 	} else {
@@ -101,10 +102,27 @@ func healthCheck() error {
 		}
 	}
 
+	// measure the number of store attempts for CONFIG.Timeout time
+	DEBUG = true // activate debugging
+	defer func() {
+		DEBUG = false
+	}()
+	// setub debugging token as existing one
+	DEBUGToken = repl.Token
+
+	// try to store debug token (always the same) to receive the number of attempts that can be made during the timeout
+	_, err = TokenDB.New("URL", 1, CONFIG.Timeout)
+	if err == nil {
+		return errors.New("measuring the number of store attempts error")
+	}
+	res := strings.Split(err.Error(), " ")
+	attempts = res[len(res)-2]
+	log.Printf("health-check counted %s attempts during %vms timeout", attempts, CONFIG.Timeout)
+
 	// self-test part 3: make received token as expired
 	if CONFIG.Mode&disableExpire != 0 {
 		// use tokenDB interface as web-interface is locked in this service mode
-		if err := tokenDB.Expire(repl.Token, -1); err != nil {
+		if err := TokenDB.Expire(repl.Token, -1); err != nil {
 			return fmt.Errorf("expire request error: %w", err)
 		}
 	} else {
@@ -139,7 +157,7 @@ func home(w http.ResponseWriter, r *http.Request) {
 	} else {
 		// show the home page if self-test was successfully passed
 		log.Printf("%s: success\n", rMess)
-		w.Write(homePage)
+		w.Write([]byte(fmt.Sprintf(homePage, attempts, CONFIG.Timeout)))
 	}
 }
 
@@ -161,7 +179,7 @@ func redirect(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// get the long URL
-	longURL, err := tokenDB.Get(sToken)
+	longURL, err := TokenDB.Get(sToken)
 	if err != nil {
 		log.Printf("%s: token was not found\n", rMess)
 		// send 404 response
@@ -224,7 +242,7 @@ func getNewToken(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// create new token
-	sToken, err := tokenDB.New(params.URL, params.Exp)
+	sToken, err := TokenDB.New(params.URL, params.Exp, CONFIG.Timeout)
 	if err != nil {
 		log.Printf("%s: token creation error: %v\n", rMess, err)
 		w.WriteHeader(http.StatusGatewayTimeout)
@@ -293,7 +311,7 @@ func expireToken(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// update token expiration
-	err = tokenDB.Expire(params.Token, params.Exp)
+	err = TokenDB.Expire(params.Token, params.Exp)
 	if err != nil {
 		log.Printf("%s: updating token expiration error: %s", rMess, err)
 		w.WriteHeader(http.StatusNotModified)
@@ -328,22 +346,8 @@ func myMUX(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func main() {
-
-	// set logging format
-	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
-
-	// get the configuratin variables
-	err := readConfig("cnf.json")
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	// create new TokenDB interface
-	tokenDB, err = TokenDBNew()
-	if err != nil {
-		log.Fatal(err)
-	}
+// ServiceStart starts new service with provided database interface
+func ServiceStart() error {
 
 	// register the handler
 	http.HandleFunc("/", myMUX)
@@ -353,5 +357,6 @@ func main() {
 	Server = &http.Server{
 		Addr:    CONFIG.ListenHostPort,
 		Handler: nil}
-	log.Println(Server.ListenAndServe())
+
+	return Server.ListenAndServe()
 }
