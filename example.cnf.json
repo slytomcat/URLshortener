@@ -1,7 +1,8 @@
 {
     "ConnectOptions": {
         "Addrs": [ "<RedisHost>:6379" ],
-        "DB": 7
+        "DB": 7,
+        "Password": "LongLongPasswordForRedisAUTH"
     },
     "Timeout":"777",
     "MaxOpenConns":"33",
