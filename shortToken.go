@@ -10,6 +10,7 @@ package main
 import (
 	"crypto/rand"
 	"encoding/base64"
+	"errors"
 	"strings"
 )
 
@@ -29,6 +30,9 @@ var (
 func NewShortToken() (string, error) {
 
 	if DEBUG {
+		if DEBUGToken == "error" {
+			return "", errors.New("debug error")
+		}
 		return DEBUGToken, nil
 	}
 
