@@ -12,10 +12,10 @@ import (
 
 // TokenDBR is a structure to handle the DB token operations via Redis databasa
 type TokenDBR struct {
-	db redis.Client
+	db redis.UniversalClient
 }
 
-// TokenDBNewR creates new database interface to Redis DB
+// TokenDBNewR creates new database interface to Redis database
 func TokenDBNewR() (*TokenDBR, error) {
 
 	var err error
@@ -29,9 +29,8 @@ func TokenDBNewR() (*TokenDBR, error) {
 		return nil, errors.New("wrong format of DSN config parameter")
 	}
 
-	db := redis.NewClient(&redis.Options{
-		Network:  res[0][2],
-		Addr:     res[0][3],
+	db := redis.NewUniversalClient(&redis.UniversalOptions{
+		Addrs:    []string{res[0][3]},
 		Password: res[0][1],
 		DB:       d,
 	})
@@ -40,7 +39,7 @@ func TokenDBNewR() (*TokenDBR, error) {
 		return nil, err
 	}
 
-	return &TokenDBR{*db}, nil
+	return &TokenDBR{db}, nil
 }
 
 // New creates new token for given long URL

@@ -1,6 +1,7 @@
 {
     "DBdriver":"MySQL",
     "DSN":"shortener:<password>@<protocol>(<host>:<port>)/shortener_DB",
+    "Timeout":"777",
     "MaxOpenConns":"33",
     "ListenHostPort":"0.0.0.0:80",
     "DefaultExp":"30",

@@ -12,39 +12,13 @@ import (
 
 var tDBr Token
 
-// test new TokenDBR creation
-func Test10DBRNewTokenDB(t *testing.T) {
-	var err error
-
-	saveCONFIG := CONFIG
-	saveDriver := os.Getenv("URLSHORTENER_DBdriver")
-	saveDSN := os.Getenv("URLSHORTENER_DSN")
-	saveTokenDB := TokenDB
-	defer func() {
-		CONFIG = saveCONFIG
-		os.Setenv("URLSHORTENER_DBdriver", saveDriver)
-		os.Setenv("URLSHORTENER_DSN", saveDSN)
-		TokenDB = saveTokenDB
-	}()
-
-	os.Setenv("URLSHORTENER_DSN", os.Getenv("URLSHORTENER_DSNR"))
-	os.Setenv("URLSHORTENER_DBdriver", "Redis")
-
-	err = readConfig("cnfr.json")
-	if err != nil {
-		t.Error(err)
-	}
-
-	err = NewTokenDB()
-	if err != nil {
-		t.Error(err)
-	}
-
-	tDBr = TokenDB
+// test new TokenDBR creation errors
+func Test05DBRNewTokenDBErrors(t *testing.T) {
+	defer saveEnv()()
 
 	CONFIG.DBdriver = "wrongValue"
 
-	err = NewTokenDB()
+	err := NewTokenDB()
 	if err == nil {
 		t.Error("No error when expected")
 	}
@@ -60,9 +34,22 @@ func Test10DBRNewTokenDB(t *testing.T) {
 	CONFIG.DBdriver = "Redis"
 	CONFIG.DSN = ":wrongPass@tcp(wrongHost:6379)/0"
 
-	err = NewTokenDB()
-	if err == nil {
-		t.Error("No error when expected")
+}
+
+// test new TokenDBR creation
+func Test10DBRNewTokenDB(t *testing.T) {
+
+	os.Setenv("URLSHORTENER_DSN", os.Getenv("URLSHORTENER_DSNR"))
+	os.Setenv("URLSHORTENER_DBdriver", "Redis")
+
+	err := readConfig("cnfr.json")
+	if err != nil {
+		t.Error(err)
+	}
+
+	tDBr, err = TokenDBNewR()
+	if err != nil {
+		t.Error(err)
 	}
 
 	tDBr.Delete(DEBUGToken)
@@ -71,6 +58,8 @@ func Test10DBRNewTokenDB(t *testing.T) {
 func Test13DBROneTokenTwice(t *testing.T) {
 	DEBUG = true
 	defer func() { DEBUG = false }()
+
+	t.Log(CONFIG.Timeout)
 
 	url := "https://golang.org/pkg/time/"
 	token, err := tDBr.New(url, 1, CONFIG.Timeout)

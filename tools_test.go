@@ -117,6 +117,7 @@ func Test02Tools15EmptyJSON_(t *testing.T) {
 	if CONFIG.DBdriver != "testDBdriver" ||
 		CONFIG.DSN != "testDSNvalue" ||
 		CONFIG.MaxOpenConns != DefaultMaxOpenConns ||
+		CONFIG.Timeout != DefaultTimeout ||
 		CONFIG.ListenHostPort != DefaultListenHostPort ||
 		CONFIG.DefaultExp != DefaultDefaultExp ||
 		CONFIG.ShortDomain != DefaultShortDomain ||
@@ -148,6 +149,7 @@ func Test03Tools20FullJSON(t *testing.T) {
 	if CONFIG.DBdriver != "MySQL" ||
 		CONFIG.DSN != "shortener:<password>@<protocol>(<host>:<port>)/shortener_DB" ||
 		CONFIG.MaxOpenConns != 33 ||
+		CONFIG.Timeout != 777 ||
 		CONFIG.ListenHostPort != "0.0.0.0:80" ||
 		CONFIG.DefaultExp != 30 ||
 		CONFIG.ShortDomain != "<shortDomain>" ||
