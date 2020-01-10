@@ -70,7 +70,7 @@ Configuration file must have a name `cnf.json` and it should be placed in the sa
     {
     "ConnectOptions": {
         "Addrs": [ "<RedisHost>:6379" ],
-        "Password": "LongLongPasswordForRedisAUTH"
+        "Password": "Long long password that is configured for Redis authorization"
         "DB": 7
     },
     "TokenLength":5
@@ -84,9 +84,9 @@ Configuration file must have a name `cnf.json` and it should be placed in the sa
 Where:
 
 - `ConnectOptions` - Redis connection options (mandatory):
-    - `Addrs` - Redis single node address or cluster/sentinel cluster addresses (mandatory one address for single node or several addresses for cluster/sentinel nodes)
-    - `Password` - Password for Redis authorisation (mandatory for remote redis connections)
-    - `DB` - database to be selected after connecting to Redis db/cluster (optional, only for single mode and failover clients, default 0)
+    - `Addrs` - Redis single node address or addresses of cluster/sentinel nodes (mandatory 1 address for single node or several addresses for cluster/sentinel nodes)
+    - `Password` - Password for Redis authorization (mandatory for remote redis connections)
+    - `DB` - database to be selected after connecting to Redis DB (optional, only for single mode and fail-over connection, default 0)
     - ... all possible connection options can be fount [here](https://godoc.org/github.com/go-redis/redis#UniversalOptions)
 - `TokenLength` - number of BASE64 symbols in token
 - `Timeout` - new token creation time-out in milliseconds (optional, default 500)

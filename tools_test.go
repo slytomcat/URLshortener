@@ -139,12 +139,10 @@ func Test03Tools20FullJSON(t *testing.T) {
 		t.Errorf("error reading of example.cnf.json: %v", err)
 	}
 
-	t.Logf("%v", CONFIG)
-
 	if !(len(CONFIG.ConnectOptions.Addrs) == 1 &&
 		CONFIG.ConnectOptions.Addrs[0] == "<RedisHost>:6379" &&
 		CONFIG.ConnectOptions.DB == 7 &&
-		CONFIG.ConnectOptions.Password == "LongLongPasswordForRedisAUTH") ||
+		CONFIG.ConnectOptions.Password == "Long long password that is configured for Redis authorization") ||
 		CONFIG.TokenLength != 5 ||
 		CONFIG.Timeout != 777 ||
 		CONFIG.ListenHostPort != "0.0.0.0:80" ||
