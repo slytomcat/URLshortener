@@ -49,6 +49,7 @@ func readConfig(cfgFile string) error {
 	// try to read config data from evirinment
 
 	if ConnectOptions := os.Getenv("URLSHORTENER_ConnectOptions"); ConnectOptions != "" {
+		// parse JSON value of ConnectOptions
 		CONFIG.ConnectOptions = parseConOpt(ConnectOptions)
 	}
 	if value := os.Getenv("URLSHORTENER_Timeout"); value != "" {
@@ -86,7 +87,7 @@ func readConfig(cfgFile string) error {
 
 	// check mandatory config variable DSN
 	if len(CONFIG.ConnectOptions.Addrs) == 0 {
-		return errors.New("Mandatory configuration values ConnectOptions is not set")
+		return errors.New("mandatory configuration value ConnectOptions is not set")
 	}
 
 	// set default values for optional config variables
