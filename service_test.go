@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"encoding/json"
 	"errors"
 	"io"
 	"io/ioutil"
@@ -30,7 +29,7 @@ func Test50mainStart(t *testing.T) {
 		t.Error(err)
 	}
 	if !bytes.Contains(buf, []byte("starting server at")) {
-		t.Errorf("received not expected output: %s", buf)
+		t.Errorf("received unexpected output: %s", buf)
 	}
 	log.Printf("%s", buf)
 
@@ -38,53 +37,10 @@ func Test50mainStart(t *testing.T) {
 
 // Full success test: get short URL and make redirect by it
 func Test55MainFullSuccess(t *testing.T) {
-	// use health check as long url
-	resp, err := http.Post("http://"+CONFIG.ListenHostPort+"/api/v1/token", "application/json",
-		strings.NewReader(`{"url": "http://` + CONFIG.ShortDomain + `/favicon.ico", "exp": "3"}`))
-	if err != nil {
-		t.Errorf("token request error: %v", err)
+	// use health-check function to test all-success case
+	if err := healthCheck(); err != nil {
+		t.Errorf("health-check error: %v", err)
 	}
-	defer resp.Body.Close()
-	buf := make([]byte, resp.ContentLength)
-	_, err = resp.Body.Read(buf)
-	if err != nil && !errors.Is(err, io.EOF) {
-		t.Errorf("response body reading error: %v", err)
-	}
-	var repl struct {
-		URL   string `json:"url"`
-		Token string `json:"token"`
-	}
-	err = json.Unmarshal(buf, &repl)
-	if err != nil {
-		t.Errorf("response body parsing error: %v", err)
-	}
-
-	resp2, err := http.Get("http://" + repl.URL)
-	if err != nil {
-		t.Errorf("redirect request error: %v", err)
-	}
-	defer resp2.Body.Close()
-
-	if  resp2.ContentLength != 0 {
-		t.Error("response body not empty")
-	}
-
-	if resp2.StatusCode != http.StatusOK {
-		t.Errorf("wrong status : %d", resp.StatusCode)
-	}
-
-	resp3, err := http.Post("http://"+CONFIG.ListenHostPort+"/api/v1/expire", "application/json",
-	strings.NewReader(`{"token": "`+repl.Token+`"}`))
-	if err != nil {
-		t.Errorf("expire request error: %v", err)
-	}
-	defer resp3.Body.Close()
-
-	if resp3.StatusCode != http.StatusOK {
-		t.Errorf("wrong status : %d", resp.StatusCode)
-	}
-
-
 }
 
 // test health check
@@ -94,6 +50,7 @@ func Test57MainHome(t *testing.T) {
 		t.Errorf("health check request error: %v", err)
 	}
 	defer resp.Body.Close()
+
 	buf := make([]byte, resp.ContentLength)
 	_, err = resp.Body.Read(buf)
 	if err != nil && !errors.Is(err, io.EOF) {
@@ -105,7 +62,7 @@ func Test57MainHome(t *testing.T) {
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		t.Errorf("wrong status : %d", resp.StatusCode)
+		t.Errorf("unexpected response status: %d", resp.StatusCode)
 	}
 
 }
@@ -118,8 +75,9 @@ func Test60MainBadRequest(t *testing.T) {
 		t.Errorf("token request error: %v", err)
 	}
 	defer resp.Body.Close()
+
 	if resp.StatusCode != http.StatusBadRequest {
-		t.Errorf("wrong status : %d", resp.StatusCode)
+		t.Errorf("unexpected response status: %d", resp.StatusCode)
 	}
 }
 
@@ -131,8 +89,9 @@ func Test61MainBadRequest2(t *testing.T) {
 		t.Errorf("token request error: %v", err)
 	}
 	defer resp.Body.Close()
+
 	if resp.StatusCode != http.StatusBadRequest {
-		t.Errorf("wrong status : %d", resp.StatusCode)
+		t.Errorf("unexpected response status: %d", resp.StatusCode)
 	}
 }
 
@@ -141,12 +100,8 @@ func Test62MainGetTokenWOexp(t *testing.T) {
 	DEBUG = true
 	defer func() { DEBUG = false }()
 
-	tx, _ := tokenDB.DB.Begin()
-	_, err := tx.Exec("DELETE FROM urls WHERE token=?", DEBUGToken)
-	if err != nil {
-		t.Errorf("Can't clear table: %v", err)
-	}
-	tx.Commit()
+	// clear debug token
+	TokenDB.Delete(DEBUGToken)
 
 	resp, err := http.Post("http://"+CONFIG.ListenHostPort+"/api/v1/token", "application/json",
 		strings.NewReader(`{"url": "http://`+CONFIG.ShortDomain+`"}`))
@@ -155,12 +110,44 @@ func Test62MainGetTokenWOexp(t *testing.T) {
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		t.Errorf("wrong status : %d", resp.StatusCode)
+		t.Errorf("unexpected response status: %d", resp.StatusCode)
 	}
 }
 
+// request expire without parameters
+func Test64MainExpireTokenWOparams(t *testing.T) {
+
+	resp, err := http.Post("http://"+CONFIG.ListenHostPort+"/api/v1/expire", "application/json",
+		strings.NewReader(`{}`))
+	if err != nil {
+		t.Errorf("expire request error: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Errorf("unexpected response status: %d", resp.StatusCode)
+	}
+
+}
+
+// request expire for not existing token
+func Test65MainExpireNotExistingToken(t *testing.T) {
+
+	resp, err := http.Post("http://"+CONFIG.ListenHostPort+"/api/v1/expire", "application/json",
+		strings.NewReader(`{"token":"$%#@*"}`)) // use non Base64 symbols
+	if err != nil {
+		t.Errorf("expire request error: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusNotModified {
+		t.Errorf("unexpected response status: %d", resp.StatusCode)
+	}
+
+}
+
 // try to get the same (debugging) token twice
-func Test62MainGetTokenTwice(t *testing.T) {
+func Test68MainGetTokenTwice(t *testing.T) {
 	DEBUG = true
 	defer func() { DEBUG = false }()
 	resp, err := http.Post("http://"+CONFIG.ListenHostPort+"/api/v1/token", "application/json",
@@ -170,7 +157,7 @@ func Test62MainGetTokenTwice(t *testing.T) {
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusGatewayTimeout {
-		t.Errorf("wrong status : %d", resp.StatusCode)
+		t.Errorf("unexpected response status: %d", resp.StatusCode)
 	}
 }
 
@@ -182,7 +169,7 @@ func Test70Main404(t *testing.T) {
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusNotFound {
-		t.Errorf("wrong status : %d", resp.StatusCode)
+		t.Errorf("unexpected response status: %d", resp.StatusCode)
 	}
 }
 
@@ -196,7 +183,7 @@ func Test73MainServiceModeDisableRedirect(t *testing.T) {
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusNotFound {
-		t.Errorf("wrong status : %d", resp.StatusCode)
+		t.Errorf("unexpected response status: %d", resp.StatusCode)
 	}
 }
 
@@ -211,7 +198,7 @@ func Test73MainServiceModeDisableShortener(t *testing.T) {
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusNotFound {
-		t.Errorf("wrong status : %d", resp.StatusCode)
+		t.Errorf("unexpected response status: %d", resp.StatusCode)
 	}
 }
 
@@ -226,7 +213,7 @@ func Test74MainServiceModeDisableExpire(t *testing.T) {
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusNotFound {
-		t.Errorf("wrong status : %d", resp.StatusCode)
+		t.Errorf("wrong status: %d", resp.StatusCode)
 	}
 }
 
@@ -240,7 +227,7 @@ func Test75MainHealthCheckModeDisableRedirect(t *testing.T) {
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		t.Errorf("wrong status : %d", resp.StatusCode)
+		t.Errorf("unexpected response status: %d", resp.StatusCode)
 	}
 }
 
@@ -254,10 +241,11 @@ func Test77MainHealthCheckModeDisableShortener(t *testing.T) {
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		t.Errorf("wrong status : %d", resp.StatusCode)
+		t.Errorf("unexpected response status: %d", resp.StatusCode)
 	}
 }
 
+// try health check in service mode disableExpire
 func Test78MainHealthCheckModeDisableExpire(t *testing.T) {
 	CONFIG.Mode = disableExpire
 
@@ -267,10 +255,9 @@ func Test78MainHealthCheckModeDisableExpire(t *testing.T) {
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		t.Errorf("wrong status : %d", resp.StatusCode)
+		t.Errorf("unexpected response status: %d", resp.StatusCode)
 	}
 }
-
 
 // try to stop service
 func Test99MainKill(t *testing.T) {
@@ -288,7 +275,7 @@ func Test99MainKill(t *testing.T) {
 		t.Error(err)
 	}
 	if !bytes.Contains(buf, []byte("http: Server closed")) {
-		t.Errorf("received not expected output: %s", buf)
+		t.Errorf("received unexpected output: %s", buf)
 	}
 	log.Printf("%s", buf)
 }
