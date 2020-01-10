@@ -65,32 +65,25 @@ Response: simple home page and HTTP 200 OK in case of good service health or HTT
 Configuration file must have a name `cnf.json` and it should be placed in the same folder where URLshortener was run. The file content must be the following correct JSON value:
 
     {
-
     "ConnectOptions": {
         "Addrs": [ "<RedisHost>:6379" ],
         "Password": "LongLongPasswordForRedisAUTH"
         "DB": 7
     },
-
     "Timeout":"777",
-
     "ListenHostPort":"0.0.0.0:80",
-
     "DefaultExp":"30",
-
     "ShortDomain":"<shortDomain>",
-
     "Mode":"0"
-
     }
 
 Where:
 
 - `ConnectOptions` - Redis connection options (mandatory):
-    `Addrs` - Redis single node address or cluster/sentinel cluster addresses (mandatory one address for single node or several addresses for cluster/sentinel nodes)
-    `Password` - Password for Redis authorisation (mandatory for remote redis connections)
-    `DB` - database to be selected after connecting to Redis db/cluster (optional, only for single mode and failover clients, default 0)
-    ... all possible connection options can be fount [here](https://godoc.org/github.com/go-redis/redis#UniversalOptions)
+    - `Addrs` - Redis single node address or cluster/sentinel cluster addresses (mandatory one address for single node or several addresses for cluster/sentinel nodes)
+    - `Password` - Password for Redis authorisation (mandatory for remote redis connections)
+    - `DB` - database to be selected after connecting to Redis db/cluster (optional, only for single mode and failover clients, default 0)
+    - ... all possible connection options can be fount [here](https://godoc.org/github.com/go-redis/redis#UniversalOptions)
 - `Timeout` - New token creation time-out in milliseconds (optional, default 500)
 - `ListenHostPort` - host and port to listen on (optional, default localhost:8080)
 - `DefaultExp` - default token expiration period in days (optional, default 1)
