@@ -35,14 +35,14 @@ func Test10DBRNewTokenDB(t *testing.T) {
 		t.Error(err)
 	}
 
-	TokenDB.Delete(DEBUGToken)
+	TokenDB.Delete(strings.Repeat("_", CONFIG.TokenLength))
 }
 
 func Test13DBROneTokenTwice(t *testing.T) {
 	DEBUG = true
 	defer func() { DEBUG = false }()
 
-	t.Log(CONFIG.Timeout)
+	TokenDB.Delete(strings.Repeat("_", CONFIG.TokenLength))
 
 	url := "https://golang.org/pkg/time/"
 	token, err := TokenDB.New(url, 1, CONFIG.Timeout)
@@ -58,10 +58,7 @@ func Test13DBROneTokenTwice(t *testing.T) {
 		t.Errorf("wrong result: token for %s: %v\n", url, token1)
 	}
 	// clear
-	err = TokenDB.Delete(DEBUGToken)
-	if err != nil {
-		t.Errorf("Can't delete token: %v", err)
-	}
+	TokenDB.Delete(DEBUGToken)
 }
 
 // Concurrent goroutines tries to make new short URL in the same time with the same token (debugging)
@@ -71,7 +68,7 @@ func raceNewToken(db Token, url string, t *testing.T) {
 
 	var wg sync.WaitGroup
 	var succes, fail, cnt, i int64
-	cnt = 4
+	cnt = 5
 	var start sync.RWMutex
 
 	start.Lock()
@@ -183,7 +180,7 @@ func Test50DBRDebugError(t *testing.T) {
 	DEBUGToken = "error"
 	defer func() {
 		DEBUG = false
-		DEBUGToken = strings.Repeat("_", tokenLenS)
+		DEBUGToken = strings.Repeat("_", 6)
 	}()
 	_, err := TokenDB.New("someUrl.com", 1, 10)
 	if err == nil {

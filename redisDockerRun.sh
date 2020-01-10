@@ -1,3 +1,3 @@
 #!/bin/bash
 
-docker run --name redis -d -p 6379:6379  redis:5.0.7-alpine redis-server --requirepass some_wery_long_password_that_stored_in_DSN_configuration_value
+docker run --name redis -d -p 6379:6379  redis:5.0.7-alpine redis-server --requirepass "some very long password that is provided through ConnectOptions.Password configuration value"
