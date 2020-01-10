@@ -36,7 +36,8 @@ var (
 	// Server - HTTP server
 	Server *http.Server
 
-	attempts string
+	attempts string // measured attempts during health-check
+
 )
 
 // healthCheck performs full self-test of service in all service modes
@@ -116,8 +117,7 @@ func healthCheck() error {
 	}
 	res := strings.Split(err.Error(), " ")
 	attempts = res[len(res)-2]
-
-	log.Printf("measuring attempts EXPECTED error: %v", err)
+	log.Printf("health-check counted %s attempts during %vms timeout", attempts, CONFIG.Timeout)
 
 	// self-test part 3: make received token as expired
 	if CONFIG.Mode&disableExpire != 0 {
