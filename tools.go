@@ -14,14 +14,17 @@ import (
 // Config - configuration structure
 type Config struct {
 	ConnectOptions redis.UniversalOptions // Redis connection options
-	Timeout        int                    `json:",string"` // New token creation timeout in ms
+	TokenLength    int                    `json:",int"` // token length
+	Timeout        int                    `json:",int"` // New token creation timeout in ms
 	ListenHostPort string                 // host and port to listen on
-	DefaultExp     int                    `json:",string"` // Default expiration of token (days)
+	DefaultExp     int                    `json:",int"` // Default expiration of token (days)
 	ShortDomain    string                 // Short domain name for short URL creation
-	Mode           int                    `json:",string"` // Service mode (see README.md)
+	Mode           int                    `json:",int"` // Service mode (see README.md)
 }
 
 const (
+	// DefaultTokenLength - default length of token
+	DefaultTokenLength = 6
 	// DefaultTimeout - default timeout of new token creation
 	DefaultTimeout = 500
 	// DefaultListenHostPort - default host and port to listen on
@@ -52,6 +55,14 @@ func readConfig(cfgFile string) error {
 		// parse JSON value of ConnectOptions
 		CONFIG.ConnectOptions = parseConOpt(value)
 	}
+
+	if value := os.Getenv("URLSHORTENER_TokenLength"); value != "" {
+		CONFIG.TokenLength, err = strconv.Atoi(value)
+		if err != nil {
+			log.Printf("Warning: environments variable URLSHORTENER_Timeout conversion error: %v\n", err)
+		}
+	}
+
 	if value := os.Getenv("URLSHORTENER_Timeout"); value != "" {
 		CONFIG.Timeout, err = strconv.Atoi(value)
 		if err != nil {
@@ -91,6 +102,9 @@ func readConfig(cfgFile string) error {
 	}
 
 	// set default values for optional config variables
+	if CONFIG.TokenLength == 0 {
+		CONFIG.TokenLength = DefaultTokenLength
+	}
 	if CONFIG.Timeout == 0 {
 		CONFIG.Timeout = DefaultTimeout
 	}

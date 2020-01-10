@@ -29,12 +29,17 @@ type tokenDBR struct {
 // NewTokenDB creates new database interface to Redis database
 func NewTokenDB() error {
 
+	// create new UniversalClient from CONFIG.ConnectOptions
 	db := redis.NewUniversalClient(&CONFIG.ConnectOptions)
 
+	// try to ping data base
 	if _, err := db.Ping().Result(); err != nil {
 		return err
 	}
+
+	// initialize the global variable
 	TokenDB = &tokenDBR{db}
+
 	return nil
 }
 
@@ -53,7 +58,7 @@ func (t *tokenDBR) New(longURL string, expiration int, timeout int) (string, err
 	attempt := 0
 	for {
 		attempt++
-		sToken, err := NewShortToken()
+		sToken, err := NewShortToken(CONFIG.TokenLength)
 		if err != nil {
 			return sToken, err
 		}

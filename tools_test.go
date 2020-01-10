@@ -112,6 +112,7 @@ func Test02Tools15EmptyJSON_(t *testing.T) {
 		t.Error("error for empty JSON with set URLSHORTENER_ConnectOptions")
 	}
 	if !(len(CONFIG.ConnectOptions.Addrs) == 1 && CONFIG.ConnectOptions.Addrs[0] == "testhost:6379") ||
+		CONFIG.TokenLength != DefaultTokenLength ||
 		CONFIG.Timeout != DefaultTimeout ||
 		CONFIG.ListenHostPort != DefaultListenHostPort ||
 		CONFIG.DefaultExp != DefaultDefaultExp ||
@@ -137,10 +138,14 @@ func Test03Tools20FullJSON(t *testing.T) {
 	if err != nil {
 		t.Errorf("error reading of example.cnf.json: %v", err)
 	}
+
+	t.Logf("%v", CONFIG)
+
 	if !(len(CONFIG.ConnectOptions.Addrs) == 1 &&
 		CONFIG.ConnectOptions.Addrs[0] == "<RedisHost>:6379" &&
 		CONFIG.ConnectOptions.DB == 7 &&
 		CONFIG.ConnectOptions.Password == "LongLongPasswordForRedisAUTH") ||
+		CONFIG.TokenLength != 5 ||
 		CONFIG.Timeout != 777 ||
 		CONFIG.ListenHostPort != "0.0.0.0:80" ||
 		CONFIG.DefaultExp != 30 ||
@@ -153,6 +158,7 @@ func Test03Tools20FullJSON(t *testing.T) {
 func saveEnv() func() {
 	saveCONFIG := CONFIG
 	saveConnectOptions := os.Getenv("URLSHORTENER_ConnectOptions")
+	saveTokenLength := os.Getenv("URLSHORTENER_TokenLength")
 	saveTimeout := os.Getenv("URLSHORTENER_Timeout")
 	saveHost := os.Getenv("URLSHORTENER_ListenHostPort")
 	saveExp := os.Getenv("URLSHORTENER_DefaultExp")
@@ -162,6 +168,7 @@ func saveEnv() func() {
 	return func() {
 		CONFIG = saveCONFIG
 		os.Setenv("URLSHORTENER_ConnectOptions", saveConnectOptions)
+		os.Setenv("URLSHORTENER_TokenLength", saveTokenLength)
 		os.Setenv("URLSHORTENER_Timeout", saveTimeout)
 		os.Setenv("URLSHORTENER_ListenHostPort", saveHost)
 		os.Setenv("URLSHORTENER_DefaultExp", saveExp)
@@ -177,6 +184,7 @@ func Test03Tools30FullEnv(t *testing.T) {
 
 	CONFIG = Config{}
 	os.Setenv("URLSHORTENER_ConnectOptions", `{"Addrs":["TestHost:6379"]}`)
+	os.Setenv("URLSHORTENER_TokenLength", "9")
 	os.Setenv("URLSHORTENER_Timeout", "787")
 	os.Setenv("URLSHORTENER_ListenHostPort", "testHost:testPort")
 	os.Setenv("URLSHORTENER_DefaultExp", "42")
@@ -189,6 +197,7 @@ func Test03Tools30FullEnv(t *testing.T) {
 	}
 
 	if !(len(CONFIG.ConnectOptions.Addrs) == 1 && CONFIG.ConnectOptions.Addrs[0] == "TestHost:6379") ||
+		CONFIG.TokenLength != 9 ||
 		CONFIG.Timeout != 787 ||
 		CONFIG.ListenHostPort != "testHost:testPort" ||
 		CONFIG.DefaultExp != 42 ||
@@ -198,7 +207,25 @@ func Test03Tools30FullEnv(t *testing.T) {
 	}
 }
 
-// test wromg enviroment variable URLSHORTENER_MaxOpenConns
+// test wromg enviroment variable URLSHORTENER_TokenLength
+func Test03Tools33WrongTokenLength(t *testing.T) {
+	defer saveEnv()()
+
+	CONFIG = Config{}
+	os.Setenv("URLSHORTENER_ConnectOptions", `{"Addrs":["TestHost:6379"]}`)
+	os.Setenv("URLSHORTENER_TokenLength", "%$")
+
+	err := readConfig("wrong.wrong.wrong.file.json")
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+
+	if CONFIG.TokenLength != DefaultTokenLength {
+		t.Error("Wrong values set")
+	}
+}
+
+// test wromg enviroment variable URLSHORTENER_Timeout
 func Test03Tools35WrongTimeout(t *testing.T) {
 	defer saveEnv()()
 
