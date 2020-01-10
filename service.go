@@ -24,17 +24,19 @@ const (
 
 var (
 	// simple home page to display on health check request
-	homePage = []byte(`
+	homePage = `
 <html>
 	<body>
 	   <h1>Home page of URLshortener</h1>
-
+	   <br>	   Service status: healthy, %s attempts per %v ms <br><br>
 	   See sources at <a href="https://github.com/slytomcat/URLshortener">https://github.com/slytomcat/URLshortener</a>
 	</body>
 </html>
-`)
+`
 	// Server - HTTP server
 	Server *http.Server
+
+	attempts string
 )
 
 // healthCheck performs full self-test of service in all service modes
@@ -112,6 +114,9 @@ func healthCheck() error {
 	if err == nil {
 		return errors.New("measuring the number of store attempts error")
 	}
+	res := strings.Split(err.Error(), " ")
+	attempts = res[len(res)-2]
+
 	log.Printf("measuring attempts EXPECTED error: %v", err)
 
 	// self-test part 3: make received token as expired
@@ -152,7 +157,7 @@ func home(w http.ResponseWriter, r *http.Request) {
 	} else {
 		// show the home page if self-test was successfully passed
 		log.Printf("%s: success\n", rMess)
-		w.Write(homePage)
+		w.Write([]byte(fmt.Sprintf(homePage, attempts, CONFIG.Timeout)))
 	}
 }
 
