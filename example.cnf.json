@@ -4,10 +4,11 @@
         "DB": 7,
         "Password": "LongLongPasswordForRedisAUTH"
     },
-    "Timeout":"777",
-    "MaxOpenConns":"33",
+    "TokenLength":5,
+    "Timeout":777,
+    "MaxOpenConns":33,
     "ListenHostPort":"0.0.0.0:80",
-    "DefaultExp":"30",
+    "DefaultExp":30,
     "ShortDomain":"<shortDomain>",
-    "Mode":"1"
+    "Mode":1
 }
