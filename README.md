@@ -26,6 +26,12 @@ Success response: HTTP 200 OK with body containing JSON with following parameter
 - token: token for short URL
 - url: short URL
 
+Note: token created as random and the saving it to DB may cause duplicate error. In order to avoid such error service makes several attempts to store random token. The number of attempts is limited by the `Timeout` configuration value by time, not by amount.
+
+When log contains errors like `can't store a new token for 25 attempts` (note big amount of unsuccessful attempts) then it most probably means that active (not expired) token amount is near to maximum possible tokens amount (for selected token length). Consider increasing of token length or decrease token expiration (`DefaultExp` confinguration value).
+
+If number of unsuccessful attempts in the log errors is small (1-5) then consider increasing of `Timeout` configuration value.
+
 ### Request for set new expiration of token:
 
 URL: `<host>[:<port>]/api/v1/expire`
@@ -60,11 +66,13 @@ Configuration file must have a name `cnf.json` and it should be placed in the sa
 
     {
 
-    "DBdriver":"MySQL",
+    "ConnectOptions": {
+        "Addrs": [ "<RedisHost>:6379" ],
+        "Password": "LongLongPasswordForRedisAUTH"
+        "DB": 7
+    },
 
-    "DSN":"shortener:<password>@<protocol>(<host>:<port>)/shortener_DB",
-
-    "MaxOpenConns":"33",
+    "Timeout":"777",
 
     "ListenHostPort":"0.0.0.0:80",
 
@@ -78,9 +86,12 @@ Configuration file must have a name `cnf.json` and it should be placed in the sa
 
 Where:
 
-- `DBdriver` - database driver to use (Mandatory, "MySQL" or "Redis")
-- `DSN` - MySQL or Redis connection string (mandatory)
-- `MaxOpenConns` - DataBase connections pool size (optional, default 10)
+- `ConnectOptions` - Redis connection options (mandatory):
+    `Addrs` - Redis single node address or cluster/sentinel cluster addresses (mandatory one address for single node or several addresses for cluster/sentinel nodes)
+    `Password` - Password for Redis authorisation (mandatory for remote redis connections)
+    `DB` - database to be selected after connecting to Redis db/cluster (optional, only for single mode and failover clients, default 0)
+    ... all possible connection options can be fount [here](https://godoc.org/github.com/go-redis/redis#UniversalOptions)
+- `Timeout` - New token creation time-out in milliseconds (optional, default 500)
 - `ListenHostPort` - host and port to listen on (optional, default localhost:8080)
 - `DefaultExp` - default token expiration period in days (optional, default 1)
 - `ShortDomain` - short domain name for short URL creation (optional, default localhost:8080)
@@ -96,6 +107,6 @@ Where:
 
 Value of `Mode` can be a sum of several modes, for example `"Mode":"6"` disables two requests: request for short URL and request to set new expiration of token.
 
-Configuration data can be also provided via environment variables URLSHORTENER_DBdriver, URLSHORTENER_DSN, URLSHORTENER_MaxOpenConns, URLSHORTENER_ListenHostPort, URLSHORTENER_DefaultExp, URLSHORTENER_ShortDomain and URLSHORTENER_Mode.
+Configuration data can be also provided via environment variables URLSHORTENER_ConnectOptions, URLSHORTENER_Timeout, URLSHORTENER_ListenHostPort, URLSHORTENER_DefaultExp, URLSHORTENER_ShortDomain and URLSHORTENER_Mode.
 
 Configuration file values have more priority then environment variables.

@@ -139,7 +139,8 @@ func Test03Tools20FullJSON(t *testing.T) {
 	}
 	if !(len(CONFIG.ConnectOptions.Addrs) == 1 &&
 		CONFIG.ConnectOptions.Addrs[0] == "<RedisHost>:6379" &&
-		CONFIG.ConnectOptions.DB == 7) ||
+		CONFIG.ConnectOptions.DB == 7 &&
+		CONFIG.ConnectOptions.Password == "LongLongPasswordForRedisAUTH") ||
 		CONFIG.Timeout != 777 ||
 		CONFIG.ListenHostPort != "0.0.0.0:80" ||
 		CONFIG.DefaultExp != 30 ||
