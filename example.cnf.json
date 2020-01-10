@@ -2,7 +2,7 @@
     "ConnectOptions": {
         "Addrs": [ "<RedisHost>:6379" ],
         "DB": 7,
-        "Password": "LongLongPasswordForRedisAUTH"
+        "Password": "Long long password that is configured for Redis authorization"
     },
     "TokenLength":5,
     "Timeout":777,
