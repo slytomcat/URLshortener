@@ -2,7 +2,6 @@ package main
 
 import (
 	"math/rand"
-	"os"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -11,19 +10,12 @@ import (
 )
 
 // test new TokenDB creation errors
-func Test05DBRNewTokenDBErrors(t *testing.T) {
+func Test05DBRNewTokenDBError(t *testing.T) {
 	defer saveEnv()()
 
-	CONFIG.DSN = "wrongValue"
+	CONFIG.ConnectOptions = parseConOpt(`{"Addrs":["Wrong.Host:6379"]}`)
 
 	err := NewTokenDB()
-	if err == nil {
-		t.Error("No error when expected")
-	}
-
-	CONFIG.DSN = ":wrongPass@tcp(wrongHost:6379)/0"
-
-	err = NewTokenDB()
 	if err == nil {
 		t.Error("No error when expected")
 	}
@@ -32,9 +24,6 @@ func Test05DBRNewTokenDBErrors(t *testing.T) {
 
 // test new TokenDBR creation
 func Test10DBRNewTokenDB(t *testing.T) {
-
-	os.Setenv("URLSHORTENER_DSN", os.Getenv("URLSHORTENER_DSNR"))
-	os.Setenv("URLSHORTENER_DBdriver", "Redis")
 
 	err := readConfig("cnfr.json")
 	if err != nil {

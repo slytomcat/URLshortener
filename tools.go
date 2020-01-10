@@ -7,16 +7,18 @@ import (
 	"log"
 	"os"
 	"strconv"
+
+	"github.com/go-redis/redis/v7"
 )
 
 // Config - configuration structure
 type Config struct {
-	DSN            string // Redis connection string
-	Timeout        int    `json:",string"` // New token creation timeout in ms
-	ListenHostPort string // host and port to listen on
-	DefaultExp     int    `json:",string"` // Default expiration of token (days)
-	ShortDomain    string // Short domain name for short URL creation
-	Mode           int    `json:",string"` // Service mode (see README.md)
+	ConnectOptions redis.UniversalOptions // Redis connection options
+	Timeout        int                    `json:",string"` // New token creation timeout in ms
+	ListenHostPort string                 // host and port to listen on
+	DefaultExp     int                    `json:",string"` // Default expiration of token (days)
+	ShortDomain    string                 // Short domain name for short URL creation
+	Mode           int                    `json:",string"` // Service mode (see README.md)
 }
 
 const (
@@ -35,11 +37,20 @@ const (
 // CONFIG - structure with the configuration variables
 var CONFIG Config
 
+func parseConOpt(s string) redis.UniversalOptions {
+	conOpt := redis.UniversalOptions{}
+	json.Unmarshal([]byte(s), &conOpt)
+	return conOpt
+}
+
 // readConfig reads configuration file and also tries to get data from environment variables
 func readConfig(cfgFile string) error {
 	var err error
 	// try to read config data from evirinment
-	CONFIG.DSN = os.Getenv("URLSHORTENER_DSN")
+
+	if ConnectOptions := os.Getenv("URLSHORTENER_ConnectOptions"); ConnectOptions != "" {
+		CONFIG.ConnectOptions = parseConOpt(ConnectOptions)
+	}
 	if value := os.Getenv("URLSHORTENER_Timeout"); value != "" {
 		CONFIG.Timeout, err = strconv.Atoi(value)
 		if err != nil {
@@ -74,8 +85,8 @@ func readConfig(cfgFile string) error {
 	}
 
 	// check mandatory config variable DSN
-	if CONFIG.DSN == "" {
-		return errors.New("Mandatory configuration values DSN is not set")
+	if len(CONFIG.ConnectOptions.Addrs) == 0 {
+		return errors.New("Mandatory configuration values ConnectOptions is not set")
 	}
 
 	// set default values for optional config variables
