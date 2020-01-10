@@ -28,11 +28,11 @@ Success response: HTTP 200 OK with body containing JSON with following parameter
 
 Note: Token created as random and the saving it to DB may cause duplicate error. In order to avoid such error service makes several attempts to store random token. The number of attempts is limited by the `Timeout` configuration value by time, not by amount.
 
-While performing health-check the number of possible attempts during time-out is measured and stored in log - it is not the real error, this error is emulated specially for attempts measurement.
+While performing health-check the maximum number of possible attempts during time-out is measured and displayed on the home page. The measurement is also written in log.
 
-When log contains real errors like `can't store a new token for 25 attempts` (note big amount of unsuccessful attempts) then it most probably means that active (not expired) token amount is near to maximum possible tokens amount (for configured token length). Consider increasing of token length (`TokenLength` configuration value) or decrease token expiration (`DefaultExp` configuration value or `exp` parameter in request for new short URL).
+When log contains errors like `can't store a new token for 75 attempts` (note big amount of unsuccessful attempts) then it most probably means that active (not expired) token amount is near to maximum possible tokens amount (for configured token length). Consider increasing of token length (`TokenLength` configuration value) or decrease token expiration (`DefaultExp` configuration value and/or `exp` parameter in the request for new short URL).
 
-If number of unsuccessful attempts in the log errors is small (1-5) then consider increasing of `Timeout` configuration value.
+If number of unsuccessful attempts in the log errors is small (1-5) then consider increasing of `Timeout` configuration value. 20-30 attempts allows to fulfill the space of tokens up to 60-70% before timeout errors (during request for short token) occasionally appears.
 
 
 ### Request for set new expiration of token:
@@ -63,17 +63,17 @@ Method: `GET`
 Response: simple home page and HTTP 200 OK in case of good service health or HTTP 500 Server error in case of bad service health
 
 
-### Configuration file
+### Sevice configuration
 
-Configuration file must have a name `cnf.json` and it should be placed in the same folder where URLshortener was run. The file content must be the following correct JSON value:
+Configuration file must have a name `cnfr.json` and it should be placed in the same folder where URLshortener was run. The file content must be the following correct JSON value:
 
     {
     "ConnectOptions": {
         "Addrs": [ "<RedisHost>:6379" ],
-        "Password": "Long long password that is configured for Redis authorization"
+        "Password": "Long long password that is configured for Redis authorization",
         "DB": 7
     },
-    "TokenLength":5
+    "TokenLength":5,
     "Timeout":777,
     "ListenHostPort":"0.0.0.0:80",
     "DefaultExp":30,
