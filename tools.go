@@ -14,12 +14,12 @@ import (
 // Config - configuration structure
 type Config struct {
 	ConnectOptions redis.UniversalOptions // Redis connection options
-	TokenLength    int                    `json:",int"` // token length
-	Timeout        int                    `json:",int"` // New token creation timeout in ms
+	TokenLength    int                    // token length
+	Timeout        int                    // New token creation timeout in ms
 	ListenHostPort string                 // host and port to listen on
-	DefaultExp     int                    `json:",int"` // Default expiration of token (days)
+	DefaultExp     int                    // Default expiration of token (days)
 	ShortDomain    string                 // Short domain name for short URL creation
-	Mode           int                    `json:",int"` // Service mode (see README.md)
+	Mode           int                    // Service mode (see README.md)
 }
 
 const (
