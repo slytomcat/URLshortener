@@ -10,13 +10,26 @@ import (
 	"github.com/go-redis/redis/v7"
 )
 
-// TokenDBR is a structure to handle the DB token operations via Redis databasa
-type TokenDBR struct {
+// Token is the interface to token database
+type Token interface {
+	New(longURL string, expiration int, timeout int) (string, error)
+	Get(sToken string) (string, error)
+	Expire(sToken string, expiration int) error
+	Delete(sToken string) error
+}
+
+var (
+	// TokenDB - Database interface
+	TokenDB Token
+)
+
+// tokenDBR is a structure to handle the DB token operations via Redis databasa
+type tokenDBR struct {
 	db redis.UniversalClient
 }
 
-// TokenDBNewR creates new database interface to Redis database
-func TokenDBNewR() (*TokenDBR, error) {
+// NewTokenDB creates new database interface to Redis database
+func NewTokenDB() error {
 
 	var err error
 	d := 0
@@ -26,7 +39,7 @@ func TokenDBNewR() (*TokenDBR, error) {
 		d, err = strconv.Atoi(res[0][4])
 	}
 	if err != nil || len(res) == 0 {
-		return nil, errors.New("wrong format of DSN config parameter")
+		return errors.New("wrong format of DSN config parameter")
 	}
 
 	db := redis.NewUniversalClient(&redis.UniversalOptions{
@@ -36,14 +49,14 @@ func TokenDBNewR() (*TokenDBR, error) {
 	})
 
 	if _, err := db.Ping().Result(); err != nil {
-		return nil, err
+		return err
 	}
-
-	return &TokenDBR{db}, nil
+	TokenDB = &tokenDBR{db}
+	return nil
 }
 
 // New creates new token for given long URL
-func (t *TokenDBR) New(longURL string, expiration int, timeout int) (string, error) {
+func (t *tokenDBR) New(longURL string, expiration int, timeout int) (string, error) {
 
 	// Using many attempts to store the new random token dramatically increases maximum amount of
 	// used tokens since:
@@ -84,13 +97,13 @@ func (t *TokenDBR) New(longURL string, expiration int, timeout int) (string, err
 }
 
 // Get returns the long URL for given token
-func (t *TokenDBR) Get(sToken string) (string, error) {
+func (t *tokenDBR) Get(sToken string) (string, error) {
 	// just return result of standard call
 	return t.db.Get(sToken).Result()
 }
 
 // Expire sets new expire datetime for given token
-func (t *TokenDBR) Expire(sToken string, expiration int) error {
+func (t *tokenDBR) Expire(sToken string, expiration int) error {
 	ok, err := t.db.Expire(sToken, time.Hour*24*time.Duration(expiration)).Result()
 	if !ok {
 		return errors.New("Token is not exists")
@@ -99,7 +112,7 @@ func (t *TokenDBR) Expire(sToken string, expiration int) error {
 }
 
 // Delete removes token from database
-func (t *TokenDBR) Delete(sToken string) error {
+func (t *tokenDBR) Delete(sToken string) error {
 	deleted, err := t.db.Del(sToken).Result()
 	if deleted == 0 {
 		return errors.New("Token is not exists")
