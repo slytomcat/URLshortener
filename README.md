@@ -7,7 +7,7 @@
 
 URLshortener is a micro-service to shorten long URLs and to handle the redirection by generated short URLs.
 
-The service requires and MySQL server connection and database structure described in [schema.sql](https://github.com/slytomcat/URLshortener/blob/master/schema.sql)
+The service requires Redis database connection. See example how to run Redis in Docker in [redisDockerRun.sh](https://github.com/slytomcat/URLshortener/blob/master/redisDockerRun.sh)
 
 
 ### Request for short URL:
@@ -35,7 +35,7 @@ Method: `POST`
 Request body: JSON with following parameter:
 
 - token: token for short URL, mandatory.
-- exp: new expiration in days from now, optional. Default 0, value that marks token as expired. 
+- exp: new expiration in days from now, optional. Default 0, value that marks token as expired.
 
 Success response: HTTP 200 OK with empty body
 
@@ -56,10 +56,10 @@ Response: simple home page and HTTP 200 OK in case of good service health or HTT
 
 ### Configuration file
 
-Configuration file must have a name `cnf.json` and it should be placed in the same folder where URLshortener was run. The file content must be the following correct JSON value: 
+Configuration file must have a name `cnf.json` and it should be placed in the same folder where URLshortener was run. The file content must be the following correct JSON value:
 
     {
-    
+
     "DBdriver":"MySQL",
 
     "DSN":"shortener:<password>@<protocol>(<host>:<port>)/shortener_DB",
@@ -96,6 +96,6 @@ Where:
 
 Value of `Mode` can be a sum of several modes, for example `"Mode":"6"` disables two requests: request for short URL and request to set new expiration of token.
 
-Configuration data can be also provided via environment variables URLSHORTENER_DBdriver, URLSHORTENER_DSN, URLSHORTENER_MaxOpenConns, URLSHORTENER_ListenHostPort, URLSHORTENER_DefaultExp, URLSHORTENER_ShortDomain and URLSHORTENER_Mode. 
+Configuration data can be also provided via environment variables URLSHORTENER_DBdriver, URLSHORTENER_DSN, URLSHORTENER_MaxOpenConns, URLSHORTENER_ListenHostPort, URLSHORTENER_DefaultExp, URLSHORTENER_ShortDomain and URLSHORTENER_Mode.
 
 Configuration file values have more priority then environment variables.
