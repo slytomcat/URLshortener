@@ -133,7 +133,7 @@ func Test03Tools20FullJSON(t *testing.T) {
 	CONFIG = Config{}
 	os.Unsetenv("URLSHORTENER_ConnectOptions")
 
-	err := readConfig("example.cnf.json")
+	err := readConfig("example.cnfr.json")
 
 	if err != nil {
 		t.Errorf("error reading of example.cnf.json: %v", err)
