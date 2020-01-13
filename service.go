@@ -28,7 +28,7 @@ var (
 <html>
 	<body>
 	   <h1>Home page of URLshortener</h1>
-	   <br>	   Service status: healthy, %s attempts per %v ms <br><br>
+	   <br>	   Service status: healthy, %d attempts per %d ms <br><br>
 	   See sources at <a href="https://github.com/slytomcat/URLshortener">https://github.com/slytomcat/URLshortener</a>
 	</body>
 </html>
@@ -36,7 +36,7 @@ var (
 	// Server - HTTP server
 	Server *http.Server
 
-	attempts string // measured attempts during health-check
+	attempts int // measured attempts during health-check
 
 )
 
@@ -56,7 +56,7 @@ func healthCheck() error {
 	// self-test part 1: get short URL
 	if CONFIG.Mode&disableShortener != 0 {
 		// use tokenDB inteface as web-interface is locked in this service mode
-		if repl.Token, err = TokenDB.New(url, 1, CONFIG.Timeout); err != nil {
+		if repl.Token, err = TokenDB.New(url, 1); err != nil {
 			return fmt.Errorf("new token creation error: %w", err)
 		}
 		repl.URL = CONFIG.ShortDomain + "/" + repl.Token
@@ -102,23 +102,6 @@ func healthCheck() error {
 		}
 	}
 
-	// measure the number of store attempts for CONFIG.Timeout time
-	DEBUG = true // activate debugging
-	defer func() {
-		DEBUG = false
-	}()
-	// setub debugging token as existing one
-	DEBUGToken = repl.Token
-
-	// try to store debug token (always the same) to receive the number of attempts that can be made during the timeout
-	_, err = TokenDB.New("URL", 1, CONFIG.Timeout)
-	if err == nil {
-		return errors.New("measuring the number of store attempts error")
-	}
-	res := strings.Split(err.Error(), " ")
-	attempts = res[len(res)-2]
-	log.Printf("health-check counted %s attempts during %vms timeout", attempts, CONFIG.Timeout)
-
 	// self-test part 3: make received token as expired
 	if CONFIG.Mode&disableExpire != 0 {
 		// use tokenDB interface as web-interface is locked in this service mode
@@ -139,6 +122,13 @@ func healthCheck() error {
 			return fmt.Errorf("expire request: unexpected response status: %v", resp3.StatusCode)
 		}
 	}
+	// self-test part 4: measure the number of store attempts for CONFIG.Timeout time
+	attempts, err = TokenDB.Test()
+	if err != nil {
+		return fmt.Errorf("measuring the number of store attempts error: %w", err)
+	}
+	log.Printf("health-check counted %d attempts during %dms timeout", attempts, CONFIG.Timeout)
+
 	return nil
 }
 
@@ -242,7 +232,7 @@ func getNewToken(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// create new token
-	sToken, err := TokenDB.New(params.URL, params.Exp, CONFIG.Timeout)
+	sToken, err := TokenDB.New(params.URL, params.Exp)
 	if err != nil {
 		log.Printf("%s: token creation error: %v\n", rMess, err)
 		w.WriteHeader(http.StatusGatewayTimeout)

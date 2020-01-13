@@ -10,10 +10,11 @@ import (
 
 // Token is the interface to token database
 type Token interface {
-	New(longURL string, expiration int, timeout int) (string, error)
+	New(longURL string, expiration int) (string, error)
 	Get(sToken string) (string, error)
 	Expire(sToken string, expiration int) error
 	Delete(sToken string) error
+	Test() (int, error)
 }
 
 var (
@@ -44,7 +45,7 @@ func NewTokenDB() error {
 }
 
 // New creates new token for given long URL
-func (t *tokenDBR) New(longURL string, expiration int, timeout int) (string, error) {
+func (t *tokenDBR) New(longURL string, expiration int) (string, error) {
 
 	// Using many attempts to store the new random token dramatically increases maximum amount of
 	// used tokens since:
@@ -52,34 +53,33 @@ func (t *tokenDBR) New(longURL string, expiration int, timeout int) (string, err
 
 	// Limit number of attempts by time not by count
 
-	stop := time.After(time.Millisecond * time.Duration(timeout)) // time-out chanel
+	stop := time.After(time.Millisecond * time.Duration(CONFIG.Timeout)) // time-out chanel
 
 	// start trying to store new token
 	attempt := 0
 	for {
-		attempt++
-		sToken, err := NewShortToken(CONFIG.TokenLength)
-		if err != nil {
-			return sToken, err
-		}
-
-		// try to store token
-		ok, err := t.db.SetNX(sToken, longURL, time.Hour*24*time.Duration(expiration)).Result()
-		if err == nil && ok {
-			// token stored successfully
-			return sToken, nil
-		}
-		if err != nil {
-			return "", err
-		}
-		// !ok mean that duplicate detected
-
 		select {
 		case <-stop:
 			// stop loop if timeout exceeded
 			return "", fmt.Errorf("can't store a new token for %d attempts", attempt)
 		default:
-			// make next attempt as timeout is not exceeded yet
+			attempt++
+			sToken, err := NewShortToken(CONFIG.TokenLength)
+			if err != nil {
+				return "", err
+			}
+
+			// try to store token
+			ok, err := t.db.SetNX(sToken, longURL, time.Hour*24*time.Duration(expiration)).Result()
+			if err == nil && ok {
+				// token stored successfully
+				return sToken, nil
+			}
+			if err != nil {
+				return "", err
+			}
+			// !ok mean that duplicate detected
+			// try to make an another attempt
 		}
 	}
 }
@@ -106,4 +106,46 @@ func (t *tokenDBR) Delete(sToken string) error {
 		return errors.New("Token is not exists")
 	}
 	return err
+}
+
+// Test measures number of attempts to store token during the new token request time-out
+func (t *tokenDBR) Test() (int, error) {
+
+	attempt := 0
+
+	// get token for test
+	testToken, err := t.New("test.url", 1)
+	if err != nil {
+		return 0, err
+	}
+	defer t.Delete(testToken)
+
+	stop := time.After(time.Millisecond * time.Duration(CONFIG.Timeout)) // time-out chanel
+
+	for {
+		select {
+		case <-stop:
+			return attempt, nil
+		default:
+			attempt++
+			// get new random token to emulate the timings of standard routine
+			_, err := NewShortToken(CONFIG.TokenLength)
+			if err != nil {
+				return attempt, err
+			}
+			// try to store testToken twice
+			ok, err := t.db.SetNX(testToken, "test.url", time.Hour*24).Result()
+			if err == nil && ok {
+				// token stored twice successfully: it is not good
+				return attempt, errors.New("token successfilly stored twice")
+			}
+			if err != nil {
+				// duplicate case should not return error! Something is going wrong
+				return attempt, err
+			}
+			// !ok mean that duplicate detected
+			// it's as expected, continue
+		}
+
+	}
 }

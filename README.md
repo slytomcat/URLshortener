@@ -26,13 +26,14 @@ Success response: HTTP 200 OK with body containing JSON with following parameter
 - `token`: token for short URL
 - `url`: short URL
 
-Note: Token created as random and the saving it to DB may cause duplicate error. In order to avoid such error service makes several attempts to store random token. The number of attempts is limited by the `Timeout` configuration value by time, not by amount.
+Note: Token is created as random and the saving it to DB may cause duplicate error. In order to avoid such error service makes several attempts to store random token. The number of attempts is limited by the `Timeout` configuration value by time, not by amount. When time-out expired and no one attempt was not successful then service returns response code 504 Gateway Timeout. This response mean that the request can be repeated.  
 
-While performing health-check the maximum number of possible attempts during time-out is measured and displayed on the home page. The measurement is also written in log.
+While performing health-check the maximum number of possible attempts to store token during time-out is measured and displayed on the home page. The measurement is also written in log.
 
-When log contains errors like `can't store a new token for 75 attempts` (note big amount of unsuccessful attempts) then it most probably means that active (not expired) token amount is near to maximum possible tokens amount (for configured token length). Consider increasing of token length (`TokenLength` configuration value) or decrease token expiration (`DefaultExp` configuration value and/or `exp` parameter in the request for new short URL).
+If measured number of attempts is too small (1-5) then consider increasing of `Timeout` configuration value. Number of attempts above 200 is more then enough, you may consider to decrease `Timeout` configuration value. 30-40 attempts allows to fulfill the space of tokens up to 70-80% before timeout errors (during request for short token) occasionally appears.
 
-If number of unsuccessful attempts in the log errors is small (1-5) then consider increasing of `Timeout` configuration value. 20-30 attempts allows to fulfill the space of tokens up to 60-70% before timeout errors (during request for short token) occasionally appears.
+When time-outs appears and log contains errors like `can't store a new token for 75 attempts` then it most probably means that active (not expired) token amount is near to maximum possible tokens amount (for configured token length). Consider increasing of token length (`TokenLength` configuration value) or decrease token expiration (`DefaultExp` configuration value and/or `exp` parameter in the request for new short URL).
+
 
 
 ### Request for set new expiration of token:
