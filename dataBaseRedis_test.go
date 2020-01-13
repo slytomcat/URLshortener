@@ -45,13 +45,13 @@ func Test13DBROneTokenTwice(t *testing.T) {
 	TokenDB.Delete(strings.Repeat("_", CONFIG.TokenLength))
 
 	url := "https://golang.org/pkg/time/"
-	token, err := TokenDB.New(url, 1, CONFIG.Timeout)
+	token, err := TokenDB.New(url, 1)
 	if err != nil || token == "" {
 		t.Errorf("unexpected error: %s; token: %s", err, token)
 	} else {
 		t.Logf("expected result: token for %s: %v\n", url, token)
 	}
-	token1, err := TokenDB.New(url, 1, CONFIG.Timeout)
+	token1, err := TokenDB.New(url, 1)
 	if err != nil {
 		t.Logf("expected error: %s\n", err)
 	} else {
@@ -81,7 +81,7 @@ func raceNewToken(db Token, url string, t *testing.T) {
 		t.Logf("%v Racer %d: Ready!\n", time.Now(), i)
 		start.RLock()
 
-		token, err := db.New(url, 1, CONFIG.Timeout)
+		token, err := db.New(url, 1)
 
 		if err != nil {
 			t.Logf("%v Racer %d: %v \n", time.Now(), i, err)
@@ -182,8 +182,20 @@ func Test50DBRDebugError(t *testing.T) {
 		DEBUG = false
 		DEBUGToken = strings.Repeat("_", 6)
 	}()
-	_, err := TokenDB.New("someUrl.com", 1, 10)
+	_, err := TokenDB.New("someUrl.com", 1)
 	if err == nil {
 		t.Error("no error when expected")
 	}
+}
+
+// Get the test results
+func Test55DBRTest(t *testing.T) {
+	n, err := TokenDB.Test()
+	if err != nil {
+		t.Errorf("error while performing test: %v", err)
+	}
+	if n == 0 {
+		t.Error("counted attempts is zero")
+	}
+
 }
