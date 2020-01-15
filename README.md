@@ -18,13 +18,13 @@ Method: `POST`
 
 Request body: JSON with following parameters:
 
-- `url`: URL to shorten, mandatory
-- `exp`: short URL expiration in days, optional, default: value of "DefaultExp" from configuration file
+- `url`: string, URL to shorten, mandatory
+- `exp`: int, short URL expiration in days, optional, default: value of "DefaultExp" from configuration file
 
 Success response: HTTP 200 OK with body containing JSON with following parameters:
 
-- `token`: token for short URL
-- `url`: short URL
+- `token`: string, token for short URL
+- `url`: string, short URL
 
 Note: Token is created as random and the saving it to DB may cause duplicate error. In order to avoid such error service makes several attempts to store random token. The number of attempts is limited by the `Timeout` configuration value by time, not by amount. When time-out expired and no one attempt was not successful then service returns response code 504 Gateway Timeout. This response mean that the request can be repeated.  
 
@@ -44,8 +44,8 @@ Method: `POST`
 
 Request body: JSON with following parameter:
 
-- `token`: token for short URL, mandatory.
-- `exp`: new expiration in days from now, optional. Default 0, value that marks token as expired.
+- `token`: string, token for short URL, mandatory.
+- `exp`: int, new expiration in days from now, optional. Default 0, value that marks token as expired.
 
 Success response: HTTP 200 OK with empty body
 
@@ -64,7 +64,7 @@ Method: `GET`
 Response: simple home page and HTTP 200 OK in case of good service health or HTTP 500 Server error in case of bad service health
 
 
-### Sevice configuration
+### Service configuration
 
 Configuration file must have a name `cnfr.json` and it should be placed in the same folder where URLshortener was run. The file content must be the following correct JSON value:
 
@@ -85,22 +85,22 @@ Configuration file must have a name `cnfr.json` and it should be placed in the s
 Where:
 
 - `ConnectOptions` - Redis connection options (mandatory):
-    - `Addrs` - Redis single node address or addresses of cluster/sentinel nodes (mandatory 1 address for single node or several addresses for cluster/sentinel nodes)
-    - `Password` - Password for Redis authorization (mandatory for remote redis connections)
-    - `DB` - database to be selected after connecting to Redis DB (optional, only for single mode and fail-over connection, default 0)
+    - `Addrs` - array of strings: Redis single node address or addresses of cluster/sentinel nodes (mandatory 1 address for single node or several addresses for cluster/sentinel nodes)
+    - `Password` - string, password for Redis authorization (mandatory for remote redis connections)
+    - `DB` - int, database to be selected after connecting to Redis DB (optional, only for single mode and fail-over connection, default 0)
     - ... all possible connection options can be fount [here](https://godoc.org/github.com/go-redis/redis#UniversalOptions)
-- `TokenLength` - number of BASE64 symbols in token
-- `Timeout` - new token creation time-out in milliseconds (optional, default 500)
-- `ListenHostPort` - host and port to listen on (optional, default localhost:8080)
-- `DefaultExp` - default token expiration period in days (optional, default 1)
-- `ShortDomain` - short domain name for short URL creation (optional, default localhost:8080)
-- `Mode` - service mode (optional, default 0). Possible values:
+- `TokenLength` - int, number of BASE64 symbols in token
+- `Timeout` - int, new token creation time-out in milliseconds (optional, default 500)
+- `ListenHostPort` - string: host and port to listen on (optional, default "localhost:8080")
+- `DefaultExp` - int, default token expiration period in days (optional, default 1)
+- `ShortDomain` - string, short domain name for short URL creation (optional, default "localhost:8080")
+- `Mode` - int, service mode (optional, default 0). Possible values:
     - 0 - service handles all requests
     - 1 - request for redirect is disabled
     - 2 - request for short URL is disabled
     - 4 - request for set new expiration of token is disabled
 
-Value of `Mode` can be a sum of several modes, for example `"Mode":"6"` disables two requests: request for short URL and request to set new expiration of token.
+Value of `Mode` can be a sum of several modes, for example `"Mode":6` disables two requests: request for short URL and request to set new expiration of token.
 
 Configuration data can be also provided via environment variables URLSHORTENER_ConnectOptions (JSON string with Redis connection options), URLSHORTENER_Timeout, URLSHORTENER_ListenHostPort, URLSHORTENER_DefaultExp, URLSHORTENER_ShortDomain and URLSHORTENER_Mode.
 
