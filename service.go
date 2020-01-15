@@ -35,9 +35,8 @@ var (
 `
 	// Server - HTTP server
 	Server *http.Server
-
-	attempts int // measured attempts during health-check
-
+	// Attempts = measured during health-check attempts to store token during time-out
+	Attempts int
 )
 
 // healthCheck performs full self-test of service in all service modes
@@ -63,7 +62,7 @@ func healthCheck() error {
 	} else {
 		// make the HTTP request for new token
 		resp, err := http.Post("http://"+CONFIG.ListenHostPort+"/api/v1/token", "application/json",
-			strings.NewReader(`{"url": "`+url+`", "exp": "1"}`))
+			strings.NewReader(`{"url": "`+url+`","exp": 1}`))
 		if err != nil {
 			return fmt.Errorf("new token request error: %w", err)
 		}
@@ -111,7 +110,7 @@ func healthCheck() error {
 	} else {
 		// make the HTTP request to expire token
 		resp3, err := http.Post("http://"+CONFIG.ListenHostPort+"/api/v1/expire", "application/json",
-			strings.NewReader(`{"token": "`+repl.Token+`"}`))
+			strings.NewReader(`{"token": "`+repl.Token+`","exp":-1}`))
 		if err != nil {
 			return fmt.Errorf("expire request error: %w", err)
 		}
@@ -122,12 +121,13 @@ func healthCheck() error {
 			return fmt.Errorf("expire request: unexpected response status: %v", resp3.StatusCode)
 		}
 	}
+
 	// self-test part 4: measure the number of store attempts for CONFIG.Timeout time
-	attempts, err = TokenDB.Test()
+	Attempts, err = TokenDB.Test()
 	if err != nil {
 		return fmt.Errorf("measuring the number of store attempts error: %w", err)
 	}
-	log.Printf("health-check counted %d attempts during %dms timeout", attempts, CONFIG.Timeout)
+	log.Printf("health-check counted %d attempts during %dms timeout", Attempts, CONFIG.Timeout)
 
 	return nil
 }
@@ -147,7 +147,7 @@ func home(w http.ResponseWriter, r *http.Request) {
 	} else {
 		// show the home page if self-test was successfully passed
 		log.Printf("%s: success\n", rMess)
-		w.Write([]byte(fmt.Sprintf(homePage, attempts, CONFIG.Timeout)))
+		w.Write([]byte(fmt.Sprintf(homePage, Attempts, CONFIG.Timeout)))
 	}
 }
 
@@ -183,7 +183,7 @@ func redirect(w http.ResponseWriter, r *http.Request) {
 }
 
 /* test for test env:
-curl -v POST -H "Content-Type: application/json" -d '{"url":"https://www.w3schools.com/html/html_forms.asp","exp":"10"}' http://localhost:8080/api/v1/token
+curl -v POST -H "Content-Type: application/json" -d '{"url":"<long url>","exp":10}' http://localhost:8080/api/v1/token
 */
 
 // getNewToken handle the new token creation for passed url and sets expiration for it
@@ -212,8 +212,8 @@ func getNewToken(w http.ResponseWriter, r *http.Request) {
 	// parse JSON to parameters structure
 	// the requst parameters structure
 	var params struct {
-		URL string `json:"url"`                  // long URL
-		Exp int    `json:"exp,string,omitempty"` // Expiration
+		URL string `json:"url"`           // long URL
+		Exp int    `json:"exp,omitempty"` // Expiration
 	}
 
 	err = json.Unmarshal(buf, &params)
@@ -261,7 +261,7 @@ func getNewToken(w http.ResponseWriter, r *http.Request) {
 }
 
 /* test for test env:
-curl -v POST -H "Content-Type: application/json" -d '{"token":"<token>"}' http://localhost:8080/api/v1/expire
+curl -v POST -H "Content-Type: application/json" -d '{"token":"<token>","exp":<exp>}' http://localhost:8080/api/v1/expire
 */
 
 // expireToken makes token-longURL record as expired
@@ -289,8 +289,8 @@ func expireToken(w http.ResponseWriter, r *http.Request) {
 	// parse JSON to parameters structure
 	// the requst parameters structure
 	var params struct {
-		Token string `json:"token"`                // Token of short URL token
-		Exp   int    `json:"exp,string,omitempty"` // Expiration
+		Token string `json:"token"`         // Token of short URL token
+		Exp   int    `json:"exp,omitempty"` // Expiration
 	}
 
 	err = json.Unmarshal(buf, &params)
