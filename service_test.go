@@ -98,6 +98,7 @@ func Test61MainBadRequest2(t *testing.T) {
 //test request for short URL without expiration in request
 func Test62MainGetTokenWOexp(t *testing.T) {
 	DEBUG = true
+	DEBUGToken = strings.Repeat("_", CONFIG.TokenLength)
 	defer func() { DEBUG = false }()
 
 	// clear debug token
@@ -207,7 +208,7 @@ func Test74MainServiceModeDisableExpire(t *testing.T) {
 	CONFIG.Mode = disableExpire
 
 	resp, err := http.Post("http://"+CONFIG.ListenHostPort+"/api/v1/expire", "application/json",
-		strings.NewReader(`{"token": "`+DEBUGToken+`"}`))
+		strings.NewReader(`{"token": "`+DEBUGToken+`","exp":-1}`))
 	if err != nil {
 		t.Errorf("expire request error: %v", err)
 	}
