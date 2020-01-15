@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/go-redis/redis/v7"
@@ -53,17 +54,30 @@ func (t *tokenDBR) New(longURL string, expiration int) (string, error) {
 
 	// Limit number of attempts by time not by count
 
+	// Count attempts for reports
+	attempt := 0
+
+	// report to log when number of attempts before success save of token near to maximum attempts
+	// during timeout (calculated while health-check performed)
+	defer func() {
+		// if Attempts is not measured yet (no health-check was performed) then there nothing to compare
+		// if number of measured Attempts is small then comparison may be wrong
+		if Attempts > 8 && Attempts*3/4 < attempt {
+			log.Printf("Warning: Number of unsuccessful attempts is %d while maximum number of attempts during time-out is %d", attempt, Attempts)
+		}
+	}()
+
 	// make time-out chanel
 	stop := time.After(time.Millisecond * time.Duration(CONFIG.Timeout))
 
 	// start trying to store new token
-	attempt := 0
 	for {
 		select {
 		case <-stop:
 			// stop loop if timeout exceeded
 			return "", fmt.Errorf("can't store a new token for %d attempts", attempt)
 		default:
+			// get random token
 			sToken, err := NewShortToken(CONFIG.TokenLength)
 			if err != nil {
 				return "", err
@@ -125,8 +139,9 @@ func (t *tokenDBR) Test() (int, error) {
 	// make time-out chanel
 	stop := time.After(time.Millisecond * time.Duration(CONFIG.Timeout))
 
-	// start the measurement
 	attempt := 0
+
+	// start the measurement
 	for {
 		select {
 		case <-stop:
@@ -138,7 +153,7 @@ func (t *tokenDBR) Test() (int, error) {
 			if err != nil {
 				return 0, err
 			}
-			// try to store testToken twice
+			// try to store already stored testToken
 			ok, err := t.db.SetNX(testToken, "test.url", time.Hour*24).Result()
 			if err == nil && ok {
 				// token stored twice successfully: it is not good
