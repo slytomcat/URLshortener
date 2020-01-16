@@ -5,7 +5,7 @@
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 [![Docker image](https://img.shields.io/badge/Docker-image-blue)](https://hub.docker.com/r/slytomcat/urlshortener)
 
-URLshortener is a micro-service to shorten long URLs and to handle the redirection by generated short URLs.
+URLshortener is a microservice to shorten long URLs and to handle the redirection by generated short URLs.
 
 The service requires Redis database connection. See example how to run Redis in Docker in [redisDockerRun.sh](https://github.com/slytomcat/URLshortener/blob/master/redisDockerRun.sh)
 
@@ -19,14 +19,14 @@ Method: `POST`
 Request body: JSON with following parameters:
 
 - `url`: string, URL to shorten, mandatory
-- `exp`: int, short URL expiration in days, optional, default: value of "DefaultExp" from configuration file
+- `exp`: int, short URL expiration in days, optional, default: value of `"DefaultExp"` from configuration file
 
-Success response: HTTP 200 OK with body containing JSON with following parameters:
+Success response: `HTTP 200 OK` with body containing JSON with following parameters:
 
 - `token`: string, token for short URL
 - `url`: string, short URL
 
-Note: Token is created as random and the saving it to DB may cause duplicate error. In order to avoid such error service makes several attempts to store random token. The number of attempts is limited by the `Timeout` configuration value by time, not by amount. When time-out expired and no one attempt was not successful then service returns response code 504 Gateway Timeout. This response mean that the request can be repeated.  
+Note: Token is created as random and the saving it to DB may cause duplicate error. In order to avoid such error service makes several attempts to store random token. The number of attempts is limited by the `Timeout` configuration value by time, not by amount. When time-out expired and no one attempt was not successful then service returns response code `504 Gateway Timeout`. This response mean that the request can be repeated.  
 
 While performing health-check the maximum number of possible attempts to store token during time-out is measured and displayed on the home page. The measurement is also written in log.
 
@@ -34,7 +34,7 @@ If measured number of attempts is too small (1-5) then consider increasing of `T
 
 When the service time-out errors appears often and log contains many errors like `can't store a new token for 75 attempts` then it most probably means that active (not expired) token amount is near to maximum possible tokens amount (for configured token length). Consider increasing of token length (`TokenLength` configuration value) or decrease token expiration (`DefaultExp` configuration value and/or `exp` parameter in the request for new short URL).
 
-
+Note also the log warnings such as `Warning: Number of unsuccessful attempts is 28 while maximum number of attempts during time-out is 34`. Such warnings also can be a signal that token space is filled near to maximum capacity.
 
 ### Request for set new expiration of token:
 
@@ -45,9 +45,9 @@ Method: `POST`
 Request body: JSON with following parameter:
 
 - `token`: string, token for short URL, mandatory.
-- `exp`: int, new expiration in days from now, optional. Default 0, value that marks token as expired.
+- `exp`: int, new expiration in days from now, optional. Default: 0 - value that marks token as expired.
 
-Success response: HTTP 200 OK with empty body
+Success response: `HTTP 200 OK` with empty body
 
 ### Redirect to long URL:
 URL: `<host>[:<port>]/<token>` - URL from response on request for short URL
@@ -61,12 +61,12 @@ URL: `<host>[:<port>]/`
 
 Method: `GET`
 
-Response: simple home page and HTTP 200 OK in case of good service health or HTTP 500 Server error in case of bad service health
+Response: simple home page and `HTTP 200 OK` in case of successful self-health-check, or `HTTP 500 Server error` in case of any error during self-health-check.
 
 
 ### Service configuration
 
-Configuration file must have a name `cnfr.json` and it should be placed in the same folder where URLshortener was run. The file content must be the following correct JSON value:
+Configuration file must have a name `cnfr.json` and it should be placed in the same folder where URLshortener is run. The file content must be the following correct JSON value:
 
     {
     "ConnectOptions": {
@@ -85,16 +85,16 @@ Configuration file must have a name `cnfr.json` and it should be placed in the s
 Where:
 
 - `ConnectOptions` - Redis connection options (mandatory):
-    - `Addrs` - array of strings: Redis single node address or addresses of cluster/sentinel nodes (mandatory 1 address for single node or several addresses for cluster/sentinel nodes)
-    - `Password` - string, password for Redis authorization (mandatory for remote redis connections)
-    - `DB` - int, database to be selected after connecting to Redis DB (optional, only for single mode and fail-over connection, default 0)
+    - `Addrs` - array of strings: Redis single node address or list of addresses of cluster/sentinel nodes (mandatory)
+    - `Password` - string, password for Redis authorization (mandatory for connections to remote Redis node/cluster)
+    - `DB` - int, database to be selected after connecting to Redis DB (optional, applicable only for connection to single node and fail-over nodes, default: 0)
     - ... all possible connection options can be fount [here](https://godoc.org/github.com/go-redis/redis#UniversalOptions)
 - `TokenLength` - int, number of BASE64 symbols in token
-- `Timeout` - int, new token creation time-out in milliseconds (optional, default 500)
-- `ListenHostPort` - string: host and port to listen on (optional, default "localhost:8080")
-- `DefaultExp` - int, default token expiration period in days (optional, default 1)
-- `ShortDomain` - string, short domain name for short URL creation (optional, default "localhost:8080")
-- `Mode` - int, service mode (optional, default 0). Possible values:
+- `Timeout` - int, new token creation time-out in milliseconds (optional, default: 500)
+- `ListenHostPort` - string: host and port to listen on (optional, default: "localhost:8080")
+- `DefaultExp` - int, default token expiration period in days (optional, default: 1)
+- `ShortDomain` - string, short domain name for short URL creation (optional, default: "localhost:8080")
+- `Mode` - int, service mode (optional, default: 0). Possible values:
     - 0 - service handles all requests
     - 1 - request for redirect is disabled
     - 2 - request for short URL is disabled
@@ -104,4 +104,4 @@ Value of `Mode` can be a sum of several modes, for example `"Mode":6` disables t
 
 Configuration data can be also provided via environment variables URLSHORTENER_ConnectOptions (JSON string with Redis connection options), URLSHORTENER_Timeout, URLSHORTENER_ListenHostPort, URLSHORTENER_DefaultExp, URLSHORTENER_ShortDomain and URLSHORTENER_Mode.
 
-Configuration file values have more priority then environment variables.
+When some configuration value is set in both configuration file and environment variable then value from configuration file is used.
