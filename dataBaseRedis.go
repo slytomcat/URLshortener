@@ -61,7 +61,7 @@ func (t *tokenDBR) New(longURL string, expiration int) (string, error) {
 	// during timeout (calculated while health-check performed)
 	defer func() {
 		// if Attempts is not measured yet (no health-check was performed) then there nothing to compare
-		// if number of measured Attempts is small then comparison may be wrong
+		// if number of measured Attempts is small then comparison is meaningless.
 		if Attempts > 8 && Attempts*3/4 < attempt {
 			log.Printf("Warning: Number of unsuccessful attempts is %d while maximum number of attempts during time-out is %d", attempt, Attempts)
 		}
@@ -83,6 +83,8 @@ func (t *tokenDBR) New(longURL string, expiration int) (string, error) {
 				return "", err
 			}
 
+			attempt++
+
 			// try to store token
 			ok, err := t.db.SetNX(sToken, longURL, time.Hour*24*time.Duration(expiration)).Result()
 			if err == nil && ok {
@@ -94,7 +96,6 @@ func (t *tokenDBR) New(longURL string, expiration int) (string, error) {
 			}
 			// !ok mean that duplicate detected
 			// try to make an another attempt
-			attempt++
 		}
 	}
 }
@@ -153,6 +154,9 @@ func (t *tokenDBR) Test() (int, error) {
 			if err != nil {
 				return 0, err
 			}
+
+			attempt++
+
 			// try to store already stored testToken
 			ok, err := t.db.SetNX(testToken, "test.url", time.Hour*24).Result()
 			if err == nil && ok {
@@ -165,7 +169,6 @@ func (t *tokenDBR) Test() (int, error) {
 			}
 			// !ok mean that duplicate detected
 			// it's as expected, continue
-			attempt++
 		}
 	}
 }
