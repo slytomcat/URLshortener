@@ -8,5 +8,5 @@ services:
     restart: always
     network_mode: host
     volumes:
-      - ./cnf.json:/opt/URLshortener/cnf.json
+      - ./cnfr.json:/opt/URLshortener/cnfr.json
 
