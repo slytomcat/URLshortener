@@ -31,7 +31,7 @@ jobs:
             mkdir results;
       - run:
           name: Tests
-          command: go test -v -race -coverprofile cover.out 2>&1 | tee /dev/tty | go-junit-report > results/results.xml
+          command: go test -v -race -timeout 60s -coverprofile cover.out 2>&1 | tee /dev/tty | go-junit-report > results/results.xml
       - run:
           name: Report coverage to deepsource.io
           command: |
