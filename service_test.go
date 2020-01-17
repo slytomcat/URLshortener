@@ -35,7 +35,7 @@ func Test50mainStart(t *testing.T) {
 
 }
 
-// Full success test: get short URL and make redirect by it
+// Full success test: get short URL, make redirect by it and expire token
 func Test55MainFullSuccess(t *testing.T) {
 	// use health-check function to test all-success case
 	if err := healthCheck(); err != nil {
