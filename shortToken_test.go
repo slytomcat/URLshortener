@@ -7,8 +7,9 @@ import (
 
 // try to create new token from debugging source
 func Test05NewShortTokenFake(t *testing.T) {
-	DEBUG = true
-	DEBUGToken = strings.Repeat("_", 6)
+	SetDebug(1)
+	defer SetDebug(0)
+	DEBUGToken := strings.Repeat("_", 6)
 	tc, err := NewShortToken(6)
 	if err != nil {
 		t.Error("error of ShortToken creation from debug source:", err)
@@ -20,7 +21,6 @@ func Test05NewShortTokenFake(t *testing.T) {
 
 // try to make two tokens from random source and compare them
 func Test07NewShortTokenReal(t *testing.T) {
-	DEBUG = false
 	tc, err := NewShortToken(6)
 	if err != nil {
 		t.Error("error of ShortToken creation from random:", err)
@@ -39,7 +39,6 @@ func Test07NewShortTokenReal(t *testing.T) {
 
 // try to make two tokens from random source and compare them
 func Test07NewShortTokenReal2(t *testing.T) {
-	DEBUG = false
 	tc, err := NewShortToken(2)
 	if err != nil {
 		t.Error("error of ShortToken creation from random:", err)
@@ -53,5 +52,15 @@ func Test07NewShortTokenReal2(t *testing.T) {
 
 	if tc == tc1 {
 		t.Error("2 sequential token are equal by BASE64")
+	}
+}
+
+//
+func Test08DebugError(t *testing.T) {
+	SetDebug(-1)
+	defer SetDebug(0)
+	_, err := NewShortToken(2)
+	if err == nil {
+		t.Error("no error when expected:")
 	}
 }
