@@ -47,11 +47,14 @@ func attepmptsMeasurement() {
 	// start measurment only if no other measurment is running
 	if atomic.CompareAndSwapInt32(&measereLock, 0, 1) {
 		defer atomic.StoreInt32(&measereLock, 0)
+		// measure attempts
 		attempts, err := TokenDB.Test()
 		if err != nil {
 			log.Printf("measuring the number of store attempts error: %w", err)
 		} else {
+			// store measurement
 			atomic.StoreInt32(&Attempts, int32(attempts))
+			// and log it
 			log.Printf("Measured %d attempts during %dms timeout", Attempts, CONFIG.Timeout)
 		}
 	}
@@ -159,8 +162,9 @@ func home(w http.ResponseWriter, r *http.Request) {
 		log.Printf("%s: error: %v\n", rMess, err)
 		w.WriteHeader(http.StatusInternalServerError)
 	} else {
-		// show the home page if self-test was successfully passed
+		// log self-test results
 		log.Printf("%s: success\n", rMess)
+		// show the home page if self-test was successfully passed
 		w.Write([]byte(fmt.Sprintf(homePage, atomic.LoadInt32(&Attempts), CONFIG.Timeout)))
 	}
 }
