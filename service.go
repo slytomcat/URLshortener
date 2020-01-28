@@ -13,6 +13,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"sync/atomic"
 )
 
 const (
@@ -36,11 +37,31 @@ var (
 	// Server - HTTP server
 	Server *http.Server
 	// Attempts = measured during health-check attempts to store token during time-out
-	Attempts int
+	Attempts int32
+	// measereLock - synchronization primitive
+	measereLock int32 = 0
 )
+
+// attepmptsMeasurement - the measurement parallel routine: measures the number of store attempts for CONFIG.Timeout time
+func attepmptsMeasurement() {
+	// start measurment only if no other measurment is running
+	if atomic.CompareAndSwapInt32(&measereLock, 0, 1) {
+		defer atomic.StoreInt32(&measereLock, 0)
+		attempts, err := TokenDB.Test()
+		if err != nil {
+			log.Printf("measuring the number of store attempts error: %w", err)
+		} else {
+			atomic.StoreInt32(&Attempts, int32(attempts))
+			log.Printf("Measured %d attempts during %dms timeout", Attempts, CONFIG.Timeout)
+		}
+	}
+}
 
 // healthCheck performs full self-test of service in all service modes
 func healthCheck() error {
+
+	// start attempts measurement procedure in separate go-routine
+	go attepmptsMeasurement()
 
 	// url for sef-check redirect
 	url := "http://" + CONFIG.ShortDomain + "/favicon.ico"
@@ -122,13 +143,6 @@ func healthCheck() error {
 		}
 	}
 
-	// self-test part 4: measure the number of store attempts for CONFIG.Timeout time
-	Attempts, err = TokenDB.Test()
-	if err != nil {
-		return fmt.Errorf("measuring the number of store attempts error: %w", err)
-	}
-	log.Printf("health-check counted %d attempts during %dms timeout", Attempts, CONFIG.Timeout)
-
 	return nil
 }
 
@@ -147,7 +161,7 @@ func home(w http.ResponseWriter, r *http.Request) {
 	} else {
 		// show the home page if self-test was successfully passed
 		log.Printf("%s: success\n", rMess)
-		w.Write([]byte(fmt.Sprintf(homePage, Attempts, CONFIG.Timeout)))
+		w.Write([]byte(fmt.Sprintf(homePage, atomic.LoadInt32(&Attempts), CONFIG.Timeout)))
 	}
 }
 

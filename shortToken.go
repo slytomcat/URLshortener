@@ -9,39 +9,37 @@ import (
 	"encoding/base64"
 	"errors"
 	"strings"
+	"sync/atomic"
 )
 
 var (
-	// DEBUG = true sets token as constant DEBUGToken
-	DEBUG = false
-	// DEBUGToken is token that returned in debug mode
-	DEBUGToken = ""
+	// debugMode - debugging mode. See SetDebug for details
+	debugMode int32
 )
+
+// SetDebug sets debuging mode:
+// 0 - normal operation: NewShortToken returns random token
+// 1 - debugging mode: NewShortToken returns debug token
+// -1 - error mode: NewShortToken returns error
+func SetDebug(mode int) {
+	atomic.StoreInt32(&debugMode, int32(mode))
+}
 
 // NewShortToken creates the token (`length` BASE64 symbols) from random or debugging source
 func NewShortToken(length int) (string, error) {
-
-	if DEBUG {
-		if DEBUGToken == "error" {
-			DEBUGToken = strings.Repeat("_", length)
-			// handle debugging error
-			return "", errors.New("debug error")
-		}
-		// setub debuggig token
-		if DEBUGToken == "" {
-			DEBUGToken = strings.Repeat("_", length)
-		}
-		return DEBUGToken, nil
+	switch atomic.LoadInt32(&debugMode) {
+	case 1:
+		return strings.Repeat("_", length), nil
+	case -1:
+		return "", errors.New("debug error")
 	}
-
 	buf := make([]byte, length*6/8+1)
-
 	// get secure random bytes
 	_, err := rand.Read(buf)
 	if err != nil {
 		return "", err
 	}
-
 	// shorten BASE64 representation to tokenLenS symbols
 	return base64.URLEncoding.EncodeToString(buf)[:length], nil
+
 }

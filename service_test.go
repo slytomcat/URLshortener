@@ -97,12 +97,11 @@ func Test61MainBadRequest2(t *testing.T) {
 
 //test request for short URL without expiration in request
 func Test62MainGetTokenWOexp(t *testing.T) {
-	DEBUG = true
-	DEBUGToken = strings.Repeat("_", CONFIG.TokenLength)
-	defer func() { DEBUG = false }()
+	SetDebug(1)
+	defer SetDebug(0)
 
 	// clear debug token
-	TokenDB.Delete(DEBUGToken)
+	TokenDB.Delete(strings.Repeat("_", CONFIG.TokenLength))
 
 	resp, err := http.Post("http://"+CONFIG.ListenHostPort+"/api/v1/token", "application/json",
 		strings.NewReader(`{"url": "http://`+CONFIG.ShortDomain+`"}`))
@@ -149,8 +148,8 @@ func Test65MainExpireNotExistingToken(t *testing.T) {
 
 // try to get the same (debugging) token twice
 func Test68MainGetTokenTwice(t *testing.T) {
-	DEBUG = true
-	defer func() { DEBUG = false }()
+	SetDebug(1)
+	defer SetDebug(0)
 	resp, err := http.Post("http://"+CONFIG.ListenHostPort+"/api/v1/token", "application/json",
 		strings.NewReader(`{"url": "http://`+CONFIG.ShortDomain+`"}`))
 	if err != nil {
@@ -178,7 +177,7 @@ func Test70Main404(t *testing.T) {
 func Test73MainServiceModeDisableRedirect(t *testing.T) {
 	CONFIG.Mode = disableRedirect
 
-	resp, err := http.Get("http://" + CONFIG.ListenHostPort + "/" + DEBUGToken)
+	resp, err := http.Get("http://" + CONFIG.ListenHostPort + "/" + strings.Repeat("_", CONFIG.TokenLength))
 	if err != nil {
 		t.Errorf("redirect request error: %v", err)
 	}
@@ -208,7 +207,7 @@ func Test74MainServiceModeDisableExpire(t *testing.T) {
 	CONFIG.Mode = disableExpire
 
 	resp, err := http.Post("http://"+CONFIG.ListenHostPort+"/api/v1/expire", "application/json",
-		strings.NewReader(`{"token": "`+DEBUGToken+`","exp":-1}`))
+		strings.NewReader(`{"token": "`+strings.Repeat("_", CONFIG.TokenLength)+`","exp":-1}`))
 	if err != nil {
 		t.Errorf("expire request error: %v", err)
 	}
