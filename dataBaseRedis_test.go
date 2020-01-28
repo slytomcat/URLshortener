@@ -39,8 +39,8 @@ func Test10DBRNewTokenDB(t *testing.T) {
 }
 
 func Test13DBROneTokenTwice(t *testing.T) {
-	DEBUG = true
-	defer func() { DEBUG = false }()
+	SetDebug(1)
+	defer SetDebug(0)
 
 	TokenDB.Delete(strings.Repeat("_", CONFIG.TokenLength))
 
@@ -58,13 +58,13 @@ func Test13DBROneTokenTwice(t *testing.T) {
 		t.Errorf("wrong result: token for %s: %v\n", url, token1)
 	}
 	// clear
-	TokenDB.Delete(DEBUGToken)
+	TokenDB.Delete(strings.Repeat("_", CONFIG.TokenLength))
 }
 
 // Concurrent goroutines tries to make new short URL in the same time with the same token (debugging)
 func raceNewToken(db Token, url string, t *testing.T) {
-	DEBUG = true
-	defer func() { DEBUG = false }()
+	SetDebug(1)
+	defer SetDebug(0)
 
 	var wg sync.WaitGroup
 	var succes, fail, cnt, i int64
@@ -115,7 +115,7 @@ func Test15DBRNewTokenRace(t *testing.T) {
 
 // try to make token expired
 func Test20DBRExpireToken(t *testing.T) {
-	err := TokenDB.Expire(DEBUGToken, -1)
+	err := TokenDB.Expire(strings.Repeat("_", CONFIG.TokenLength), -1)
 	if err != nil {
 		t.Error(err)
 	}
@@ -129,22 +129,22 @@ func Test23DBROneMoreTokenRace(t *testing.T) {
 // try to receive long URL by token
 func Test25DBRGetToken(t *testing.T) {
 
-	lURL, err := TokenDB.Get(DEBUGToken)
+	lURL, err := TokenDB.Get(strings.Repeat("_", CONFIG.TokenLength))
 	if err != nil {
 		t.Error(err)
 	}
-	t.Logf("URL for token %s: %s\n", DEBUGToken, lURL)
+	t.Logf("URL for token %s: %s\n", strings.Repeat("_", CONFIG.TokenLength), lURL)
 }
 
 // try to delete token
 func Test30DBRDelToken(t *testing.T) {
 
-	err := TokenDB.Delete(DEBUGToken)
+	err := TokenDB.Delete(strings.Repeat("_", CONFIG.TokenLength))
 	if err != nil {
 		t.Error(err)
 	}
 
-	_, err = TokenDB.Get(DEBUGToken)
+	_, err = TokenDB.Get(strings.Repeat("_", CONFIG.TokenLength))
 	if err == nil {
 		t.Error("no error when expected")
 	}
@@ -176,12 +176,9 @@ func Test40DBRGetNonExisting(t *testing.T) {
 
 // Test debug error
 func Test50DBRDebugError(t *testing.T) {
-	DEBUG = true
-	DEBUGToken = "error"
-	defer func() {
-		DEBUG = false
-		DEBUGToken = strings.Repeat("_", 6)
-	}()
+	SetDebug(-1)
+	defer SetDebug(0)
+
 	_, err := TokenDB.New("someUrl.com", 1)
 	if err == nil {
 		t.Error("no error when expected")

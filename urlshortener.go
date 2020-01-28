@@ -17,6 +17,10 @@ func main() {
 		log.Fatalf("error database interface creation: %v\n", err)
 	}
 
+	// start initial attempts measurement
+	go attepmptsMeasurement()
+
+	// run service
 	log.Println(ServiceStart())
 
 }

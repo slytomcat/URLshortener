@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"sync/atomic"
 	"time"
 
 	"github.com/go-redis/redis/v7"
@@ -60,9 +61,9 @@ func (t *tokenDBR) New(longURL string, expiration int) (string, error) {
 	// report to log when number of attempts before success save of token near to maximum attempts
 	// during timeout (calculated while health-check performed)
 	defer func() {
-		// if Attempts is not measured yet (no health-check was performed) then there nothing to compare
 		// if number of measured Attempts is small then comparison is meaningless.
-		if Attempts > 8 && Attempts*3/4 < attempt {
+		MaxAtt := int(atomic.LoadInt32(&Attempts))
+		if MaxAtt > 8 && MaxAtt*3/4 < attempt {
 			log.Printf("Warning: Number of unsuccessful attempts is %d while maximum number of attempts during time-out is %d", attempt, Attempts)
 		}
 	}()

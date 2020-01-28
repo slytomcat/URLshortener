@@ -26,9 +26,9 @@ Success response: `HTTP 200 OK` with body containing JSON with following paramet
 - `token`: string, token for short URL
 - `url`: string, short URL
 
-Note: Token is created as random and the saving it to DB may cause duplicate error. In order to avoid such error service makes several attempts to store random token. The number of attempts is limited by the `Timeout` configuration value by time, not by amount. When time-out expired and no one attempt was not successful then service returns response code `504 Gateway Timeout`. This response mean that the request can be repeated.  
+Note: Token is created as random and the saving it to DB may cause duplicate error. In order to avoid such error service makes several attempts to store random token. The number of attempts is limited by the `Timeout` configuration value by time, not by amount. When time-out expired and no one attempt was not successful then service returns response code `504 Gateway Timeout`. This response mean that the request can be repeated.
 
-While performing health-check the maximum number of possible attempts to store token during time-out is measured and displayed on the home page. The measurement is also written in log.
+The maximum number of possible attempts to store token during time-out is measured when service starting and during performing health-check. It is done asynchronously. The last measured value is displayed on the homepage and also written in the log.
 
 If measured number of attempts is too small (1-5) then consider increasing of `Timeout` configuration value. Number of attempts above 200 is more then enough, you may consider to decrease `Timeout` configuration value. 30-40 attempts allows to fulfill the space of tokens up to 70-80% before timeout errors (during request for short token) occasionally appears.
 
