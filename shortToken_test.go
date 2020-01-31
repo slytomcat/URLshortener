@@ -55,7 +55,7 @@ func Test07NewShortTokenReal2(t *testing.T) {
 	}
 }
 
-//
+// test debug error
 func Test08DebugError(t *testing.T) {
 	SetDebug(-1)
 	defer SetDebug(0)

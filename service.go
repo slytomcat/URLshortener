@@ -91,6 +91,10 @@ func healthCheck() error {
 			return fmt.Errorf("new token request error: %w", err)
 		}
 		defer resp.Body.Close()
+		// check response status code
+		if resp.StatusCode != http.StatusOK {
+			return fmt.Errorf("new token request: unexpected responce status: %v", resp.StatusCode)
+		}
 
 		// read response body
 		buf := make([]byte, resp.ContentLength)
