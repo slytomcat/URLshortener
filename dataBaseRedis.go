@@ -81,7 +81,7 @@ func (t *tokenDBR) New(longURL string, expiration int) (string, error) {
 			// get random token
 			sToken, err := NewShortToken(CONFIG.TokenLength)
 			if err != nil {
-				return "", err
+				return "", fmt.Errorf("NewShortToken error: %w", err)
 			}
 
 			attempt++
@@ -93,7 +93,7 @@ func (t *tokenDBR) New(longURL string, expiration int) (string, error) {
 				return sToken, nil
 			}
 			if err != nil {
-				return "", err
+				return "", fmt.Errorf("SetNX operation error: %w", err)
 			}
 			// !ok mean that duplicate detected
 			// try to make an another attempt
@@ -133,7 +133,7 @@ func (t *tokenDBR) Test() (int, error) {
 	// get token for test
 	testToken, err := t.New("test.url", 1)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("New token creation error: %w", err)
 	}
 	// remove test token after finishing the measurement
 	defer t.Delete(testToken)
@@ -153,7 +153,7 @@ func (t *tokenDBR) Test() (int, error) {
 			// get new random token to emulate the timings of standard routine
 			_, err := NewShortToken(CONFIG.TokenLength)
 			if err != nil {
-				return 0, err
+				return 0, fmt.Errorf("NewShortToken error: %w", err)
 			}
 
 			attempt++
@@ -166,7 +166,7 @@ func (t *tokenDBR) Test() (int, error) {
 			}
 			if err != nil {
 				// duplicate case should not return error! Something is going wrong
-				return 0, err
+				return 0, fmt.Errorf("SetNX operation error: %w", err)
 			}
 			// !ok mean that duplicate detected
 			// it's as expected, continue
