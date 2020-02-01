@@ -50,7 +50,7 @@ func attepmptsMeasurement() {
 		// measure attempts
 		attempts, err := TokenDB.Test()
 		if err != nil {
-			log.Printf("measuring the number of store attempts error: %w", err)
+			log.Printf("measuring the number of store attempts error: %v", err)
 		} else {
 			// store measurement
 			atomic.StoreInt32(&Attempts, int32(attempts))
