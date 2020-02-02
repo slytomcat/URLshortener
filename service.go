@@ -12,6 +12,8 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
 	"strings"
 	"sync/atomic"
 )
@@ -365,10 +367,20 @@ func ServiceStart() error {
 	http.HandleFunc("/", myMUX)
 
 	// create and start server
-	log.Println("starting server at", CONFIG.ListenHostPort)
 	Server = &http.Server{
 		Addr:    CONFIG.ListenHostPort,
 		Handler: nil}
 
+	// register the os.Interupt handler
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+	go func() {
+		// Block until a signal is received.
+		<-c
+		Server.Close()
+	}()
+
+	// run server
+	log.Println("starting server at", CONFIG.ListenHostPort)
 	return Server.ListenAndServe()
 }
