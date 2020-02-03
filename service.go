@@ -42,6 +42,8 @@ var (
 	Attempts int32
 	// measereLock - synchronization primitive
 	measereLock int32 = 0
+	// SigChan chan to lister os signals
+	SigChan chan os.Signal
 )
 
 // attepmptsMeasurement - the measurement parallel routine: measures the number of store attempts for CONFIG.Timeout time
@@ -371,13 +373,14 @@ func ServiceStart() error {
 		Addr:    CONFIG.ListenHostPort,
 		Handler: nil}
 
-	// register the os.Interupt handler
+	// register the os.Interupt(SIGINT) handler
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
 	go func() {
 		// Block until a signal is received.
 		<-c
-		Server.Close()
+		// gracefully shut down the server
+		Server.Shutdown(nil)
 	}()
 
 	// run server
