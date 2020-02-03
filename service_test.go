@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 )
@@ -229,6 +230,7 @@ func Test75MainHealthCheckModeDisableRedirect(t *testing.T) {
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("unexpected response status: %d", resp.StatusCode)
 	}
+	time.Sleep(time.Second)
 }
 
 // try health check in service mode disableShortener
@@ -243,6 +245,7 @@ func Test77MainHealthCheckModeDisableShortener(t *testing.T) {
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("unexpected response status: %d", resp.StatusCode)
 	}
+	time.Sleep(time.Second)
 }
 
 // try health check in service mode disableExpire
@@ -257,6 +260,7 @@ func Test78MainHealthCheckModeDisableExpire(t *testing.T) {
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("unexpected response status: %d", resp.StatusCode)
 	}
+	time.Sleep(time.Second)
 }
 
 // try to stop service
@@ -265,8 +269,9 @@ func Test99MainKill(t *testing.T) {
 	r, w, _ := os.Pipe()
 	log.SetOutput(w)
 
-	Server.Close()
-	time.Sleep(time.Second * 3)
+	syscall.Kill(syscall.Getpid(), syscall.SIGINT)
+
+	time.Sleep(time.Second * 2)
 
 	w.Close()
 	log.SetOutput(logger)
