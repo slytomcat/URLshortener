@@ -1,9 +1,26 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"log"
+	"os"
+	"path/filepath"
 )
+
+var (
+	// ConfigFile - is the path to the configuration file
+	ConfigFile string
+)
+
+func init() {
+	// prepare command line parameter and usage
+	flag.StringVar(&ConfigFile, "config", "./cnfr.json", "`path` to the configuration file")
+	flag.Usage = func() {
+		fmt.Fprintf(os.Stderr, "Usage:\n\n\t\t"+filepath.Base(os.Args[0])+" [-config=<Path/to/config>]\n\n")
+		flag.PrintDefaults()
+	}
+}
 
 func main() {
 	// set logging format
@@ -15,19 +32,19 @@ func main() {
 // doMain performs all preparation and starts server
 func doMain() error {
 
+	// parse command line parameters
+	flag.Parse()
+
 	// get the configuratin variables
-	err := readConfig("cnfr.json")
+	err := readConfig(ConfigFile)
 	if err != nil {
-		return fmt.Errorf("configuration read error: %v", err)
+		return fmt.Errorf("configuration read error: %w", err)
 	}
 
 	// initialize database connection
 	if err = NewTokenDB(); err != nil {
-		return fmt.Errorf("error database interface creation: %v", err)
+		return fmt.Errorf("error database interface creation: %w", err)
 	}
-
-	// start initial attempts measurement
-	go attepmptsMeasurement()
 
 	// run service
 	return ServiceStart()
