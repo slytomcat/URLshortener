@@ -6,6 +6,7 @@ package main
 // See details in README.md
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -42,8 +43,6 @@ var (
 	Attempts int32
 	// measereLock - synchronization primitive
 	measereLock int32 = 0
-	// SigChan chan to lister os signals
-	SigChan chan os.Signal
 )
 
 // attepmptsMeasurement - the measurement parallel routine: measures the number of store attempts for CONFIG.Timeout time
@@ -383,7 +382,7 @@ func ServiceStart() error {
 		// block until a signal is received.
 		<-c
 		// gracefully shut down the server
-		Server.Shutdown(nil)
+		Server.Shutdown(context.Background())
 	}()
 
 	// run server
