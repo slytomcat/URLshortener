@@ -15,7 +15,7 @@ import (
 )
 
 // try to start service
-func Test50mainStart(t *testing.T) {
+func Test10Serv05Start(t *testing.T) {
 	logger := log.Writer()
 	r, w, _ := os.Pipe()
 	log.SetOutput(w)
@@ -37,7 +37,7 @@ func Test50mainStart(t *testing.T) {
 }
 
 // Full success test: get short URL, make redirect by it and expire token
-func Test55MainFullSuccess(t *testing.T) {
+func Test10Serv10FullSuccess(t *testing.T) {
 	// use health-check function to test all-success case
 	if err := healthCheck(); err != nil {
 		t.Errorf("health-check error: %v", err)
@@ -45,7 +45,7 @@ func Test55MainFullSuccess(t *testing.T) {
 }
 
 // test health check
-func Test57MainHome(t *testing.T) {
+func Test10Serv15Home(t *testing.T) {
 	resp, err := http.Get("http://" + CONFIG.ListenHostPort)
 	if err != nil {
 		t.Errorf("health check request error: %v", err)
@@ -69,7 +69,7 @@ func Test57MainHome(t *testing.T) {
 }
 
 // test request for short URL with empty request body
-func Test60MainBadRequest(t *testing.T) {
+func Test10Serv20BadTokenRequest(t *testing.T) {
 	resp, err := http.Post("http://"+CONFIG.ListenHostPort+"/api/v1/token", "application/json",
 		strings.NewReader(``))
 	if err != nil {
@@ -83,7 +83,7 @@ func Test60MainBadRequest(t *testing.T) {
 }
 
 // test request for short URL with empty JSON
-func Test61MainBadRequest2(t *testing.T) {
+func Test10Serv30BadTokenRequest2(t *testing.T) {
 	resp, err := http.Post("http://"+CONFIG.ListenHostPort+"/api/v1/token", "application/json",
 		strings.NewReader(`{}`))
 	if err != nil {
@@ -97,7 +97,7 @@ func Test61MainBadRequest2(t *testing.T) {
 }
 
 //test request for short URL without expiration in request
-func Test62MainGetTokenWOexp(t *testing.T) {
+func Test10Serv35GetTokenWOexp(t *testing.T) {
 	SetDebug(1)
 	defer SetDebug(0)
 
@@ -116,7 +116,7 @@ func Test62MainGetTokenWOexp(t *testing.T) {
 }
 
 // request expire without parameters
-func Test64MainExpireTokenWOparams(t *testing.T) {
+func Test10Serv40ExpireTokenWOparams(t *testing.T) {
 
 	resp, err := http.Post("http://"+CONFIG.ListenHostPort+"/api/v1/expire", "application/json",
 		strings.NewReader(`{}`))
@@ -132,7 +132,7 @@ func Test64MainExpireTokenWOparams(t *testing.T) {
 }
 
 // request expire for not existing token
-func Test65MainExpireNotExistingToken(t *testing.T) {
+func Test10Serv45ExpireNotExistingToken(t *testing.T) {
 
 	resp, err := http.Post("http://"+CONFIG.ListenHostPort+"/api/v1/expire", "application/json",
 		strings.NewReader(`{"token":"$%#@*"}`)) // use non Base64 symbols
@@ -148,7 +148,7 @@ func Test65MainExpireNotExistingToken(t *testing.T) {
 }
 
 // try to get the same (debugging) token twice
-func Test68MainGetTokenTwice(t *testing.T) {
+func Test10Serv50GetTokenTwice(t *testing.T) {
 	SetDebug(1)
 	defer SetDebug(0)
 	resp, err := http.Post("http://"+CONFIG.ListenHostPort+"/api/v1/token", "application/json",
@@ -163,7 +163,7 @@ func Test68MainGetTokenTwice(t *testing.T) {
 }
 
 // test redirect with wrong token
-func Test70Main404(t *testing.T) {
+func Test10Serv60RedirectTo404(t *testing.T) {
 	resp, err := http.Get("http://" + CONFIG.ListenHostPort + "/not_existing_token")
 	if err != nil {
 		t.Errorf("not-existing token request error: %v", err)
@@ -175,7 +175,7 @@ func Test70Main404(t *testing.T) {
 }
 
 // try unsupported request in mode = disableRedirect
-func Test73MainServiceModeDisableRedirect(t *testing.T) {
+func Test10Serv65ServiceModeDisableRedirect(t *testing.T) {
 	CONFIG.Mode = disableRedirect
 
 	resp, err := http.Get("http://" + CONFIG.ListenHostPort + "/" + strings.Repeat("_", CONFIG.TokenLength))
@@ -189,7 +189,7 @@ func Test73MainServiceModeDisableRedirect(t *testing.T) {
 }
 
 // try unsupported request in mode = disableShortener
-func Test73MainServiceModeDisableShortener(t *testing.T) {
+func Test10Serv70ServiceModeDisableShortener(t *testing.T) {
 	CONFIG.Mode = disableShortener
 
 	resp, err := http.Post("http://"+CONFIG.ListenHostPort+"/api/v1/token", "application/json",
@@ -204,7 +204,7 @@ func Test73MainServiceModeDisableShortener(t *testing.T) {
 }
 
 // try unsupported request in mode = disableExpire
-func Test74MainServiceModeDisableExpire(t *testing.T) {
+func Test10Serv75ServiceModeDisableExpire(t *testing.T) {
 	CONFIG.Mode = disableExpire
 
 	resp, err := http.Post("http://"+CONFIG.ListenHostPort+"/api/v1/expire", "application/json",
@@ -219,7 +219,7 @@ func Test74MainServiceModeDisableExpire(t *testing.T) {
 }
 
 // try health check in service mode disableRedirect
-func Test75MainHealthCheckModeDisableRedirect(t *testing.T) {
+func Test10Serv80HealthCheckModeDisableRedirect(t *testing.T) {
 	CONFIG.Mode = disableRedirect
 
 	resp, err := http.Get("http://" + CONFIG.ListenHostPort)
@@ -234,7 +234,7 @@ func Test75MainHealthCheckModeDisableRedirect(t *testing.T) {
 }
 
 // try health check in service mode disableShortener
-func Test77MainHealthCheckModeDisableShortener(t *testing.T) {
+func Test10Serv85HealthCheckModeDisableShortener(t *testing.T) {
 	CONFIG.Mode = disableShortener
 
 	resp, err := http.Get("http://" + CONFIG.ListenHostPort)
@@ -249,7 +249,7 @@ func Test77MainHealthCheckModeDisableShortener(t *testing.T) {
 }
 
 // try health check in service mode disableExpire
-func Test78MainHealthCheckModeDisableExpire(t *testing.T) {
+func Test10Serv90HealthCheckModeDisableExpire(t *testing.T) {
 	CONFIG.Mode = disableExpire
 
 	resp, err := http.Get("http://" + CONFIG.ListenHostPort)
@@ -264,7 +264,7 @@ func Test78MainHealthCheckModeDisableExpire(t *testing.T) {
 }
 
 // try to stop service
-func Test99MainKill(t *testing.T) {
+func Test10Serv95InteruptService(t *testing.T) {
 	logger := log.Writer()
 	r, w, _ := os.Pipe()
 	log.SetOutput(w)

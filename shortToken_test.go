@@ -6,7 +6,7 @@ import (
 )
 
 // try to create new token from debugging source
-func Test05NewShortTokenFake(t *testing.T) {
+func Test00ST05NewShortTokenFake(t *testing.T) {
 	SetDebug(1)
 	defer SetDebug(0)
 	DEBUGToken := strings.Repeat("_", 6)
@@ -20,7 +20,7 @@ func Test05NewShortTokenFake(t *testing.T) {
 }
 
 // try to make two tokens from random source and compare them
-func Test07NewShortTokenReal(t *testing.T) {
+func Test00ST07NewShortTokenReal(t *testing.T) {
 	tc, err := NewShortToken(6)
 	if err != nil {
 		t.Error("error of ShortToken creation from random:", err)
@@ -38,7 +38,7 @@ func Test07NewShortTokenReal(t *testing.T) {
 }
 
 // try to make two tokens from random source and compare them
-func Test07NewShortTokenReal2(t *testing.T) {
+func Test00ST07NewShortTokenReal2(t *testing.T) {
 	tc, err := NewShortToken(2)
 	if err != nil {
 		t.Error("error of ShortToken creation from random:", err)
@@ -56,7 +56,7 @@ func Test07NewShortTokenReal2(t *testing.T) {
 }
 
 // test debug error
-func Test08DebugError(t *testing.T) {
+func Test00ST08DebugError(t *testing.T) {
 	SetDebug(-1)
 	defer SetDebug(0)
 	_, err := NewShortToken(2)

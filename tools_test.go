@@ -54,7 +54,7 @@ func Test01Tools05EmptyFile(t *testing.T) {
 	t.Logf("Receved: %v", err)
 }
 
-// test it with empty JSON with URLSHORTENER_DSN unset
+// test it with empty JSON with URLSHORTENER_ConnectOptions unset
 func Test01Tools10EmptyJSON(t *testing.T) {
 	tmpfile, err := ioutil.TempFile(os.TempDir(), "testing*.json")
 	if err != nil {
@@ -84,8 +84,8 @@ func Test01Tools10EmptyJSON(t *testing.T) {
 	t.Logf("Receved: %v", err)
 }
 
-// test it with empty JSON but with set URLSHORTENER_DSN
-func Test02Tools15EmptyJSON_(t *testing.T) {
+// test it with empty JSON but with set URLSHORTENER_ConnectOptions
+func Test01Tools15EmptyJSON_(t *testing.T) {
 	tmpfile, err := ioutil.TempFile(os.TempDir(), "testing*.json")
 	if err != nil {
 		t.Errorf("temp file creation error: %w", err)
@@ -109,7 +109,7 @@ func Test02Tools15EmptyJSON_(t *testing.T) {
 	err = readConfig(tmpfile.Name())
 
 	if err != nil {
-		t.Error("error for empty JSON with set URLSHORTENER_ConnectOptions")
+		t.Errorf("error for empty JSON with set URLSHORTENER_ConnectOptions: %w", err)
 	}
 	if !(len(CONFIG.ConnectOptions.Addrs) == 1 && CONFIG.ConnectOptions.Addrs[0] == "testhost:6379") ||
 		CONFIG.TokenLength != DefaultTokenLength ||
@@ -122,8 +122,8 @@ func Test02Tools15EmptyJSON_(t *testing.T) {
 	}
 }
 
-// test full success from example.cnf.json
-func Test03Tools20FullJSON(t *testing.T) {
+// test full success from example.cnfr.json
+func Test01Tools20FullJSON(t *testing.T) {
 	saveConnectOptions := os.Getenv("URLSHORTENER_ConnectOptions")
 	saveCONFIG := CONFIG
 	defer func() {
@@ -136,7 +136,7 @@ func Test03Tools20FullJSON(t *testing.T) {
 	err := readConfig("example.cnfr.json")
 
 	if err != nil {
-		t.Errorf("error reading of example.cnf.json: %v", err)
+		t.Errorf("error reading of example.cnfr.json: %v", err)
 	}
 
 	if !(len(CONFIG.ConnectOptions.Addrs) == 1 &&
@@ -177,7 +177,7 @@ func saveEnv() func() {
 }
 
 // test full success from environment variables
-func Test03Tools30FullEnv(t *testing.T) {
+func Test01Tools30FullEnv(t *testing.T) {
 	defer saveEnv()()
 
 	CONFIG = Config{}
@@ -205,8 +205,20 @@ func Test03Tools30FullEnv(t *testing.T) {
 	}
 }
 
+func Test01Tools31WrongConnectionOptions(t *testing.T) {
+	defer saveEnv()()
+
+	CONFIG = Config{}
+	os.Setenv("URLSHORTENER_ConnectOptions", `{"Addrs":6379}`)
+
+	err := readConfig("wrong.wrong.wrong.file.json")
+	if err == nil {
+		t.Error("no error when expected:")
+	}
+}
+
 // test wromg enviroment variable URLSHORTENER_TokenLength
-func Test03Tools33WrongTokenLength(t *testing.T) {
+func Test01Tools33WrongTokenLength(t *testing.T) {
 	defer saveEnv()()
 
 	CONFIG = Config{}
@@ -224,7 +236,7 @@ func Test03Tools33WrongTokenLength(t *testing.T) {
 }
 
 // test wromg enviroment variable URLSHORTENER_Timeout
-func Test03Tools35WrongTimeout(t *testing.T) {
+func Test01Tools35WrongTimeout(t *testing.T) {
 	defer saveEnv()()
 
 	CONFIG = Config{}
@@ -242,7 +254,7 @@ func Test03Tools35WrongTimeout(t *testing.T) {
 }
 
 // test wromg enviroment variable URLSHORTENER_DefaultExp
-func Test03Tools40WrongEnvDefaultExp(t *testing.T) {
+func Test01Tools40WrongEnvDefaultExp(t *testing.T) {
 	defer saveEnv()()
 
 	CONFIG = Config{}
@@ -260,7 +272,7 @@ func Test03Tools40WrongEnvDefaultExp(t *testing.T) {
 }
 
 // test wromg enviroment variable URLSHORTENER_Mode
-func Test03Tools45WrongEnvMode(t *testing.T) {
+func Test01Tools45WrongEnvMode(t *testing.T) {
 	defer saveEnv()()
 
 	CONFIG = Config{}

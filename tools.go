@@ -40,44 +40,47 @@ const (
 // CONFIG - structure with the configuration variables
 var CONFIG Config
 
-func parseConOpt(s string) redis.UniversalOptions {
+func parseConOpt(s string) (redis.UniversalOptions, error) {
 	conOpt := redis.UniversalOptions{}
-	json.Unmarshal([]byte(s), &conOpt)
-	return conOpt
+	return conOpt, json.Unmarshal([]byte(s), &conOpt)
 }
 
 // readConfig reads configuration file and also tries to get data from environment variables
 func readConfig(cfgFile string) error {
 	var err error
+	value := ""
 	// try to read config data from evirinment
 
-	if value := os.Getenv("URLSHORTENER_ConnectOptions"); value != "" {
+	if value = os.Getenv("URLSHORTENER_ConnectOptions"); value != "" {
 		// parse JSON value of ConnectOptions
-		CONFIG.ConnectOptions = parseConOpt(value)
+		CONFIG.ConnectOptions, err = parseConOpt(value)
+		if err != nil {
+			log.Printf("Warning: environments variable URLSHORTENER_ConnectOptions parsing error: %v\n", err)
+		}
 	}
 
-	if value := os.Getenv("URLSHORTENER_TokenLength"); value != "" {
+	if value = os.Getenv("URLSHORTENER_TokenLength"); value != "" {
 		CONFIG.TokenLength, err = strconv.Atoi(value)
 		if err != nil {
 			log.Printf("Warning: environments variable URLSHORTENER_Timeout conversion error: %v\n", err)
 		}
 	}
 
-	if value := os.Getenv("URLSHORTENER_Timeout"); value != "" {
+	if value = os.Getenv("URLSHORTENER_Timeout"); value != "" {
 		CONFIG.Timeout, err = strconv.Atoi(value)
 		if err != nil {
 			log.Printf("Warning: environments variable URLSHORTENER_Timeout conversion error: %v\n", err)
 		}
 	}
 	CONFIG.ListenHostPort = os.Getenv("URLSHORTENER_ListenHostPort")
-	if value := os.Getenv("URLSHORTENER_DefaultExp"); value != "" {
+	if value = os.Getenv("URLSHORTENER_DefaultExp"); value != "" {
 		CONFIG.DefaultExp, err = strconv.Atoi(value)
 		if err != nil {
 			log.Printf("Warning: environments variable URLSHORTENER_DefaultExp conversion error: %v\n", err)
 		}
 	}
 	CONFIG.ShortDomain = os.Getenv("URLSHORTENER_ShortDomain")
-	if value := os.Getenv("URLSHORTENER_Mode"); value != "" {
+	if value = os.Getenv("URLSHORTENER_Mode"); value != "" {
 		CONFIG.Mode, err = strconv.Atoi(value)
 		if err != nil {
 			log.Printf("Warning: environments variable URLSHORTENER_Mode conversion error: %v\n", err)
@@ -96,7 +99,7 @@ func readConfig(cfgFile string) error {
 		log.Printf("Warning: configuration file '%s' reading/parsing error: %s\n", cfgFile, err)
 	}
 
-	// check mandatory config variable DSN
+	// check mandatory config variable
 	if len(CONFIG.ConnectOptions.Addrs) == 0 {
 		return errors.New("mandatory configuration value ConnectOptions is not set")
 	}

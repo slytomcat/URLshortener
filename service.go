@@ -312,13 +312,13 @@ func expireToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// parse JSON to parameters structure
-	// the requst parameters structure
+	// make the requst parameters structure
 	var params struct {
 		Token string `json:"token"`         // Token of short URL token
 		Exp   int    `json:"exp,omitempty"` // Expiration
 	}
 
+	// parse JSON from buffer to parameters structure
 	err = json.Unmarshal(buf, &params)
 	if err != nil || params.Token == "" {
 		log.Printf("%s: bad request parameters:%s", rMess, buf)
@@ -365,10 +365,13 @@ func myMUX(w http.ResponseWriter, r *http.Request) {
 // ServiceStart starts new service with provided database interface
 func ServiceStart() error {
 
+	// start initial attempts measurement
+	go attepmptsMeasurement()
+
 	// register the handler
 	http.HandleFunc("/", myMUX)
 
-	// create and start server
+	// create server
 	Server = &http.Server{
 		Addr:    CONFIG.ListenHostPort,
 		Handler: nil}
@@ -377,7 +380,7 @@ func ServiceStart() error {
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
 	go func() {
-		// Block until a signal is received.
+		// block until a signal is received.
 		<-c
 		// gracefully shut down the server
 		Server.Shutdown(nil)

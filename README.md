@@ -66,7 +66,7 @@ Response: simple home page and `HTTP 200 OK` in case of successful self-health-c
 
 ### Service configuration
 
-Configuration file must have a name `cnfr.json` and it should be placed in the same folder where URLshortener is run. The file content must be the following correct JSON value:
+Path to configuration file can be provided via optional `-config` command line option (default path is `./cnfr.json`). The file content must be the following correct JSON value:
 
     {
     "ConnectOptions": {
