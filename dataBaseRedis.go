@@ -101,28 +101,54 @@ func (t *tokenDBR) New(longURL string, expiration int) (string, error) {
 	}
 }
 
+func checkTokenLenth(sToken string) error {
+	if len(sToken) != CONFIG.TokenLength {
+		return errors.New("wrong token length")
+	}
+	return nil
+}
+
 // Get returns the long URL for given token
 func (t *tokenDBR) Get(sToken string) (string, error) {
-	// just return result of standard call
+
+	// check token length
+	if err := checkTokenLenth(sToken); err != nil {
+		return "", err
+	}
+
+	// if length is ok than just return result of standard call
 	return t.db.Get(sToken).Result()
 }
 
 // Expire sets new expire datetime for given token
 func (t *tokenDBR) Expire(sToken string, expiration int) error {
+
+	// check token length
+	if err := checkTokenLenth(sToken); err != nil {
+		return err
+	}
+
+	// try to change the token expiration
 	ok, err := t.db.Expire(sToken, time.Hour*24*time.Duration(expiration)).Result()
 	// check the result status
 	if err == nil && !ok {
-		return errors.New("Token is not exists")
+		return errors.New("token is not exists")
 	}
 	return err
 }
 
 // Delete removes token from database
 func (t *tokenDBR) Delete(sToken string) error {
+
+	// check token length
+	if err := checkTokenLenth(sToken); err != nil {
+		return err
+	}
+
 	deleted, err := t.db.Del(sToken).Result()
 	// check the number deleted tokens
 	if err == nil && deleted == 0 {
-		return errors.New("Token is not exists")
+		return errors.New("token is not exists")
 	}
 	return err
 }
@@ -133,7 +159,7 @@ func (t *tokenDBR) Test() (int, error) {
 	// get token for test
 	testToken, err := t.New("test.url", 1)
 	if err != nil {
-		return 0, fmt.Errorf("New token creation error: %w", err)
+		return 0, fmt.Errorf("new token creation error: %w", err)
 	}
 	// remove test token after finishing the measurement
 	defer t.Delete(testToken)
