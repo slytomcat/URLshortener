@@ -59,7 +59,7 @@ func Test10Serv15Home(t *testing.T) {
 	}
 
 	if !bytes.Contains(buf, []byte("Home page of URLshortener")) {
-		t.Error("wrong response on health check request")
+		t.Errorf("wrong response on health check request: %v", buf)
 	}
 
 	if resp.StatusCode != http.StatusOK {
