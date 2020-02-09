@@ -9,23 +9,10 @@ import (
 	"testing"
 )
 
-// saveCfgArgs saves CONFIG, os.Args and URLSHORTENER_ConnectOptions eviroment variable
-// and returns the function that restores them to original values
-func saveCfgArgs() func() {
-	saveConnectOptions := os.Getenv("URLSHORTENER_ConnectOptions")
-	saveArgs := os.Args
-	saveCONFIG := CONFIG
-
-	return func() {
-		os.Setenv("URLSHORTENER_ConnectOptions", saveConnectOptions)
-		os.Args = saveArgs
-		CONFIG = saveCONFIG
-	}
-}
-
 // try to start with wrong path to configuration file
 func Test20Main00WrongConfig(t *testing.T) {
-	defer saveCfgArgs()()
+	// use saveEnv from tools_test
+	defer saveEnv()()
 	os.Unsetenv("URLSHORTENER_ConnectOptions")
 	os.Args = []string{"prog", "-config=/bad/path/to/config/file"}
 	CONFIG = Config{}
@@ -42,7 +29,8 @@ func Test20Main00WrongConfig(t *testing.T) {
 
 // try to pass wrong path to config
 func Test20Main05WrongDB(t *testing.T) {
-	defer saveCfgArgs()()
+	// use saveEnv from tools_test
+	defer saveEnv()()
 	os.Setenv("URLSHORTENER_ConnectOptions", `{"Addrs":["wrong.host:6379"]}`)
 	os.Args = []string{"prog", "-config=/bad/path"}
 	CONFIG = Config{}
