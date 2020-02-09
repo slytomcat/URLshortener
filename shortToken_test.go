@@ -5,10 +5,18 @@ import (
 	"testing"
 )
 
+// SetDebug sets debuging mode and return
+// func() that resets the debog mode to 0.
+func SetDebug(mode int) func() {
+	SetShortTokenDebug(mode)
+	return func() { SetShortTokenDebug(0) }
+}
+
 // try to create new token from debugging source
 func Test00ST05NewShortTokenFake(t *testing.T) {
-	SetDebug(1)
-	defer SetDebug(0)
+
+	defer SetDebug(1)()
+
 	DEBUGToken := strings.Repeat("_", 6)
 	tc, err := NewShortToken(6)
 	if err != nil {
@@ -57,8 +65,9 @@ func Test00ST07NewShortTokenReal2(t *testing.T) {
 
 // test debug error
 func Test00ST08DebugError(t *testing.T) {
-	SetDebug(-1)
-	defer SetDebug(0)
+
+	defer SetDebug(-1)()
+
 	_, err := NewShortToken(2)
 	if err == nil {
 		t.Error("no error when expected:")

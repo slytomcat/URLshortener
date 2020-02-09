@@ -13,15 +13,15 @@ import (
 )
 
 var (
-	// debugMode - debugging mode. See SetDebug for details
+	// debugMode - debugging mode. See SetShortTokenDebug for details
 	debugMode int32
 )
 
-// SetDebug sets debuging mode:
+// SetShortTokenDebug sets debuging mode:
 // 0 - normal operation: NewShortToken returns random token
 // 1 - debugging mode: NewShortToken returns debug token
 // -1 - error mode: NewShortToken returns error
-func SetDebug(mode int) {
+func SetShortTokenDebug(mode int) {
 	atomic.StoreInt32(&debugMode, int32(mode))
 }
 

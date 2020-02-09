@@ -6,10 +6,11 @@ import (
 	"testing"
 )
 
-// saveEnv stores environment variables and CONFIG and returns function that
-// restores environment variables and CONFIG to original values
+// saveEnv stores environment variables, os.Args and CONFIG and returns
+// function that restores saved items to original values
 func saveEnv() func() {
 	saveCONFIG := CONFIG
+	saveArgs := os.Args
 	saveConnectOptions := os.Getenv("URLSHORTENER_ConnectOptions")
 	saveTokenLength := os.Getenv("URLSHORTENER_TokenLength")
 	saveTimeout := os.Getenv("URLSHORTENER_Timeout")
@@ -18,8 +19,10 @@ func saveEnv() func() {
 	saveDomain := os.Getenv("URLSHORTENER_ShortDomain")
 	saveMode := os.Getenv("URLSHORTENER_Mode")
 
+	// returned func restores all stored items to original values
 	return func() {
 		CONFIG = saveCONFIG
+		os.Args = saveArgs
 		os.Setenv("URLSHORTENER_ConnectOptions", saveConnectOptions)
 		os.Setenv("URLSHORTENER_TokenLength", saveTokenLength)
 		os.Setenv("URLSHORTENER_Timeout", saveTimeout)
@@ -59,6 +62,7 @@ func Test01Tools05EmptyFile(t *testing.T) {
 	}
 
 	defer saveEnv()()
+
 	os.Unsetenv("URLSHORTENER_ConnectOptions")
 	CONFIG = Config{}
 
@@ -84,6 +88,7 @@ func Test01Tools10EmptyJSON(t *testing.T) {
 	}
 
 	defer saveEnv()()
+
 	os.Unsetenv("URLSHORTENER_ConnectOptions")
 	CONFIG = Config{}
 
@@ -109,6 +114,7 @@ func Test01Tools15EmptyJSON_(t *testing.T) {
 	}
 
 	defer saveEnv()()
+
 	CONFIG = Config{}
 	os.Setenv("URLSHORTENER_ConnectOptions", `{"Addrs":["testhost:6379"]}`)
 
@@ -130,7 +136,9 @@ func Test01Tools15EmptyJSON_(t *testing.T) {
 
 // test full success from example.cnfr.json
 func Test01Tools20FullJSON(t *testing.T) {
+
 	defer saveEnv()()
+
 	CONFIG = Config{}
 	os.Unsetenv("URLSHORTENER_ConnectOptions")
 
@@ -156,7 +164,9 @@ func Test01Tools20FullJSON(t *testing.T) {
 
 // test full success from environment variables
 func Test01Tools30FullEnv(t *testing.T) {
+
 	defer saveEnv()()
+
 	CONFIG = Config{}
 
 	os.Setenv("URLSHORTENER_ConnectOptions", `{"Addrs":["TestHost:6379"]}`)
@@ -184,6 +194,7 @@ func Test01Tools30FullEnv(t *testing.T) {
 }
 
 func Test01Tools31WrongConnectionOptions(t *testing.T) {
+
 	defer saveEnv()()
 
 	CONFIG = Config{}
@@ -197,6 +208,7 @@ func Test01Tools31WrongConnectionOptions(t *testing.T) {
 
 // test wromg enviroment variable URLSHORTENER_TokenLength
 func Test01Tools33WrongTokenLength(t *testing.T) {
+
 	defer saveEnv()()
 
 	CONFIG = Config{}
@@ -233,6 +245,7 @@ func Test01Tools35WrongTimeout(t *testing.T) {
 
 // test wromg enviroment variable URLSHORTENER_DefaultExp
 func Test01Tools40WrongEnvDefaultExp(t *testing.T) {
+
 	defer saveEnv()()
 
 	CONFIG = Config{}
@@ -251,6 +264,7 @@ func Test01Tools40WrongEnvDefaultExp(t *testing.T) {
 
 // test wromg enviroment variable URLSHORTENER_Mode
 func Test01Tools45WrongEnvMode(t *testing.T) {
+
 	defer saveEnv()()
 
 	CONFIG = Config{}
