@@ -101,6 +101,7 @@ func (t *tokenDBR) New(longURL string, expiration int) (string, error) {
 	}
 }
 
+// checkTokenLenth do the work as described in name
 func checkTokenLenth(sToken string) error {
 	if len(sToken) != CONFIG.TokenLength {
 		return errors.New("wrong token length")
