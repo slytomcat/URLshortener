@@ -41,7 +41,7 @@ func Test00ST07NewShortTokenReal(t *testing.T) {
 	}
 
 	if tc == tc1 {
-		t.Errorf("2 sequential token are equal by BASE64: '%s' == '%s'", tc, tc1)
+		t.Errorf("2 sequential token are equal: '%s' == '%s'", tc, tc1)
 	}
 }
 
@@ -59,7 +59,7 @@ func Test00ST07NewShortTokenReal2(t *testing.T) {
 	}
 
 	if tc == tc1 {
-		t.Error("2 sequential token are equal by BASE64")
+		t.Errorf("2 sequential token are equal: '%s' == '%s'", tc, tc1)
 	}
 }
 
