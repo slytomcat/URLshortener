@@ -33,13 +33,13 @@ func NewShortToken(length int) (string, error) {
 	case -1:
 		return "", errors.New("debug error")
 	}
-	buf := make([]byte, length*6/8+1)
+	bLen := length*6/8 + 1
+	buf := make([]byte, bLen)
 	// get secure random bytes
-	_, err := rand.Read(buf)
-	if err != nil {
-		return "", err
+	n, err := rand.Read(buf)
+	if err == nil && n == bLen {
+		// shorten BASE64 representation to tokenLenS symbols
+		return base64.URLEncoding.EncodeToString(buf)[:length], nil
 	}
-	// shorten BASE64 representation to tokenLenS symbols
-	return base64.URLEncoding.EncodeToString(buf)[:length], nil
-
+	return "", errors.New("error while retriving random data " + err.Error())
 }
