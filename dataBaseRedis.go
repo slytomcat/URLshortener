@@ -16,7 +16,6 @@ type Token interface {
 	Get(sToken string) (string, error)
 	Expire(sToken string, expiration int) error
 	Delete(sToken string) error
-	Test() (int, error)
 }
 
 var (
@@ -55,21 +54,29 @@ func (t *tokenDBR) New(longURL string, expiration int) (string, error) {
 
 	// Limit number of attempts by time not by count
 
-	// Count attempts for reports
-	attempt := 0
+	// Count attempts and time for reports
+	var attempt, startTime int64
 
-	// report to log when number of attempts before success save of token near to maximum attempts
-	// during timeout (calculated while health-check performed)
+	// Calculate statistics and report if some dangerous situation appears
 	defer func() {
-		// if number of measured Attempts is small then comparison is meaningless.
-		MaxAtt := int(atomic.LoadInt32(&Attempts))
-		if MaxAtt > 8 && MaxAtt*3/4 < attempt {
-			log.Printf("Warning: Number of unsuccessful attempts is %d while maximum number of attempts during time-out is %d", attempt, Attempts)
+		elapsedTime := time.Now().UnixNano() - startTime
+		if attempt > 0 {
+			MaxAtt := attempt * int64(CONFIG.Timeout) * 1000000 / elapsedTime
+			atomic.StoreInt32(&Attempts, int32(MaxAtt))
+			if MaxAtt*3/4 < attempt {
+				log.Printf("Warning: Measured %d attempts for %d ns. Calculated %d max attempts per %d ms\n", attempt, elapsedTime, MaxAtt, CONFIG.Timeout)
+			}
+			if MaxAtt > 0 && MaxAtt < 10 {
+				log.Printf("Warning: Too low number of attempts: %d per timeout (%d ms)\n", MaxAtt, CONFIG.Timeout)
+			}
 		}
 	}()
 
 	// make time-out chanel
 	stop := time.After(time.Millisecond * time.Duration(CONFIG.Timeout))
+
+	// Remember starting time
+	startTime = time.Now().UnixNano()
 
 	// start trying to store new token
 	for {
@@ -84,6 +91,7 @@ func (t *tokenDBR) New(longURL string, expiration int) (string, error) {
 				return "", fmt.Errorf("NewShortToken error: %w", err)
 			}
 
+			// count attempts
 			attempt++
 
 			// try to store token
@@ -152,51 +160,4 @@ func (t *tokenDBR) Delete(sToken string) error {
 		return errors.New("token is not exists")
 	}
 	return err
-}
-
-// Test measures number of attempts to store token during the new token request time-out
-func (t *tokenDBR) Test() (int, error) {
-
-	// get token for test
-	testToken, err := t.New("test.url", 1)
-	if err != nil {
-		return 0, fmt.Errorf("new token creation error: %w", err)
-	}
-	// remove test token after finishing the measurement
-	defer t.Delete(testToken)
-
-	// make time-out chanel
-	stop := time.After(time.Millisecond * time.Duration(CONFIG.Timeout))
-
-	attempt := 0
-
-	// start the measurement
-	for {
-		select {
-		case <-stop:
-			// return the counted number of attempts when timeout exceeded
-			return attempt, nil
-		default:
-			// get new random token to emulate the timings of standard routine
-			_, err := NewShortToken(CONFIG.TokenLength)
-			if err != nil {
-				return 0, fmt.Errorf("NewShortToken error: %w", err)
-			}
-
-			attempt++
-
-			// try to store already stored testToken
-			ok, err := t.db.SetNX(testToken, "test.url", time.Hour*24).Result()
-			if err == nil && ok {
-				// token stored twice successfully: it is not good
-				return 0, errors.New("error: token successfilly stored twice")
-			}
-			if err != nil {
-				// duplicate case should not return error! Something is going wrong
-				return 0, fmt.Errorf("SetNX operation error: %w", err)
-			}
-			// !ok mean that duplicate detected
-			// it's as expected, continue
-		}
-	}
 }

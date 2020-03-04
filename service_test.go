@@ -98,8 +98,8 @@ func Test10Serv30BadTokenRequest2(t *testing.T) {
 
 //test request for short URL without expiration in request
 func Test10Serv35GetTokenWOexp(t *testing.T) {
-	SetDebug(1)
-	defer SetDebug(0)
+
+	defer SetDebug(1)()
 
 	// clear debug token
 	TokenDB.Delete(strings.Repeat("_", CONFIG.TokenLength))
@@ -149,8 +149,9 @@ func Test10Serv45ExpireNotExistingToken(t *testing.T) {
 
 // try to get the same (debugging) token twice
 func Test10Serv50GetTokenTwice(t *testing.T) {
-	SetDebug(1)
-	defer SetDebug(0)
+
+	defer SetDebug(1)()
+
 	resp, err := http.Post("http://"+CONFIG.ListenHostPort+"/api/v1/token", "application/json",
 		strings.NewReader(`{"url": "http://`+CONFIG.ShortDomain+`"}`))
 	if err != nil {
@@ -176,6 +177,8 @@ func Test10Serv60RedirectTo404(t *testing.T) {
 
 // try unsupported request in mode = disableRedirect
 func Test10Serv65ServiceModeDisableRedirect(t *testing.T) {
+	defer saveEnv()()
+
 	CONFIG.Mode = disableRedirect
 
 	resp, err := http.Get("http://" + CONFIG.ListenHostPort + "/" + strings.Repeat("_", CONFIG.TokenLength))
@@ -190,6 +193,8 @@ func Test10Serv65ServiceModeDisableRedirect(t *testing.T) {
 
 // try unsupported request in mode = disableShortener
 func Test10Serv70ServiceModeDisableShortener(t *testing.T) {
+	defer saveEnv()()
+
 	CONFIG.Mode = disableShortener
 
 	resp, err := http.Post("http://"+CONFIG.ListenHostPort+"/api/v1/token", "application/json",
@@ -205,6 +210,8 @@ func Test10Serv70ServiceModeDisableShortener(t *testing.T) {
 
 // try unsupported request in mode = disableExpire
 func Test10Serv75ServiceModeDisableExpire(t *testing.T) {
+	defer saveEnv()()
+
 	CONFIG.Mode = disableExpire
 
 	resp, err := http.Post("http://"+CONFIG.ListenHostPort+"/api/v1/expire", "application/json",
@@ -220,6 +227,8 @@ func Test10Serv75ServiceModeDisableExpire(t *testing.T) {
 
 // try health check in service mode disableRedirect
 func Test10Serv80HealthCheckModeDisableRedirect(t *testing.T) {
+	defer saveEnv()()
+
 	CONFIG.Mode = disableRedirect
 
 	resp, err := http.Get("http://" + CONFIG.ListenHostPort)
@@ -235,6 +244,8 @@ func Test10Serv80HealthCheckModeDisableRedirect(t *testing.T) {
 
 // try health check in service mode disableShortener
 func Test10Serv85HealthCheckModeDisableShortener(t *testing.T) {
+	defer saveEnv()()
+
 	CONFIG.Mode = disableShortener
 
 	resp, err := http.Get("http://" + CONFIG.ListenHostPort)
@@ -250,6 +261,8 @@ func Test10Serv85HealthCheckModeDisableShortener(t *testing.T) {
 
 // try health check in service mode disableExpire
 func Test10Serv90HealthCheckModeDisableExpire(t *testing.T) {
+	defer saveEnv()()
+
 	CONFIG.Mode = disableExpire
 
 	resp, err := http.Get("http://" + CONFIG.ListenHostPort)
