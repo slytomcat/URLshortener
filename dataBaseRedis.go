@@ -60,16 +60,19 @@ func (t *tokenDBR) New(longURL string, expiration int) (string, error) {
 	// Calculate statistics and report if some dangerous situation appears
 	defer func() {
 		elapsedTime := time.Now().UnixNano() - startTime
-		if attempt > 0 {
-			MaxAtt := attempt * int64(CONFIG.Timeout) * 1000000 / elapsedTime
-			atomic.StoreInt32(&Attempts, int32(MaxAtt))
-			if MaxAtt*3/4 < attempt {
-				log.Printf("Warning: Measured %d attempts for %d ns. Calculated %d max attempts per %d ms\n", attempt, elapsedTime, MaxAtt, CONFIG.Timeout)
+		// perform statistical calculation and reporting in another go-routine
+		go func() {
+			if attempt > 0 {
+				MaxAtt := attempt * int64(CONFIG.Timeout) * 1000000 / elapsedTime
+				atomic.StoreInt32(&Attempts, int32(MaxAtt))
+				if MaxAtt*3/4 < attempt {
+					log.Printf("Warning: Measured %d attempts for %d ns. Calculated %d max attempts per %d ms\n", attempt, elapsedTime, MaxAtt, CONFIG.Timeout)
+				}
+				if MaxAtt > 0 && MaxAtt < 10 {
+					log.Printf("Warning: Too low number of attempts: %d per timeout (%d ms)\n", MaxAtt, CONFIG.Timeout)
+				}
 			}
-			if MaxAtt > 0 && MaxAtt < 10 {
-				log.Printf("Warning: Too low number of attempts: %d per timeout (%d ms)\n", MaxAtt, CONFIG.Timeout)
-			}
-		}
+		}()
 	}()
 
 	// make time-out chanel
