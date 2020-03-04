@@ -73,3 +73,21 @@ func Test00ST08DebugError(t *testing.T) {
 		t.Error("no error when expected:")
 	}
 }
+
+func Benchmark00ST00Create6(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		_, err := NewShortToken(6)
+		if err != nil {
+			b.Error(err)
+		}
+	}
+}
+
+func Benchmark00ST00Create8(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		_, err := NewShortToken(8)
+		if err != nil {
+			b.Error(err)
+		}
+	}
+}

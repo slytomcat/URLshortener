@@ -187,12 +187,3 @@ func Test05DBR60ebugError(t *testing.T) {
 }
 
 // get the test results
-func Test05DBR65Test(t *testing.T) {
-	n, err := TokenDB.Test()
-	if err != nil {
-		t.Errorf("error while performing test: %v", err)
-	}
-	if n == 0 {
-		t.Error("counted attempts is zero")
-	}
-}
