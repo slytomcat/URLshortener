@@ -9,15 +9,10 @@ import (
 	"testing"
 )
 
+// try to start with wrong path to configuration file
 func Test20Main00WrongConfig(t *testing.T) {
-	saveConnectOptions := os.Getenv("URLSHORTENER_ConnectOptions")
-	saveArgs := os.Args
-	saveCONFIG := CONFIG
-	defer func() {
-		os.Setenv("URLSHORTENER_ConnectOptions", saveConnectOptions)
-		os.Args = saveArgs
-		CONFIG = saveCONFIG
-	}()
+	// use saveEnv from tools_test
+	defer saveEnv()()
 	os.Unsetenv("URLSHORTENER_ConnectOptions")
 	os.Args = []string{"prog", "-config=/bad/path/to/config/file"}
 	CONFIG = Config{}
@@ -34,14 +29,8 @@ func Test20Main00WrongConfig(t *testing.T) {
 
 // try to pass wrong path to config
 func Test20Main05WrongDB(t *testing.T) {
-	saveConnectOptions := os.Getenv("URLSHORTENER_ConnectOptions")
-	saveArgs := os.Args
-	saveCONFIG := CONFIG
-	defer func() {
-		os.Setenv("URLSHORTENER_ConnectOptions", saveConnectOptions)
-		os.Args = saveArgs
-		CONFIG = saveCONFIG
-	}()
+	// use saveEnv from tools_test
+	defer saveEnv()()
 	os.Setenv("URLSHORTENER_ConnectOptions", `{"Addrs":["wrong.host:6379"]}`)
 	os.Args = []string{"prog", "-config=/bad/path"}
 	CONFIG = Config{}
@@ -56,6 +45,7 @@ func Test20Main05WrongDB(t *testing.T) {
 	}
 }
 
+// try to get usage message
 func Test20Main10Usage(t *testing.T) {
 
 	err := exec.Command("go", "build").Run()
@@ -74,5 +64,4 @@ func Test20Main10Usage(t *testing.T) {
 		t.Errorf("received unexpected output: %s", buf)
 	}
 	log.Printf("%s", buf)
-
 }

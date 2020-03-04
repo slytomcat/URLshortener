@@ -24,7 +24,7 @@ func init() {
 
 func main() {
 	// set logging format
-	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
+	log.SetFlags(log.Ldate | log.Ltime | log.Lmicroseconds | log.Lshortfile)
 	// log exiting error
 	log.Println(doMain())
 }

@@ -17,6 +17,7 @@ import (
 	"os/signal"
 	"strings"
 	"sync/atomic"
+	"time"
 )
 
 const (
@@ -41,33 +42,10 @@ var (
 	Server *http.Server
 	// Attempts = measured during health-check attempts to store token during time-out
 	Attempts int32
-	// measereLock - synchronization primitive
-	measereLock int32 = 0
 )
-
-// attepmptsMeasurement - the measurement parallel routine: measures the number of store attempts for CONFIG.Timeout time
-func attepmptsMeasurement() {
-	// start measurment only if no other measurment is running
-	if atomic.CompareAndSwapInt32(&measereLock, 0, 1) {
-		defer atomic.StoreInt32(&measereLock, 0)
-		// measure attempts
-		attempts, err := TokenDB.Test()
-		if err != nil {
-			log.Printf("measuring the number of store attempts error: %v", err)
-		} else {
-			// store measurement
-			atomic.StoreInt32(&Attempts, int32(attempts))
-			// and log it
-			log.Printf("Measured %d attempts during %dms timeout", Attempts, CONFIG.Timeout)
-		}
-	}
-}
 
 // healthCheck performs full self-test of service in all service modes
 func healthCheck() error {
-
-	// start attempts measurement procedure in separate go-routine
-	go attepmptsMeasurement()
 
 	// url for sef-check redirect
 	url := "http://" + CONFIG.ShortDomain + "/favicon.ico"
@@ -339,8 +317,11 @@ func expireToken(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-// myMUX selects the handler function according to request URL
-func myMUX(w http.ResponseWriter, r *http.Request) {
+type serviceHandler struct {
+}
+
+// ServeHTTP selects the handler function according to request URL
+func (serviceHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	switch r.URL.Path {
 	case "/":
 		// request for health-check
@@ -364,25 +345,34 @@ func myMUX(w http.ResponseWriter, r *http.Request) {
 // ServiceStart starts new service with provided database interface
 func ServiceStart() error {
 
-	// start initial attempts measurement
-	go attepmptsMeasurement()
-
-	// register the handler
-	http.HandleFunc("/", myMUX)
-
 	// create server
 	Server = &http.Server{
 		Addr:    CONFIG.ListenHostPort,
-		Handler: nil}
+		Handler: serviceHandler{},
+	}
 
 	// register the os.Interupt(SIGINT) handler
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
+	// start signal handler
 	go func() {
-		// block until a signal is received.
+		// sleep until a signal is received.
 		<-c
 		// gracefully shut down the server
 		Server.Shutdown(context.Background())
+	}()
+
+	// start health checker
+	go func() {
+		// wait for server start
+		<-time.After(100 * time.Millisecond)
+		// and perform health-check
+		if err := healthCheck(); err != nil {
+			log.Printf("initial health-check failed: %v", err)
+			Server.Shutdown(context.Background())
+			return
+		}
+		log.Println("initial health-check successfuly passed")
 	}()
 
 	// run server

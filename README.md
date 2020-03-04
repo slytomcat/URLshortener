@@ -5,9 +5,11 @@
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 [![Docker image](https://img.shields.io/badge/Docker-image-blue)](https://hub.docker.com/r/slytomcat/urlshortener)
 
-URLshortener is a microservice to shorten long URLs and to handle the redirection by generated short URLs.
+`URLshortener` is a micro-service to shorten long URLs and to handle the redirection by generated short URLs.
 
 The service requires Redis database connection. See example how to run Redis in Docker in [redisDockerRun.sh](https://github.com/slytomcat/URLshortener/blob/master/redisDockerRun.sh)
+
+When `URLshortener` starts it also performs a self-healthcheck.
 
 
 ### Request for short URL:
@@ -26,15 +28,15 @@ Success response: `HTTP 200 OK` with body containing JSON with following paramet
 - `token`: string, token for short URL
 - `url`: string, short URL
 
-Note: Token is created as random and the saving it to DB may cause duplicate error. In order to avoid such error service makes several attempts to store random token. The number of attempts is limited by the `Timeout` configuration value by time, not by amount. When time-out expired and no one attempt was not successful then service returns response code `504 Gateway Timeout`. This response mean that the request can be repeated.
+Note: Token is created as random and the saving it to DB may cause duplicate error. In order to avoid such error the service makes several attempts to store random token. The number of attempts is limited by the `Timeout` configuration value by time, not by amount. When time-out expired and no one attempt was not successful then service returns response code `504 Gateway Timeout`. This response mean that the request can be repeated.
 
-The maximum number of possible attempts to store token during time-out is measured when service starting and during performing health-check. It is done asynchronously. The last measured value is displayed on the homepage and also written in the log.
+The maximum number of possible attempts to store token during time-out is calculated every time a new token stored. The last measured value is displayed on the homepage.
 
-If measured number of attempts is too small (1-5) then consider increasing of `Timeout` configuration value. Number of attempts above 200 is more then enough, you may consider to decrease `Timeout` configuration value. 30-40 attempts allows to fulfill the space of tokens up to 70-80% before timeout errors (during request for short token) occasionally appears.
+If measured number of attempts is too small (1-5) then log can contain warnings like: `Warning: Too low number of attempts: 5 per timeout (500 ms)`. In such a case consider increasing of `Timeout` configuration value. Number of attempts above 200 is more then enough, you may consider to decrease `Timeout` configuration value. 30-40 attempts allows to fulfill the space of tokens up to 70-80% before timeout errors (during request for short token) occasionally appears.
 
 When the service time-out errors appears often and log contains many errors like `can't store a new token for 75 attempts` then it most probably means that active (not expired) token amount is near to maximum possible tokens amount (for configured token length). Consider increasing of token length (`TokenLength` configuration value) or decrease token expiration (`DefaultExp` configuration value and/or `exp` parameter in the request for new short URL).
 
-Note also the log warnings such as `Warning: Number of unsuccessful attempts is 28 while maximum number of attempts during time-out is 34`. Such warnings also can be a signal that token space is filled near to maximum capacity.
+Note also the log warnings such as `Warning: Measured 45 attempts for 423621 ns. Calculated 62 max attempts per 500 ms`. Such warnings also can be a signal that token space is filled near to maximum capacity.
 
 ### Request for set new expiration of token:
 

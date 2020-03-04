@@ -5,10 +5,18 @@ import (
 	"testing"
 )
 
+// SetDebug sets debuging mode and return
+// func() that resets the debog mode to 0.
+func SetDebug(mode int) func() {
+	SetShortTokenDebug(mode)
+	return func() { SetShortTokenDebug(0) }
+}
+
 // try to create new token from debugging source
 func Test00ST05NewShortTokenFake(t *testing.T) {
-	SetDebug(1)
-	defer SetDebug(0)
+
+	defer SetDebug(1)()
+
 	DEBUGToken := strings.Repeat("_", 6)
 	tc, err := NewShortToken(6)
 	if err != nil {
@@ -33,7 +41,7 @@ func Test00ST07NewShortTokenReal(t *testing.T) {
 	}
 
 	if tc == tc1 {
-		t.Errorf("2 sequential token are equal by BASE64: '%s' == '%s'", tc, tc1)
+		t.Errorf("2 sequential token are equal: '%s' == '%s'", tc, tc1)
 	}
 }
 
@@ -51,16 +59,35 @@ func Test00ST07NewShortTokenReal2(t *testing.T) {
 	}
 
 	if tc == tc1 {
-		t.Error("2 sequential token are equal by BASE64")
+		t.Errorf("2 sequential token are equal: '%s' == '%s'", tc, tc1)
 	}
 }
 
 // test debug error
 func Test00ST08DebugError(t *testing.T) {
-	SetDebug(-1)
-	defer SetDebug(0)
+
+	defer SetDebug(-1)()
+
 	_, err := NewShortToken(2)
 	if err == nil {
 		t.Error("no error when expected:")
+	}
+}
+
+func Benchmark00ST00Create6(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		_, err := NewShortToken(6)
+		if err != nil {
+			b.Error(err)
+		}
+	}
+}
+
+func Benchmark00ST00Create8(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		_, err := NewShortToken(8)
+		if err != nil {
+			b.Error(err)
+		}
 	}
 }

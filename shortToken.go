@@ -13,15 +13,15 @@ import (
 )
 
 var (
-	// debugMode - debugging mode. See SetDebug for details
+	// debugMode - debugging mode. See SetShortTokenDebug for details
 	debugMode int32
 )
 
-// SetDebug sets debuging mode:
+// SetShortTokenDebug sets debuging mode:
 // 0 - normal operation: NewShortToken returns random token
 // 1 - debugging mode: NewShortToken returns debug token
 // -1 - error mode: NewShortToken returns error
-func SetDebug(mode int) {
+func SetShortTokenDebug(mode int) {
 	atomic.StoreInt32(&debugMode, int32(mode))
 }
 
@@ -33,13 +33,13 @@ func NewShortToken(length int) (string, error) {
 	case -1:
 		return "", errors.New("debug error")
 	}
-	buf := make([]byte, length*6/8+1)
+	bLen := length*6/8 + 1
+	buf := make([]byte, bLen)
 	// get secure random bytes
-	_, err := rand.Read(buf)
-	if err != nil {
-		return "", err
+	n, err := rand.Read(buf)
+	if err == nil && n == bLen {
+		// shorten BASE64 representation to tokenLenS symbols
+		return base64.URLEncoding.EncodeToString(buf)[:length], nil
 	}
-	// shorten BASE64 representation to tokenLenS symbols
-	return base64.URLEncoding.EncodeToString(buf)[:length], nil
-
+	return "", errors.New("error while retriving random data " + err.Error())
 }

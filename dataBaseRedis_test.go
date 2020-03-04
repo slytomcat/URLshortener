@@ -11,6 +11,7 @@ import (
 
 // test new TokenDB creation errors
 func Test05DBR01NewTokenDBError(t *testing.T) {
+
 	defer saveEnv()()
 
 	CONFIG.ConnectOptions, _ = parseConOpt(`{"Addrs":["Wrong.Host:6379"]}`)
@@ -19,7 +20,6 @@ func Test05DBR01NewTokenDBError(t *testing.T) {
 	if err == nil {
 		t.Error("No error when expected")
 	}
-
 }
 
 // test new TokenDBR creation
@@ -38,9 +38,10 @@ func Test05DBR10NewTokenDB(t *testing.T) {
 	TokenDB.Delete(strings.Repeat("_", CONFIG.TokenLength))
 }
 
+// try to add 2 tokens
 func Test05DBR15OneTokenTwice(t *testing.T) {
-	SetDebug(1)
-	defer SetDebug(0)
+
+	defer SetDebug(1)()
 
 	TokenDB.Delete(strings.Repeat("_", CONFIG.TokenLength))
 
@@ -61,10 +62,10 @@ func Test05DBR15OneTokenTwice(t *testing.T) {
 	TokenDB.Delete(strings.Repeat("_", CONFIG.TokenLength))
 }
 
-// Concurrent goroutines tries to make new short URL in the same time with the same token (debugging)
+// concurrent goroutines tries to make new short URL in the same time with the same token (debugging)
 func raceNewToken(db Token, url string, t *testing.T) {
-	SetDebug(1)
-	defer SetDebug(0)
+
+	defer SetDebug(1)()
 
 	var wg sync.WaitGroup
 	var succes, fail, cnt, i int64
@@ -174,10 +175,10 @@ func Test05DBR55GetNonExisting(t *testing.T) {
 	}
 }
 
-// Test debug error
+// test debug error
 func Test05DBR60ebugError(t *testing.T) {
-	SetDebug(-1)
-	defer SetDebug(0)
+
+	defer SetDebug(-1)()
 
 	_, err := TokenDB.New("someUrl.com", 1)
 	if err == nil {
@@ -185,14 +186,4 @@ func Test05DBR60ebugError(t *testing.T) {
 	}
 }
 
-// Get the test results
-func Test05DBR65Test(t *testing.T) {
-	n, err := TokenDB.Test()
-	if err != nil {
-		t.Errorf("error while performing test: %v", err)
-	}
-	if n == 0 {
-		t.Error("counted attempts is zero")
-	}
-
-}
+// get the test results
