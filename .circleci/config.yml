@@ -2,14 +2,12 @@ version: 2.1
 jobs:
   build:
     docker:
-      - image: circleci/golang:1.13.4
+      - image: circleci/golang:1.14
     steps:
       - checkout
       - run:
           name: building
-          command: |
-            export CGO_ENABLED=0
-            go build .
+          command: CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -installsuffix cgo .
       - run:
           name: Store version
           command: git describe --tags | sed "s/^\(v\.[0-9]\+\.[0-9]\+\.[0-9]\+\).*/\1/" > VERSION
@@ -21,7 +19,7 @@ jobs:
 
   test:
     docker:
-      - image: circleci/golang:1.13.4
+      - image: circleci/golang:1.14
     steps:
       - checkout
       - run:
@@ -61,7 +59,7 @@ jobs:
 
   upload_docker:
     docker:
-      - image: circleci/golang:1.13.4
+      - image: circleci/golang:1.14
     steps:
       - checkout
       - attach_workspace:
