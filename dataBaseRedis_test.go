@@ -9,7 +9,10 @@ import (
 	"time"
 )
 
-var testDB Token
+var (
+	testDBConfig *Config
+	testDB       Token
+)
 
 // test new TokenDB creation errors
 func Test05DBR01NewTokenDBError(t *testing.T) {
@@ -26,18 +29,18 @@ func Test05DBR01NewTokenDBError(t *testing.T) {
 
 // test new TokenDBR creation
 func Test05DBR10NewTokenDB(t *testing.T) {
-
-	err := readConfig("cnfr.json")
+	var err error
+	testDBConfig, err = readConfig("cnfr.json")
 	if err != nil {
 		t.Error(err)
 	}
 
-	testDB, err = NewTokenDB(CONFIG.ConnectOptions, CONFIG.Timeout, CONFIG.TokenLength)
+	testDB, err = NewTokenDB(testDBConfig.ConnectOptions, testDBConfig.Timeout, testDBConfig.TokenLength)
 	if err != nil {
 		t.Error(err)
 	}
 
-	testDB.Delete(strings.Repeat("_", CONFIG.TokenLength))
+	testDB.Delete(strings.Repeat("_", testDBConfig.TokenLength))
 }
 
 // try to add 2 tokens
@@ -45,7 +48,7 @@ func Test05DBR15OneTokenTwice(t *testing.T) {
 
 	defer SetDebug(1)()
 
-	testDB.Delete(strings.Repeat("_", CONFIG.TokenLength))
+	testDB.Delete(strings.Repeat("_", testDBConfig.TokenLength))
 
 	url := "https://golang.org/pkg/time/"
 	token, err := testDB.New(url, 1)
@@ -61,7 +64,7 @@ func Test05DBR15OneTokenTwice(t *testing.T) {
 		t.Errorf("wrong result: token for %s: %v\n", url, token1)
 	}
 	// clear
-	testDB.Delete(strings.Repeat("_", CONFIG.TokenLength))
+	testDB.Delete(strings.Repeat("_", testDBConfig.TokenLength))
 }
 
 // concurrent goroutines tries to make new short URL in the same time with the same token (debugging)
@@ -118,7 +121,7 @@ func Test05DBR20NewTokenRace(t *testing.T) {
 
 // try to make token expired
 func Test05DBR25ExpireToken(t *testing.T) {
-	err := testDB.Expire(strings.Repeat("_", CONFIG.TokenLength), -1)
+	err := testDB.Expire(strings.Repeat("_", testDBConfig.TokenLength), -1)
 	if err != nil {
 		t.Error(err)
 	}
@@ -132,22 +135,22 @@ func Test05DBR30OneMoreTokenRace(t *testing.T) {
 // try to receive long URL by token
 func Test05DBR35GetToken(t *testing.T) {
 
-	lURL, err := testDB.Get(strings.Repeat("_", CONFIG.TokenLength))
+	lURL, err := testDB.Get(strings.Repeat("_", testDBConfig.TokenLength))
 	if err != nil {
 		t.Error(err)
 	}
-	t.Logf("URL for token %s: %s\n", strings.Repeat("_", CONFIG.TokenLength), lURL)
+	t.Logf("URL for token %s: %s\n", strings.Repeat("_", testDBConfig.TokenLength), lURL)
 }
 
 // try to delete token
 func Test05DBR40DelToken(t *testing.T) {
 
-	err := testDB.Delete(strings.Repeat("_", CONFIG.TokenLength))
+	err := testDB.Delete(strings.Repeat("_", testDBConfig.TokenLength))
 	if err != nil {
 		t.Error(err)
 	}
 
-	_, err = testDB.Get(strings.Repeat("_", CONFIG.TokenLength))
+	_, err = testDB.Get(strings.Repeat("_", testDBConfig.TokenLength))
 	if err == nil {
 		t.Error("no error when expected")
 	}

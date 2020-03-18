@@ -17,6 +17,7 @@ import (
 	"os/signal"
 	"strings"
 	"sync/atomic"
+	"syscall"
 	"time"
 )
 
@@ -42,15 +43,60 @@ var (
 	Server *http.Server
 	// Attempts = measured during health-check attempts to store token during time-out
 	Attempts int32
-	// TokenDB - Database interface
-	TokenDB Token
 )
 
+type serviceHandler struct {
+	tokenDB Token   // Database interface
+	config  *Config // servuce configuration
+}
+
+// ServeHTTP selects the handler function according to request URL
+func (s serviceHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	switch r.URL.Path {
+	case "/":
+		// request for health-check
+		s.home(w, r)
+	case "/api/v1/token":
+		// request for new short url/token
+		s.getNewToken(w, r)
+	case "/api/v1/expire":
+		// request for new short url/token
+		s.expireToken(w, r)
+	case "/favicon.ico":
+		// WEB-brousers make such requests together with main request to show the site icon on tab header
+		// In this code it is used for health check
+		return
+	default:
+		// all the rest are requests for redirect (probably)
+		s.redirect(w, r)
+	}
+}
+
+/* test for test env:
+curl -i -v http://localhost:8080/
+*/
+
+// Home shows simple home page if self-check succesfuly passed
+func (s serviceHandler) home(w http.ResponseWriter, r *http.Request) {
+	rMess := fmt.Sprintf("health-check request from %s (%s)", r.RemoteAddr, r.Referer())
+	// Perform self-test
+	if err := s.healthCheck(); err != nil {
+		// report error
+		log.Printf("%s: error: %v\n", rMess, err)
+		w.WriteHeader(http.StatusInternalServerError)
+	} else {
+		// log self-test results
+		log.Printf("%s: success\n", rMess)
+		// show the home page if self-test was successfully passed
+		w.Write([]byte(fmt.Sprintf(homePage, atomic.LoadInt32(&Attempts), s.config.Timeout)))
+	}
+}
+
 // healthCheck performs full self-test of service in all service modes
-func healthCheck() error {
+func (s serviceHandler) healthCheck() error {
 
 	// url for sef-check redirect
-	url := "http://" + CONFIG.ShortDomain + "/favicon.ico"
+	url := "http://" + s.config.ShortDomain + "/favicon.ico"
 
 	// short URL request's replay parameters
 	var repl struct {
@@ -60,15 +106,15 @@ func healthCheck() error {
 	var err error
 
 	// self-test part 1: get short URL
-	if CONFIG.Mode&disableShortener != 0 {
+	if s.config.Mode&disableShortener != 0 {
 		// use tokenDB inteface as web-interface is locked in this service mode
-		if repl.Token, err = TokenDB.New(url, 1); err != nil {
+		if repl.Token, err = s.tokenDB.New(url, 1); err != nil {
 			return fmt.Errorf("new token creation error: %w", err)
 		}
-		repl.URL = CONFIG.ShortDomain + "/" + repl.Token
+		repl.URL = s.config.ShortDomain + "/" + repl.Token
 	} else {
 		// make the HTTP request for new token
-		resp, err := http.Post("http://"+CONFIG.ListenHostPort+"/api/v1/token", "application/json",
+		resp, err := http.Post("http://"+s.config.ListenHostPort+"/api/v1/token", "application/json",
 			strings.NewReader(`{"url": "`+url+`","exp": 1}`))
 		if err != nil {
 			return fmt.Errorf("new token request error: %w", err)
@@ -93,9 +139,9 @@ func healthCheck() error {
 	}
 
 	// self-test part 2: check redirect
-	if CONFIG.Mode&disableRedirect != 0 {
+	if s.config.Mode&disableRedirect != 0 {
 		// use tokenDB interface as web-interface is locked in this service mode
-		if _, err = TokenDB.Get(repl.Token); err != nil {
+		if _, err = s.tokenDB.Get(repl.Token); err != nil {
 			return fmt.Errorf("URL receiving error: %w", err)
 		}
 	} else {
@@ -113,14 +159,14 @@ func healthCheck() error {
 	}
 
 	// self-test part 3: make received token as expired
-	if CONFIG.Mode&disableExpire != 0 {
+	if s.config.Mode&disableExpire != 0 {
 		// use tokenDB interface as web-interface is locked in this service mode
-		if err := TokenDB.Expire(repl.Token, -1); err != nil {
+		if err := s.tokenDB.Expire(repl.Token, -1); err != nil {
 			return fmt.Errorf("expire request error: %w", err)
 		}
 	} else {
 		// make the HTTP request to expire token
-		resp3, err := http.Post("http://"+CONFIG.ListenHostPort+"/api/v1/expire", "application/json",
+		resp3, err := http.Post("http://"+s.config.ListenHostPort+"/api/v1/expire", "application/json",
 			strings.NewReader(`{"token": "`+repl.Token+`","exp":-1}`))
 		if err != nil {
 			return fmt.Errorf("expire request error: %w", err)
@@ -137,36 +183,16 @@ func healthCheck() error {
 }
 
 /* test for test env:
-curl -i -v http://localhost:8080/
-*/
-
-// Home shows simple home page if self-check succesfuly passed
-func home(w http.ResponseWriter, r *http.Request) {
-	rMess := fmt.Sprintf("health-check request from %s (%s)", r.RemoteAddr, r.Referer())
-	// Perform self-test
-	if err := healthCheck(); err != nil {
-		// report error
-		log.Printf("%s: error: %v\n", rMess, err)
-		w.WriteHeader(http.StatusInternalServerError)
-	} else {
-		// log self-test results
-		log.Printf("%s: success\n", rMess)
-		// show the home page if self-test was successfully passed
-		w.Write([]byte(fmt.Sprintf(homePage, atomic.LoadInt32(&Attempts), CONFIG.Timeout)))
-	}
-}
-
-/* test for test env:
 curl -i -v http://localhost:8080/<token>
 */
 
 // Redirect handles redirection to URL that was stored for the specified token
-func redirect(w http.ResponseWriter, r *http.Request) {
+func (s serviceHandler) redirect(w http.ResponseWriter, r *http.Request) {
 	sToken := r.URL.Path[1:]
 	rMess := fmt.Sprintf("redirect request from %s (%s), token: %s", r.RemoteAddr, r.Referer(), sToken)
 
 	// check that service mode allows this request
-	if CONFIG.Mode&disableRedirect != 0 {
+	if s.config.Mode&disableRedirect != 0 {
 		log.Printf("%s: this request is disabled by current service mode\n", rMess)
 		// send 404 response
 		http.NotFound(w, r)
@@ -174,7 +200,7 @@ func redirect(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// get the long URL
-	longURL, err := TokenDB.Get(sToken)
+	longURL, err := s.tokenDB.Get(sToken)
 	if err != nil {
 		log.Printf("%s: token was not found\n", rMess)
 		// send 404 response
@@ -192,13 +218,13 @@ curl -v POST -H "Content-Type: application/json" -d '{"url":"<long url>","exp":1
 */
 
 // getNewToken handle the new token creation for passed url and sets expiration for it
-func getNewToken(w http.ResponseWriter, r *http.Request) {
+func (s serviceHandler) getNewToken(w http.ResponseWriter, r *http.Request) {
 	// ????: check some authorisation???
 
 	rMess := fmt.Sprintf("token request from %s (%s)", r.RemoteAddr, r.Referer())
 
 	// Check that service mode allows this request
-	if CONFIG.Mode&disableShortener != 0 {
+	if s.config.Mode&disableShortener != 0 {
 		log.Printf("%s: this request is disabled by current service mode\n", rMess)
 		// request is not supported: send 404 response
 		http.NotFound(w, r)
@@ -233,11 +259,11 @@ func getNewToken(w http.ResponseWriter, r *http.Request) {
 
 	// set the default expiration if it is not passed
 	if params.Exp == 0 {
-		params.Exp = CONFIG.DefaultExp
+		params.Exp = s.config.DefaultExp
 	}
 
 	// create new token
-	sToken, err := TokenDB.New(params.URL, params.Exp)
+	sToken, err := s.tokenDB.New(params.URL, params.Exp)
 	if err != nil {
 		log.Printf("%s: token creation error: %v\n", rMess, err)
 		w.WriteHeader(http.StatusRequestTimeout)
@@ -251,7 +277,7 @@ func getNewToken(w http.ResponseWriter, r *http.Request) {
 			URL   string `json:"url"`   // short URL
 		}{
 			Token: sToken,
-			URL:   CONFIG.ShortDomain + "/" + sToken,
+			URL:   s.config.ShortDomain + "/" + sToken,
 		})
 	if err != nil {
 		log.Printf("%s: response body marshaling error: %v\n", rMess, err)
@@ -270,12 +296,12 @@ curl -v POST -H "Content-Type: application/json" -d '{"token":"<token>","exp":<e
 */
 
 // expireToken makes token-longURL record as expired
-func expireToken(w http.ResponseWriter, r *http.Request) {
+func (s serviceHandler) expireToken(w http.ResponseWriter, r *http.Request) {
 
 	rMess := fmt.Sprintf("expire request from %s (%s)", r.RemoteAddr, r.Referer())
 
 	// Check that service mode allows this request
-	if CONFIG.Mode&disableExpire != 0 {
+	if s.config.Mode&disableExpire != 0 {
 		log.Printf("%s: this request is disabled by current service mode\n", rMess)
 		// request is not supported: send 404 response
 		http.NotFound(w, r)
@@ -306,7 +332,7 @@ func expireToken(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// update token expiration
-	err = TokenDB.Expire(params.Token, params.Exp)
+	err = s.tokenDB.Expire(params.Token, params.Exp)
 	if err != nil {
 		log.Printf("%s: updating token expiration error: %s", rMess, err)
 		w.WriteHeader(http.StatusNotModified)
@@ -319,45 +345,30 @@ func expireToken(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-type serviceHandler struct {
-}
-
-// ServeHTTP selects the handler function according to request URL
-func (serviceHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	switch r.URL.Path {
-	case "/":
-		// request for health-check
-		home(w, r)
-	case "/api/v1/token":
-		// request for new short url/token
-		getNewToken(w, r)
-	case "/api/v1/expire":
-		// request for new short url/token
-		expireToken(w, r)
-	case "/favicon.ico":
-		// WEB-brousers make such requests together with main request to show the site icon on tab header
-		// In this code it is used for health check
-		return
-	default:
-		// all the rest are requests for redirect (probably)
-		redirect(w, r)
-	}
-}
-
 // ServiceStart starts new service with provided database interface
-func ServiceStart(tokenDB Token) error {
+func ServiceStart(config *Config) error {
 
-	TokenDB = tokenDB
+	// initialize database connection
+	tokenDB, err := NewTokenDB(config.ConnectOptions, config.Timeout, config.TokenLength)
+	if err != nil {
+		return fmt.Errorf("error database interface creation: %w", err)
+	}
+
+	// handler
+	handler := serviceHandler{
+		tokenDB: tokenDB,
+		config:  config,
+	}
 
 	// create server
 	Server = &http.Server{
-		Addr:    CONFIG.ListenHostPort,
-		Handler: serviceHandler{},
+		Addr:    config.ListenHostPort,
+		Handler: handler,
 	}
 
 	// register the os.Interupt(SIGINT) handler
 	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt)
+	signal.Notify(c, syscall.SIGINT)
 	// start signal handler
 	go func() {
 		// sleep until a signal is received.
@@ -369,9 +380,9 @@ func ServiceStart(tokenDB Token) error {
 	// start health checker
 	go func() {
 		// wait for server start
-		<-time.After(100 * time.Millisecond)
+		<-time.After(300 * time.Millisecond)
 		// and perform health-check
-		if err := healthCheck(); err != nil {
+		if err := handler.healthCheck(); err != nil {
 			log.Printf("initial health-check failed: %v", err)
 			Server.Shutdown(context.Background())
 			return
@@ -380,6 +391,6 @@ func ServiceStart(tokenDB Token) error {
 	}()
 
 	// run server
-	log.Println("starting server at", CONFIG.ListenHostPort)
+	log.Println("starting server at", handler.config.ListenHostPort)
 	return Server.ListenAndServe()
 }
