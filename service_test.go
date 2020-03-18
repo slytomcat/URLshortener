@@ -99,8 +99,6 @@ func Test10Serv30BadTokenRequest2(t *testing.T) {
 //test request for short URL without expiration in request
 func Test10Serv35GetTokenWOexp(t *testing.T) {
 
-	defer SetDebug(1)()
-
 	// clear debug token
 	TokenDB.Delete(strings.Repeat("_", CONFIG.TokenLength))
 
@@ -151,16 +149,28 @@ func Test10Serv45ExpireNotExistingToken(t *testing.T) {
 func Test10Serv50GetTokenTwice(t *testing.T) {
 
 	defer SetDebug(1)()
-
+	// first request
 	resp, err := http.Post("http://"+CONFIG.ListenHostPort+"/api/v1/token", "application/json",
 		strings.NewReader(`{"url": "http://`+CONFIG.ShortDomain+`"}`))
 	if err != nil {
 		t.Errorf("token request error: %v", err)
 	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusGatewayTimeout {
+	if resp.StatusCode != http.StatusOK {
 		t.Errorf("unexpected response status: %d", resp.StatusCode)
 	}
+	resp.Body.Close()
+	// second request
+
+	resp2, err := http.Post("http://"+CONFIG.ListenHostPort+"/api/v1/token", "application/json",
+		strings.NewReader(`{"url": "http://`+CONFIG.ShortDomain+`"}`))
+	if err != nil {
+		t.Errorf("token request error: %v", err)
+	}
+	if resp2.StatusCode != http.StatusRequestTimeout {
+		t.Errorf("unexpected response status: %d", resp.StatusCode)
+	}
+	resp.Body.Close()
+
 }
 
 // test redirect with wrong token

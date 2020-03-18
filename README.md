@@ -28,7 +28,7 @@ Success response: `HTTP 200 OK` with body containing JSON with following paramet
 - `token`: string, token for short URL
 - `url`: string, short URL
 
-Note: Token is created as random and the saving it to DB may cause duplicate error. In order to avoid such error the service makes several attempts to store random token. The number of attempts is limited by the `Timeout` configuration value by time, not by amount. When time-out expired and no one attempt was not successful then service returns response code `504 Gateway Timeout`. This response mean that the request can be repeated.
+Note: Token is created as random and the saving it to DB may cause duplicate error. In order to avoid such error the service makes several attempts to store random token. The number of attempts is limited by the `Timeout` configuration value by time, not by amount. When time-out expired and no one attempt was not successful then service returns response code `408 Request Timeout`. This response mean that the request can be repeated.
 
 The maximum number of possible attempts to store token during time-out is calculated every time a new token stored. The last measured value is displayed on the homepage.
 
