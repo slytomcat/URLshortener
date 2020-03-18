@@ -21,13 +21,6 @@ import (
 	"time"
 )
 
-const (
-	// Service modes
-	disableRedirect  = 1 << iota // disable redirect request
-	disableShortener             // disable request for short URL
-	disableExpire                // disable expire request
-)
-
 var (
 	// simple home page to display on health check request
 	homePage = `
@@ -39,8 +32,6 @@ var (
 	</body>
 </html>
 `
-	// Server - HTTP server
-	Server *http.Server
 	// Attempts = measured during health-check attempts to store token during time-out
 	Attempts int32
 )
@@ -361,7 +352,7 @@ func ServiceStart(config *Config) error {
 	}
 
 	// create server
-	Server = &http.Server{
+	Server := &http.Server{
 		Addr:    config.ListenHostPort,
 		Handler: handler,
 	}

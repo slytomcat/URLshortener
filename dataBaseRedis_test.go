@@ -17,8 +17,6 @@ var (
 // test new TokenDB creation errors
 func Test05DBR01NewTokenDBError(t *testing.T) {
 
-	defer saveEnv()()
-
 	connect, _ := parseConOpt(`{"Addrs":["Wrong.Host:6379"]}`)
 
 	_, err := NewTokenDB(connect, 500, 5)

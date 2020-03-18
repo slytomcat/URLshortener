@@ -18,7 +18,7 @@ type Token interface {
 	Delete(sToken string) error
 }
 
-// tokenDBR is a structure to handle the DB token operations via Redis databasa
+// tokenDBR is a structure to handle the DB token operations via Redis database
 type tokenDBR struct {
 	db          redis.UniversalClient
 	timeout     int // new token record creation timeout
