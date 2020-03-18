@@ -42,6 +42,8 @@ var (
 	Server *http.Server
 	// Attempts = measured during health-check attempts to store token during time-out
 	Attempts int32
+	// TokenDB - Database interface
+	TokenDB Token
 )
 
 // healthCheck performs full self-test of service in all service modes
@@ -238,7 +240,7 @@ func getNewToken(w http.ResponseWriter, r *http.Request) {
 	sToken, err := TokenDB.New(params.URL, params.Exp)
 	if err != nil {
 		log.Printf("%s: token creation error: %v\n", rMess, err)
-		w.WriteHeader(http.StatusGatewayTimeout)
+		w.WriteHeader(http.StatusRequestTimeout)
 		return
 	}
 
@@ -343,7 +345,9 @@ func (serviceHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 // ServiceStart starts new service with provided database interface
-func ServiceStart() error {
+func ServiceStart(tokenDB Token) error {
+
+	TokenDB = tokenDB
 
 	// create server
 	Server = &http.Server{
