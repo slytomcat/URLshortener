@@ -122,12 +122,12 @@ func Test01Tools15EmptyJSON_(t *testing.T) {
 		t.Errorf("error for empty JSON with set URLSHORTENER_ConnectOptions: %w", err)
 	}
 	if !(len(config.ConnectOptions.Addrs) == 1 && config.ConnectOptions.Addrs[0] == "testhost:6379") ||
-		config.TokenLength != DefaultTokenLength ||
-		config.Timeout != DefaultTimeout ||
-		config.ListenHostPort != DefaultListenHostPort ||
-		config.DefaultExp != DefaultDefaultExp ||
-		config.ShortDomain != DefaultShortDomain ||
-		config.Mode != DefaultMode {
+		config.TokenLength != defaultTokenLength ||
+		config.Timeout != defaultTimeout ||
+		config.ListenHostPort != defaultListenHostPort ||
+		config.DefaultExp != defaultDefaultExp ||
+		config.ShortDomain != defaultShortDomain ||
+		config.Mode != defaultMode {
 		t.Error("Wrong default values set")
 	}
 }
@@ -215,7 +215,7 @@ func Test01Tools33WrongTokenLength(t *testing.T) {
 		t.Errorf("unexpected error: %v", err)
 	}
 
-	if config.TokenLength != DefaultTokenLength {
+	if config.TokenLength != defaultTokenLength {
 		t.Error("Wrong values set")
 	}
 }
@@ -231,7 +231,7 @@ func Test01Tools35WrongTimeout(t *testing.T) {
 		t.Errorf("unexpected error: %v", err)
 	}
 
-	if config.Timeout != DefaultTimeout {
+	if config.Timeout != defaultTimeout {
 		t.Error("Wrong values set")
 	}
 }
@@ -249,7 +249,7 @@ func Test01Tools40WrongEnvDefaultExp(t *testing.T) {
 		t.Errorf("unexpected error: %v", err)
 	}
 
-	if config.DefaultExp != DefaultDefaultExp {
+	if config.DefaultExp != defaultDefaultExp {
 		t.Error("Wrong values set")
 	}
 }
@@ -267,7 +267,7 @@ func Test01Tools45WrongEnvMode(t *testing.T) {
 		t.Errorf("unexpected error: %v", err)
 	}
 
-	if config.Mode != DefaultMode {
+	if config.Mode != defaultMode {
 		t.Error("Wrong values set")
 	}
 }

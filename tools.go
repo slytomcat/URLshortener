@@ -23,18 +23,17 @@ type Config struct {
 }
 
 const (
-	// DefaultTokenLength - default length of token
-	DefaultTokenLength = 6
-	// DefaultTimeout - default timeout of new token creation
-	DefaultTimeout = 500
-	// DefaultListenHostPort - default host and port to listen on
-	DefaultListenHostPort = "localhost:8080"
-	// DefaultDefaultExp - default token expiration
-	DefaultDefaultExp = 1
-	// DefaultShortDomain - default short domain
-	DefaultShortDomain = "localhost:8080"
-	// DefaultMode - default service mode
-	DefaultMode = 0
+	defaultTokenLength    = 6                // default length of token
+	defaultTimeout        = 500              // default timeout of new token creation
+	defaultListenHostPort = "localhost:8080" // default host and port to listen on
+	defaultDefaultExp     = 1                // default token expiration
+	defaultShortDomain    = "localhost:8080" // default short domain
+	defaultMode           = 0                // default service mode
+
+	// Service modes
+	disableRedirect  = 1 << iota // disable redirect request
+	disableShortener             // disable request for short URL
+	disableExpire                // disable expire request
 )
 
 func parseConOpt(s string) (redis.UniversalOptions, error) {
@@ -104,19 +103,19 @@ func readConfig(cfgFile string) (*Config, error) {
 
 	// set default values for optional config variables
 	if config.TokenLength == 0 {
-		config.TokenLength = DefaultTokenLength
+		config.TokenLength = defaultTokenLength
 	}
 	if config.Timeout == 0 {
-		config.Timeout = DefaultTimeout
+		config.Timeout = defaultTimeout
 	}
 	if config.ListenHostPort == "" {
-		config.ListenHostPort = DefaultListenHostPort
+		config.ListenHostPort = defaultListenHostPort
 	}
 	if config.DefaultExp == 0 {
-		config.DefaultExp = DefaultDefaultExp
+		config.DefaultExp = defaultDefaultExp
 	}
 	if config.ShortDomain == "" {
-		config.ShortDomain = DefaultShortDomain
+		config.ShortDomain = defaultShortDomain
 	}
 
 	// do not set config.Mode as default value is 0
