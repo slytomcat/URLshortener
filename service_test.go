@@ -14,13 +14,34 @@ import (
 	"time"
 )
 
+var (
+	servTestConfig *Config
+	servTestDB     Token
+)
+
 // try to start service
 func Test10Serv05Start(t *testing.T) {
+	var err error
 	logger := log.Writer()
 	r, w, _ := os.Pipe()
 	log.SetOutput(w)
 
-	go main()
+	servTestConfig, err = readConfig("./cnfr.json")
+	if err != nil {
+		t.Fatalf("configuration read error: %v", err)
+	}
+
+	// initialize database connection
+	servTestDB, err = NewTokenDB(servTestConfig.ConnectOptions, servTestConfig.Timeout, servTestConfig.TokenLength)
+	if err != nil {
+		t.Fatalf("error database interface creation: %v", err)
+	}
+
+	// run service
+	go func() {
+		log.Println(ServiceStart(servTestConfig))
+	}()
+
 	time.Sleep(time.Second * 3)
 
 	w.Close()
@@ -36,17 +57,9 @@ func Test10Serv05Start(t *testing.T) {
 
 }
 
-// Full success test: get short URL, make redirect by it and expire token
-func Test10Serv10FullSuccess(t *testing.T) {
-	// use health-check function to test all-success case
-	if err := healthCheck(); err != nil {
-		t.Errorf("health-check error: %v", err)
-	}
-}
-
 // test health check
 func Test10Serv15Home(t *testing.T) {
-	resp, err := http.Get("http://" + CONFIG.ListenHostPort)
+	resp, err := http.Get("http://" + servTestConfig.ListenHostPort)
 	if err != nil {
 		t.Errorf("health check request error: %v", err)
 	}
@@ -70,7 +83,7 @@ func Test10Serv15Home(t *testing.T) {
 
 // test request for short URL with empty request body
 func Test10Serv20BadTokenRequest(t *testing.T) {
-	resp, err := http.Post("http://"+CONFIG.ListenHostPort+"/api/v1/token", "application/json",
+	resp, err := http.Post("http://"+servTestConfig.ListenHostPort+"/api/v1/token", "application/json",
 		strings.NewReader(``))
 	if err != nil {
 		t.Errorf("token request error: %v", err)
@@ -84,7 +97,7 @@ func Test10Serv20BadTokenRequest(t *testing.T) {
 
 // test request for short URL with empty JSON
 func Test10Serv30BadTokenRequest2(t *testing.T) {
-	resp, err := http.Post("http://"+CONFIG.ListenHostPort+"/api/v1/token", "application/json",
+	resp, err := http.Post("http://"+servTestConfig.ListenHostPort+"/api/v1/token", "application/json",
 		strings.NewReader(`{}`))
 	if err != nil {
 		t.Errorf("token request error: %v", err)
@@ -100,10 +113,10 @@ func Test10Serv30BadTokenRequest2(t *testing.T) {
 func Test10Serv35GetTokenWOexp(t *testing.T) {
 
 	// clear debug token
-	TokenDB.Delete(strings.Repeat("_", CONFIG.TokenLength))
+	servTestDB.Delete(strings.Repeat("_", servTestConfig.TokenLength))
 
-	resp, err := http.Post("http://"+CONFIG.ListenHostPort+"/api/v1/token", "application/json",
-		strings.NewReader(`{"url": "http://`+CONFIG.ShortDomain+`"}`))
+	resp, err := http.Post("http://"+servTestConfig.ListenHostPort+"/api/v1/token", "application/json",
+		strings.NewReader(`{"url": "http://`+servTestConfig.ShortDomain+`"}`))
 	if err != nil {
 		t.Errorf("token request error: %v", err)
 	}
@@ -116,7 +129,7 @@ func Test10Serv35GetTokenWOexp(t *testing.T) {
 // request expire without parameters
 func Test10Serv40ExpireTokenWOparams(t *testing.T) {
 
-	resp, err := http.Post("http://"+CONFIG.ListenHostPort+"/api/v1/expire", "application/json",
+	resp, err := http.Post("http://"+servTestConfig.ListenHostPort+"/api/v1/expire", "application/json",
 		strings.NewReader(`{}`))
 	if err != nil {
 		t.Errorf("expire request error: %v", err)
@@ -132,7 +145,7 @@ func Test10Serv40ExpireTokenWOparams(t *testing.T) {
 // request expire for not existing token
 func Test10Serv45ExpireNotExistingToken(t *testing.T) {
 
-	resp, err := http.Post("http://"+CONFIG.ListenHostPort+"/api/v1/expire", "application/json",
+	resp, err := http.Post("http://"+servTestConfig.ListenHostPort+"/api/v1/expire", "application/json",
 		strings.NewReader(`{"token":"$%#@*"}`)) // use non Base64 symbols
 	if err != nil {
 		t.Errorf("expire request error: %v", err)
@@ -150,8 +163,8 @@ func Test10Serv50GetTokenTwice(t *testing.T) {
 
 	defer SetDebug(1)()
 	// first request
-	resp, err := http.Post("http://"+CONFIG.ListenHostPort+"/api/v1/token", "application/json",
-		strings.NewReader(`{"url": "http://`+CONFIG.ShortDomain+`"}`))
+	resp, err := http.Post("http://"+servTestConfig.ListenHostPort+"/api/v1/token", "application/json",
+		strings.NewReader(`{"url": "http://`+servTestConfig.ShortDomain+`"}`))
 	if err != nil {
 		t.Errorf("token request error: %v", err)
 	}
@@ -161,8 +174,8 @@ func Test10Serv50GetTokenTwice(t *testing.T) {
 	resp.Body.Close()
 	// second request
 
-	resp2, err := http.Post("http://"+CONFIG.ListenHostPort+"/api/v1/token", "application/json",
-		strings.NewReader(`{"url": "http://`+CONFIG.ShortDomain+`"}`))
+	resp2, err := http.Post("http://"+servTestConfig.ListenHostPort+"/api/v1/token", "application/json",
+		strings.NewReader(`{"url": "http://`+servTestConfig.ShortDomain+`"}`))
 	if err != nil {
 		t.Errorf("token request error: %v", err)
 	}
@@ -175,7 +188,7 @@ func Test10Serv50GetTokenTwice(t *testing.T) {
 
 // test redirect with wrong token
 func Test10Serv60RedirectTo404(t *testing.T) {
-	resp, err := http.Get("http://" + CONFIG.ListenHostPort + "/not_existing_token")
+	resp, err := http.Get("http://" + servTestConfig.ListenHostPort + "/not_existing_token")
 	if err != nil {
 		t.Errorf("not-existing token request error: %v", err)
 	}
@@ -187,11 +200,10 @@ func Test10Serv60RedirectTo404(t *testing.T) {
 
 // try unsupported request in mode = disableRedirect
 func Test10Serv65ServiceModeDisableRedirect(t *testing.T) {
-	defer saveEnv()()
 
-	CONFIG.Mode = disableRedirect
+	servTestConfig.Mode = disableRedirect
 
-	resp, err := http.Get("http://" + CONFIG.ListenHostPort + "/" + strings.Repeat("_", CONFIG.TokenLength))
+	resp, err := http.Get("http://" + servTestConfig.ListenHostPort + "/" + strings.Repeat("_", servTestConfig.TokenLength))
 	if err != nil {
 		t.Errorf("redirect request error: %v", err)
 	}
@@ -203,11 +215,10 @@ func Test10Serv65ServiceModeDisableRedirect(t *testing.T) {
 
 // try unsupported request in mode = disableShortener
 func Test10Serv70ServiceModeDisableShortener(t *testing.T) {
-	defer saveEnv()()
 
-	CONFIG.Mode = disableShortener
+	servTestConfig.Mode = disableShortener
 
-	resp, err := http.Post("http://"+CONFIG.ListenHostPort+"/api/v1/token", "application/json",
+	resp, err := http.Post("http://"+servTestConfig.ListenHostPort+"/api/v1/token", "application/json",
 		strings.NewReader(`{"url": "http://someother.url"}`))
 	if err != nil {
 		t.Errorf("token request error: %v", err)
@@ -220,12 +231,11 @@ func Test10Serv70ServiceModeDisableShortener(t *testing.T) {
 
 // try unsupported request in mode = disableExpire
 func Test10Serv75ServiceModeDisableExpire(t *testing.T) {
-	defer saveEnv()()
 
-	CONFIG.Mode = disableExpire
+	servTestConfig.Mode = disableExpire
 
-	resp, err := http.Post("http://"+CONFIG.ListenHostPort+"/api/v1/expire", "application/json",
-		strings.NewReader(`{"token": "`+strings.Repeat("_", CONFIG.TokenLength)+`","exp":-1}`))
+	resp, err := http.Post("http://"+servTestConfig.ListenHostPort+"/api/v1/expire", "application/json",
+		strings.NewReader(`{"token": "`+strings.Repeat("_", servTestConfig.TokenLength)+`","exp":-1}`))
 	if err != nil {
 		t.Errorf("expire request error: %v", err)
 	}
@@ -237,11 +247,10 @@ func Test10Serv75ServiceModeDisableExpire(t *testing.T) {
 
 // try health check in service mode disableRedirect
 func Test10Serv80HealthCheckModeDisableRedirect(t *testing.T) {
-	defer saveEnv()()
 
-	CONFIG.Mode = disableRedirect
+	servTestConfig.Mode = disableRedirect
 
-	resp, err := http.Get("http://" + CONFIG.ListenHostPort)
+	resp, err := http.Get("http://" + servTestConfig.ListenHostPort)
 	if err != nil {
 		t.Errorf("health check in disableRedirect mode request error: %v", err)
 	}
@@ -254,11 +263,10 @@ func Test10Serv80HealthCheckModeDisableRedirect(t *testing.T) {
 
 // try health check in service mode disableShortener
 func Test10Serv85HealthCheckModeDisableShortener(t *testing.T) {
-	defer saveEnv()()
 
-	CONFIG.Mode = disableShortener
+	servTestConfig.Mode = disableShortener
 
-	resp, err := http.Get("http://" + CONFIG.ListenHostPort)
+	resp, err := http.Get("http://" + servTestConfig.ListenHostPort)
 	if err != nil {
 		t.Errorf("health check in disableShortener mode request error: %v", err)
 	}
@@ -271,11 +279,10 @@ func Test10Serv85HealthCheckModeDisableShortener(t *testing.T) {
 
 // try health check in service mode disableExpire
 func Test10Serv90HealthCheckModeDisableExpire(t *testing.T) {
-	defer saveEnv()()
 
-	CONFIG.Mode = disableExpire
+	servTestConfig.Mode = disableExpire
 
-	resp, err := http.Get("http://" + CONFIG.ListenHostPort)
+	resp, err := http.Get("http://" + servTestConfig.ListenHostPort)
 	if err != nil {
 		t.Errorf("health check in disableExpire mode request error: %v", err)
 	}

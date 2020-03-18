@@ -36,18 +36,12 @@ func doMain(configPath string) error {
 	flag.Parse()
 
 	// get the configuratin variables
-	err := readConfig(configPath)
+	config, err := readConfig(configPath)
 	if err != nil {
 		return fmt.Errorf("configuration read error: %w", err)
 	}
 
-	// initialize database connection
-	tokenDB, err := NewTokenDB(CONFIG.ConnectOptions, CONFIG.Timeout, CONFIG.TokenLength)
-	if err != nil {
-		return fmt.Errorf("error database interface creation: %w", err)
-	}
-
 	// run service
-	return ServiceStart(tokenDB)
+	return ServiceStart(config)
 
 }
