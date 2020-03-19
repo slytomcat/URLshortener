@@ -16,7 +16,6 @@ import (
 	"os"
 	"os/signal"
 	"strings"
-	"sync/atomic"
 	"syscall"
 	"time"
 )
@@ -32,8 +31,6 @@ var (
 	</body>
 </html>
 `
-	// Attempts = measured during health-check attempts to store token during time-out
-	Attempts int32
 )
 
 type serviceHandler struct {
@@ -79,7 +76,7 @@ func (s serviceHandler) home(w http.ResponseWriter, r *http.Request) {
 		// log self-test results
 		log.Printf("%s: success\n", rMess)
 		// show the home page if self-test was successfully passed
-		w.Write([]byte(fmt.Sprintf(homePage, atomic.LoadInt32(&Attempts), s.config.Timeout)))
+		w.Write([]byte(fmt.Sprintf(homePage, s.tokenDB.Attempts(), s.config.Timeout)))
 	}
 }
 

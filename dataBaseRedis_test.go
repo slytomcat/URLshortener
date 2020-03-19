@@ -179,7 +179,7 @@ func Test05DBR55GetNonExisting(t *testing.T) {
 }
 
 // test debug error
-func Test05DBR60ebugError(t *testing.T) {
+func Test05DBR60DebugError(t *testing.T) {
 
 	defer SetDebug(-1)()
 
@@ -189,4 +189,10 @@ func Test05DBR60ebugError(t *testing.T) {
 	}
 }
 
-// get the test results
+// get the Attempts
+
+func Test05DBRAttempts(t *testing.T) {
+	if testDB.Attempts() == 0 {
+		t.Error("no attempts calculated")
+	}
+}
