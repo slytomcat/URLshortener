@@ -16,13 +16,15 @@ type Token interface {
 	Get(sToken string) (string, error)
 	Expire(sToken string, expiration int) error
 	Delete(sToken string) error
+	Attempts() int
 }
 
 // tokenDBR is a structure to handle the DB token operations via Redis database
 type tokenDBR struct {
 	db          redis.UniversalClient
-	timeout     int // new token record creation timeout
-	tokenLength int // length of token
+	timeout     int   // new token record creation timeout
+	tokenLength int   // length of token
+	attempts    int32 // number of attemppts during timeout (calculated)
 }
 
 // NewTokenDB creates new database interface to Redis database
@@ -63,7 +65,7 @@ func (t *tokenDBR) New(longURL string, expiration int) (string, error) {
 		go func() {
 			if attempt > 0 {
 				MaxAtt := attempt * int64(t.timeout) * 1000000 / elapsedTime
-				atomic.StoreInt32(&Attempts, int32(MaxAtt))
+				atomic.StoreInt32(&t.attempts, int32(MaxAtt))
 				if MaxAtt*3/4 < attempt {
 					log.Printf("Warning: Measured %d attempts for %d ns. Calculated %d max attempts per %d ms\n", attempt, elapsedTime, MaxAtt, t.timeout)
 				}
@@ -162,4 +164,9 @@ func (t *tokenDBR) Delete(sToken string) error {
 		return errors.New("token is not exists")
 	}
 	return err
+}
+
+// Attempts returns the nuber of attempts (calculated) during the time-out
+func (t *tokenDBR) Attempts() int {
+	return int(atomic.LoadInt32(&t.attempts))
 }
