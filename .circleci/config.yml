@@ -13,13 +13,53 @@ jobs:
             mkdir results;
       - run:
           name: Tests
-          command: go test -v -race -timeout 60s -coverprofile cover.out 2>&1 | tee /dev/tty | go-junit-report > results/results.xml
+          command: go test -v -race -timeout 60s -run '^(Test10Serv.*|Test20Main.*)$' -coverprofile coverMain.out 2>&1 | tee /dev/tty | go-junit-report > results/results.xml
       - store_test_results:
           path: results
       - persist_to_workspace:
           root: .
           paths:
-            - ./cover.out
+            - ./coverMain.out
+
+  testtools:
+    docker:
+      - image: circleci/golang:1.14
+    steps:
+      - checkout
+      - run:
+          name: Prepare
+          command: |
+            go get -u github.com/jstemmer/go-junit-report;
+            mkdir results;
+      - run:
+          name: Tests
+          command: go test -v -race -timeout 60s -run '^(Test00ST.*|Test01Tools.*)$' -coverprofile coverTools.out 2>&1 | tee /dev/tty | go-junit-report > results/results.xml
+      - store_test_results:
+          path: results
+      - persist_to_workspace:
+          root: .
+          paths:
+            - ./coverTools.out
+
+  testdb:
+    docker:
+      - image: circleci/golang:1.14
+    steps:
+      - checkout
+      - run:
+          name: Prepare
+          command: |
+            go get -u github.com/jstemmer/go-junit-report;
+            mkdir results;
+      - run:
+          name: Tests
+          command: go test -v -race -timeout 60s -run '^Test05DBR.*' -coverprofile coverDB.out 2>&1 | tee /dev/tty | go-junit-report > results/results.xml
+      - store_test_results:
+          path: results
+      - persist_to_workspace:
+          root: .
+          paths:
+            - ./coverDB.out
 
   report:
     docker:
@@ -97,9 +137,13 @@ workflows:
   build_test_upload:
     jobs:
       - test
+      - testdb
+      - testtools
       - report:
           requires:
             - test
+            - testdb
+            - testtools
       - build
       - upload_github:
           requires:
