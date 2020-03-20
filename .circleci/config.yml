@@ -71,7 +71,7 @@ jobs:
       - run:
           name: Join coverage files
           command: |
-            echo 'mode: set' > cover.out
+            echo 'mode: set' > ./cover.out
             cat ./artifacts/cover* | sed "/mode: set/d" >> ./cover.out
       - run:
           name: Report coverage to deepsource.io
@@ -80,9 +80,10 @@ jobs:
             ./bin/deepsource report --analyzer test-coverage --key go --value-file ./cover.out
       - run:
           name: Format coverage
-          command: go tool cover -html=cover.out -o coverage.html
+          command: go tool cover -html=./cover.out -o coverage.html
       - store_artifacts:
           path: coverage.html
+          path: cover.out
 
   build:
     docker:
