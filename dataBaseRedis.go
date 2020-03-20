@@ -67,6 +67,7 @@ func (t *tokenDBR) New(longURL string, expiration int) (string, error) {
 				MaxAtt := attempt * int64(t.timeout) * 1000000 / elapsedTime
 				// use atomic to avoid race conditions
 				atomic.StoreInt32(&t.attempts, int32(MaxAtt))
+				// report warnings of some not good measurements
 				if MaxAtt*3/4 < attempt {
 					log.Printf("Warning: Measured %d attempts for %d ns. Calculated %d max attempts per %d ms\n", attempt, elapsedTime, MaxAtt, t.timeout)
 				}
