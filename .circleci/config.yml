@@ -170,7 +170,12 @@ workflows:
             - testmain
             - testdb
             - testtools
-      - build
+      - build:
+          requires:
+            - test
+            - testmain
+            - testdb
+            - testtools
       - upload_github:
           requires:
             - build
