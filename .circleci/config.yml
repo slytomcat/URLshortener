@@ -13,7 +13,7 @@ jobs:
             mkdir results;
       - run:
           name: Tests
-          command: go test -v -race -timeout 60s -run '^Test10Serv.*$' -coverprofile coverMain.out 2>&1 | tee /dev/tty | go-junit-report > results/results.xml
+          command: go test -v -race -timeout 60s -run '^Test10Serv.*$' -coverprofile coverServ.out 2>&1 | tee /dev/tty | go-junit-report > results/results.xml
       - store_test_results:
           path: results
       - persist_to_workspace:
