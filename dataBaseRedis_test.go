@@ -156,7 +156,15 @@ func Test05DBR40DelToken(t *testing.T) {
 
 // try to expire non existing token
 func Test05DBR45ExpNonExisting(t *testing.T) {
-	err := testDB.Expire("#$%^&*(", -1)
+	err := testDB.Expire(strings.Repeat("$", testDBConfig.TokenLength), -1)
+	if err == nil {
+		t.Error("no error when expected")
+	}
+}
+
+// try to expire token with wrong length
+func Test05DBR45ExpNonExisting1(t *testing.T) {
+	err := testDB.Expire(strings.Repeat("$", testDBConfig.TokenLength+1), -1)
 	if err == nil {
 		t.Error("no error when expected")
 	}
@@ -164,7 +172,15 @@ func Test05DBR45ExpNonExisting(t *testing.T) {
 
 // try to delete non existing token
 func Test05DBR50DelNonExisting(t *testing.T) {
-	err := testDB.Delete("#$%^&*(")
+	err := testDB.Delete(strings.Repeat("$", testDBConfig.TokenLength))
+	if err == nil {
+		t.Error("no error when expected")
+	}
+}
+
+// try to delete token with wrong length
+func Test05DBR51DelNonExisting1(t *testing.T) {
+	err := testDB.Delete(strings.Repeat("$", testDBConfig.TokenLength+1))
 	if err == nil {
 		t.Error("no error when expected")
 	}
@@ -172,7 +188,15 @@ func Test05DBR50DelNonExisting(t *testing.T) {
 
 // try to get non existing token
 func Test05DBR55GetNonExisting(t *testing.T) {
-	_, err := testDB.Get("#$%^&*(")
+	_, err := testDB.Get(strings.Repeat("$", testDBConfig.TokenLength))
+	if err == nil {
+		t.Error("no error when expected")
+	}
+}
+
+// try to get token with wrong length
+func Test05DBR55GetNonExisting1(t *testing.T) {
+	_, err := testDB.Get(strings.Repeat("$", testDBConfig.TokenLength+1))
 	if err == nil {
 		t.Error("no error when expected")
 	}
