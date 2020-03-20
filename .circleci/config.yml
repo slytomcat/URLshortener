@@ -70,7 +70,7 @@ jobs:
           at: ./artifacts
       - run:
           name: Join coverage files
-          command: cat ./artifacts/cover* > ./cover.out
+          command: echo 'mode: set' > cover.out; cat ./artifacts/cover* | sed '/mode: set/d' >> ./cover.out
       - run:
           name: Report coverage to deepsource.io
           command: |
