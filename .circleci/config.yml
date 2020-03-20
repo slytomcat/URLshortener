@@ -13,7 +13,27 @@ jobs:
             mkdir results;
       - run:
           name: Tests
-          command: go test -v -race -timeout 60s -run '^(Test10Serv.*|Test20Main.*)$' -coverprofile coverMain.out 2>&1 | tee /dev/tty | go-junit-report > results/results.xml
+          command: go test -v -race -timeout 60s -run '^Test10Serv.*$' -coverprofile coverMain.out 2>&1 | tee /dev/tty | go-junit-report > results/results.xml
+      - store_test_results:
+          path: results
+      - persist_to_workspace:
+          root: .
+          paths:
+            - ./coverMain.out
+
+  testmain:
+    docker:
+      - image: circleci/golang:1.14
+    steps:
+      - checkout
+      - run:
+          name: Prepare
+          command: |
+            go get -u github.com/jstemmer/go-junit-report;
+            mkdir results;
+      - run:
+          name: Tests
+          command: go test -v -race -timeout 60s -run '^Test20Main.*$' -coverprofile coverMain.out 2>&1 | tee /dev/tty | go-junit-report > results/results.xml
       - store_test_results:
           path: results
       - persist_to_workspace:
@@ -71,8 +91,8 @@ jobs:
       - run:
           name: Join coverage files
           command: |
-            echo 'mode: set' > ./cover.out
-            cat ./artifacts/cover* | sed "/mode: set/d" >> ./cover.out
+            echo 'mode: atomic' > ./cover.out
+            cat ./artifacts/cover* | sed "/mode: atomic/d" >> ./cover.out
       - run:
           name: Report coverage to deepsource.io
           command: |
