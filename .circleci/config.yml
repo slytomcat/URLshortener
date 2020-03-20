@@ -96,7 +96,7 @@ workflows:
   build_test_upload:
     jobs:
       - test
-      - report
+      - report:
           requires:
             - test
       - build
