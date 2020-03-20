@@ -19,7 +19,7 @@ jobs:
       - persist_to_workspace:
           root: .
           paths:
-            - ./coverMain.out
+            - ./coverServ.out
 
   testmain:
     docker:
