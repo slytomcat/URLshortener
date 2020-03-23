@@ -25,12 +25,15 @@ func init() {
 func main() {
 	// set logging format
 	log.SetFlags(log.Ldate | log.Ltime | log.Lmicroseconds | log.Lshortfile)
+	exit := make(chan bool)
 	// log exiting error
-	log.Println(doMain(configFile))
+	log.Println(doMain(configFile, exit))
+	// wait for service exit
+	<-exit
 }
 
 // doMain performs all preparation and starts server
-func doMain(configPath string) error {
+func doMain(configPath string, exit chan bool) error {
 
 	// parse command line parameters
 	flag.Parse()
@@ -42,6 +45,6 @@ func doMain(configPath string) error {
 	}
 
 	// run service
-	return ServiceStart(config)
+	return ServiceStart(config, exit)
 
 }

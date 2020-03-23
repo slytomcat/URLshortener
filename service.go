@@ -34,8 +34,10 @@ var (
 )
 
 type serviceHandler struct {
-	tokenDB Token   // Database interface
-	config  *Config // servuce configuration
+	tokenDB Token        // Database interface
+	config  *Config      // servuce configuration
+	exit    chan bool    // exit report
+	server  *http.Server // service server
 }
 
 // ServeHTTP selects the handler function according to request URL
@@ -333,8 +335,23 @@ func (s serviceHandler) expireToken(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
+func (s serviceHandler) Close() {
+	// gracefully shut down the server
+	err := s.server.Shutdown(context.Background())
+	if err != nil {
+		log.Printf("HTTP server shutdown error: %v", err)
+	}
+	// close DB connection
+	err = s.tokenDB.Close()
+	if err != nil {
+		log.Printf("DB connection close error: %v", err)
+	}
+	// report of success exit
+	s.exit <- true
+}
+
 // ServiceStart starts new service with provided database interface
-func ServiceStart(config *Config) error {
+func ServiceStart(config *Config, exit chan bool) error {
 
 	// initialize database connection
 	tokenDB, err := NewTokenDB(config.ConnectOptions, config.Timeout, config.TokenLength)
@@ -346,6 +363,8 @@ func ServiceStart(config *Config) error {
 	handler := serviceHandler{
 		tokenDB: tokenDB,
 		config:  config,
+		exit:    exit,
+		server:  nil,
 	}
 
 	// create server
@@ -353,16 +372,17 @@ func ServiceStart(config *Config) error {
 		Addr:    config.ListenHostPort,
 		Handler: handler,
 	}
+	handler.server = Server
 
-	// register the os.Interupt(SIGINT) handler
+	// register the SIGINT and SIGTERM handler
 	c := make(chan os.Signal, 1)
-	signal.Notify(c, syscall.SIGINT)
+	signal.Notify(c, syscall.SIGINT, syscall.SIGTERM)
 	// start signal handler
 	go func() {
 		// sleep until a signal is received.
 		<-c
-		// gracefully shut down the server
-		Server.Shutdown(context.Background())
+		// Close service
+		handler.Close()
 	}()
 
 	// start health checker
@@ -372,7 +392,8 @@ func ServiceStart(config *Config) error {
 		// and perform health-check
 		if err := handler.healthCheck(); err != nil {
 			log.Printf("initial health-check failed: %v", err)
-			Server.Shutdown(context.Background())
+			// Close service
+			handler.Close()
 			return
 		}
 		log.Println("initial health-check successfuly passed")

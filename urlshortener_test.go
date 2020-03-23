@@ -18,7 +18,7 @@ func Test20Main00WrongConfig(t *testing.T) {
 	defer saveEnv()()
 	os.Unsetenv("URLSHORTENER_ConnectOptions")
 
-	err := doMain("/bad/path/to/config/file")
+	err := doMain("/bad/path/to/config/file", nil)
 
 	if err == nil {
 		t.Error("no error when expected")
@@ -34,7 +34,7 @@ func Test20Main05WrongDB(t *testing.T) {
 	defer saveEnv()()
 	os.Setenv("URLSHORTENER_ConnectOptions", `{"Addrs":["wrong.host:6379"]}`)
 
-	err := doMain("/bad/path")
+	err := doMain("/bad/path", nil)
 
 	if err == nil {
 		t.Error("no error when expected")
