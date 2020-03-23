@@ -213,9 +213,15 @@ func Test05DBR60DebugError(t *testing.T) {
 	}
 }
 
-// get the Attempts
+// try to close connection
+func Test05DBR65Close(t *testing.T) {
+	if err := testDB.Close(); err != nil {
+		t.Errorf("error DB connection closing: %v", err)
+	}
+}
 
-func Test05DBRAttempts(t *testing.T) {
+// get the Attempts
+func Test05DBR70Attempts(t *testing.T) {
 	if testDB.Attempts() == 0 {
 		t.Error("no attempts calculated")
 	}

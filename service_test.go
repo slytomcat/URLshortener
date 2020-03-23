@@ -17,6 +17,7 @@ import (
 var (
 	servTestConfig *Config
 	servTestDB     Token
+	exit           chan bool
 )
 
 // try to start service
@@ -36,10 +37,10 @@ func Test10Serv05Start(t *testing.T) {
 	if err != nil {
 		t.Fatalf("error database interface creation: %v", err)
 	}
-
+	exit = make(chan bool)
 	// run service
 	go func() {
-		log.Println(ServiceStart(servTestConfig))
+		log.Println(ServiceStart(servTestConfig, exit))
 	}()
 
 	time.Sleep(time.Second * 3)
@@ -301,7 +302,12 @@ func Test10Serv95InteruptService(t *testing.T) {
 
 	syscall.Kill(syscall.Getpid(), syscall.SIGINT)
 
-	time.Sleep(time.Second * 2)
+	select {
+	case <-time.After(time.Second * 2):
+		t.Error("no exit reported")
+	case <-exit:
+		t.Log("exit reported")
+	}
 
 	w.Close()
 	log.SetOutput(logger)

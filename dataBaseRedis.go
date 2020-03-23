@@ -16,6 +16,7 @@ type Token interface {
 	Get(sToken string) (string, error)
 	Expire(sToken string, expiration int) error
 	Delete(sToken string) error
+	Close() error
 	Attempts() int
 }
 
@@ -166,6 +167,15 @@ func (t *tokenDBR) Delete(sToken string) error {
 		return errors.New("token is not exists")
 	}
 	return err
+}
+
+// Close - flush data and close connection to database
+func (t *tokenDBR) Close() error {
+	_, err := t.db.BgSave().Result()
+	if err != nil {
+		log.Printf("BGSave error: %v", err)
+	}
+	return t.db.Close()
 }
 
 // Attempts returns the number of attempts (calculated) during the time-out
