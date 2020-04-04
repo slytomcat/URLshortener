@@ -128,6 +128,22 @@ func Test10Serv35GetTokenWOexp(t *testing.T) {
 }
 
 // request expire without parameters
+func Test10Serv39ExpireTokenWObody(t *testing.T) {
+
+	resp, err := http.Post("http://"+servTestConfig.ListenHostPort+"/api/v1/expire", "application/json",
+		strings.NewReader(``))
+	if err != nil {
+		t.Errorf("expire request error: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Errorf("unexpected response status: %d", resp.StatusCode)
+	}
+
+}
+
+// request expire without parameters
 func Test10Serv40ExpireTokenWOparams(t *testing.T) {
 
 	resp, err := http.Post("http://"+servTestConfig.ListenHostPort+"/api/v1/expire", "application/json",
@@ -147,7 +163,7 @@ func Test10Serv40ExpireTokenWOparams(t *testing.T) {
 func Test10Serv45ExpireNotExistingToken(t *testing.T) {
 
 	resp, err := http.Post("http://"+servTestConfig.ListenHostPort+"/api/v1/expire", "application/json",
-		strings.NewReader(`{"token":"$%#@*"}`)) // use non Base64 symbols
+		strings.NewReader(`{"token":"`+strings.Repeat("(", servTestConfig.TokenLength)+`"}`)) // use non Base64 symbols
 	if err != nil {
 		t.Errorf("expire request error: %v", err)
 	}
@@ -190,6 +206,18 @@ func Test10Serv50GetTokenTwice(t *testing.T) {
 // test redirect with wrong token
 func Test10Serv60RedirectTo404(t *testing.T) {
 	resp, err := http.Get("http://" + servTestConfig.ListenHostPort + "/not_existing_token")
+	if err != nil {
+		t.Errorf("not-existing token request error: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusNotFound {
+		t.Errorf("unexpected response status: %d", resp.StatusCode)
+	}
+}
+
+// test redirect with wrong token
+func Test10Serv61RedirectTo404_(t *testing.T) {
+	resp, err := http.Get("http://" + servTestConfig.ListenHostPort + "/" + strings.Repeat("(", servTestConfig.TokenLength))
 	if err != nil {
 		t.Errorf("not-existing token request error: %v", err)
 	}

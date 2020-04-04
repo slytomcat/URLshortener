@@ -42,6 +42,7 @@ type serviceHandler struct {
 
 // ServeHTTP selects the handler function according to request URL
 func (s serviceHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	log.Println(r.RemoteAddr, r.Method, r.RequestURI, r.ContentLength, r.Header)
 	switch r.URL.Path {
 	case "/":
 		// request for health-check
@@ -221,6 +222,13 @@ func (s serviceHandler) getNewToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// check body length
+	if r.ContentLength <= 0 {
+		log.Printf("%s: request ContentLength: %v", rMess, r.ContentLength)
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
 	// read the request body
 	buf := make([]byte, r.ContentLength)
 	_, err := r.Body.Read(buf)
@@ -295,6 +303,13 @@ func (s serviceHandler) expireToken(w http.ResponseWriter, r *http.Request) {
 		log.Printf("%s: this request is disabled by current service mode\n", rMess)
 		// request is not supported: send 404 response
 		http.NotFound(w, r)
+		return
+	}
+
+	// check body length
+	if r.ContentLength <= 0 {
+		log.Printf("%s: request ContentLength: %v", rMess, r.ContentLength)
+		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
