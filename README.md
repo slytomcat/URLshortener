@@ -107,3 +107,7 @@ Value of `Mode` can be a sum of several modes, for example `"Mode":6` disables t
 Configuration data can be also provided via environment variables URLSHORTENER_ConnectOptions (JSON string with Redis connection options), URLSHORTENER_Timeout, URLSHORTENER_ListenHostPort, URLSHORTENER_DefaultExp, URLSHORTENER_ShortDomain and URLSHORTENER_Mode.
 
 When some configuration value is set in both configuration file and environment variable then value from configuration file is used.
+
+### Logs
+
+Log is written to output. It contains access log, request results and some warnings about the the measurements of attempts per time-out. 
