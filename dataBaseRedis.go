@@ -16,33 +16,35 @@ type Token interface {
 	Get(sToken string) (string, error)
 	Expire(sToken string, expiration int) error
 	Delete(sToken string) error
+	Close() error
+	Attempts() int
 }
 
-var (
-	// TokenDB - Database interface
-	TokenDB Token
-)
-
-// tokenDBR is a structure to handle the DB token operations via Redis databasa
+// tokenDBR is a structure to handle the DB token operations via Redis database
 type tokenDBR struct {
-	db redis.UniversalClient
+	db          redis.UniversalClient
+	timeout     int   // new token record creation timeout
+	tokenLength int   // length of token
+	attempts    int32 // number of attemppts during timeout (calculated)
 }
 
 // NewTokenDB creates new database interface to Redis database
-func NewTokenDB() error {
+func NewTokenDB(connect redis.UniversalOptions, timeout, tokenLength int) (Token, error) {
 
 	// create new UniversalClient from CONFIG.ConnectOptions
-	db := redis.NewUniversalClient(&CONFIG.ConnectOptions)
+	db := redis.NewUniversalClient(&connect)
 
 	// try to ping data base
 	if _, err := db.Ping().Result(); err != nil {
-		return err
+		return nil, err
 	}
 
-	// initialize the global variable
-	TokenDB = &tokenDBR{db}
-
-	return nil
+	return &tokenDBR{
+			db:          db,
+			timeout:     timeout,
+			tokenLength: tokenLength,
+		},
+		nil
 }
 
 // New creates new token for given long URL
@@ -63,20 +65,22 @@ func (t *tokenDBR) New(longURL string, expiration int) (string, error) {
 		// perform statistical calculation and reporting in another go-routine
 		go func() {
 			if attempt > 0 {
-				MaxAtt := attempt * int64(CONFIG.Timeout) * 1000000 / elapsedTime
-				atomic.StoreInt32(&Attempts, int32(MaxAtt))
+				MaxAtt := attempt * int64(t.timeout) * 1000000 / elapsedTime
+				// use atomic to avoid race conditions
+				atomic.StoreInt32(&t.attempts, int32(MaxAtt))
+				// report warnings of some not good measurements
 				if MaxAtt*3/4 < attempt {
-					log.Printf("Warning: Measured %d attempts for %d ns. Calculated %d max attempts per %d ms\n", attempt, elapsedTime, MaxAtt, CONFIG.Timeout)
+					log.Printf("Warning: Measured %d attempts for %d ns. Calculated %d max attempts per %d ms\n", attempt, elapsedTime, MaxAtt, t.timeout)
 				}
 				if MaxAtt > 0 && MaxAtt < 10 {
-					log.Printf("Warning: Too low number of attempts: %d per timeout (%d ms)\n", MaxAtt, CONFIG.Timeout)
+					log.Printf("Warning: Too low number of attempts: %d per timeout (%d ms)\n", MaxAtt, t.timeout)
 				}
 			}
 		}()
 	}()
 
 	// make time-out chanel
-	stop := time.After(time.Millisecond * time.Duration(CONFIG.Timeout))
+	stop := time.After(time.Millisecond * time.Duration(t.timeout))
 
 	// Remember starting time
 	startTime = time.Now().UnixNano()
@@ -89,7 +93,7 @@ func (t *tokenDBR) New(longURL string, expiration int) (string, error) {
 			return "", fmt.Errorf("can't store a new token for %d attempts", attempt)
 		default:
 			// get random token
-			sToken, err := NewShortToken(CONFIG.TokenLength)
+			sToken, err := NewShortToken(t.tokenLength)
 			if err != nil {
 				return "", fmt.Errorf("NewShortToken error: %w", err)
 			}
@@ -113,8 +117,8 @@ func (t *tokenDBR) New(longURL string, expiration int) (string, error) {
 }
 
 // checkTokenLenth do the work as described in name
-func checkTokenLenth(sToken string) error {
-	if len(sToken) != CONFIG.TokenLength {
+func (t *tokenDBR) checkTokenLenth(sToken string) error {
+	if len(sToken) != t.tokenLength {
 		return errors.New("wrong token length")
 	}
 	return nil
@@ -124,7 +128,7 @@ func checkTokenLenth(sToken string) error {
 func (t *tokenDBR) Get(sToken string) (string, error) {
 
 	// check token length
-	if err := checkTokenLenth(sToken); err != nil {
+	if err := t.checkTokenLenth(sToken); err != nil {
 		return "", err
 	}
 
@@ -136,7 +140,7 @@ func (t *tokenDBR) Get(sToken string) (string, error) {
 func (t *tokenDBR) Expire(sToken string, expiration int) error {
 
 	// check token length
-	if err := checkTokenLenth(sToken); err != nil {
+	if err := t.checkTokenLenth(sToken); err != nil {
 		return err
 	}
 
@@ -153,7 +157,7 @@ func (t *tokenDBR) Expire(sToken string, expiration int) error {
 func (t *tokenDBR) Delete(sToken string) error {
 
 	// check token length
-	if err := checkTokenLenth(sToken); err != nil {
+	if err := t.checkTokenLenth(sToken); err != nil {
 		return err
 	}
 
@@ -163,4 +167,18 @@ func (t *tokenDBR) Delete(sToken string) error {
 		return errors.New("token is not exists")
 	}
 	return err
+}
+
+// Close - flush data and close connection to database
+func (t *tokenDBR) Close() error {
+	_, err := t.db.BgSave().Result()
+	if err != nil {
+		log.Printf("BGSave error: %v", err)
+	}
+	return t.db.Close()
+}
+
+// Attempts returns the number of attempts (calculated) during the time-out
+func (t *tokenDBR) Attempts() int {
+	return int(atomic.LoadInt32(&t.attempts))
 }

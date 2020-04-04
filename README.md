@@ -28,7 +28,7 @@ Success response: `HTTP 200 OK` with body containing JSON with following paramet
 - `token`: string, token for short URL
 - `url`: string, short URL
 
-Note: Token is created as random and the saving it to DB may cause duplicate error. In order to avoid such error the service makes several attempts to store random token. The number of attempts is limited by the `Timeout` configuration value by time, not by amount. When time-out expired and no one attempt was not successful then service returns response code `504 Gateway Timeout`. This response mean that the request can be repeated.
+Note: Token is created as random and the saving it to DB may cause duplicate error. In order to avoid such error the service makes several attempts to store random token. The number of attempts is limited by the `Timeout` configuration value by time, not by amount. When time-out expired and no one attempt was not successful then service returns response code `408 Request Timeout`. This response mean that the request can be repeated.
 
 The maximum number of possible attempts to store token during time-out is calculated every time a new token stored. The last measured value is displayed on the homepage.
 
@@ -107,3 +107,7 @@ Value of `Mode` can be a sum of several modes, for example `"Mode":6` disables t
 Configuration data can be also provided via environment variables URLSHORTENER_ConnectOptions (JSON string with Redis connection options), URLSHORTENER_Timeout, URLSHORTENER_ListenHostPort, URLSHORTENER_DefaultExp, URLSHORTENER_ShortDomain and URLSHORTENER_Mode.
 
 When some configuration value is set in both configuration file and environment variable then value from configuration file is used.
+
+### Logs
+
+Log is written to output. It contains access log, request results and some warnings about the the measurements of attempts per time-out. 
