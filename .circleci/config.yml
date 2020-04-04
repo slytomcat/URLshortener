@@ -1,5 +1,111 @@
 version: 2.1
 jobs:
+
+  test:
+    docker:
+      - image: circleci/golang:1.14
+    steps:
+      - checkout
+      - run:
+          name: Prepare
+          command: |
+            go get -u github.com/jstemmer/go-junit-report;
+            mkdir results;
+      - run:
+          name: Tests
+          command: go test -v -race -timeout 60s -run '^Test10Serv.*$' -coverprofile coverServ.out 2>&1 | tee /dev/tty | go-junit-report > results/results.xml
+      - store_test_results:
+          path: results
+      - persist_to_workspace:
+          root: .
+          paths:
+            - ./coverServ.out
+
+  testmain:
+    docker:
+      - image: circleci/golang:1.14
+    steps:
+      - checkout
+      - run:
+          name: Prepare
+          command: |
+            go get -u github.com/jstemmer/go-junit-report;
+            mkdir results;
+      - run:
+          name: Tests
+          command: go test -v -race -timeout 60s -run '^Test20Main.*$' -coverprofile coverMain.out 2>&1 | tee /dev/tty | go-junit-report > results/results.xml
+      - store_test_results:
+          path: results
+      - persist_to_workspace:
+          root: .
+          paths:
+            - ./coverMain.out
+
+  testtools:
+    docker:
+      - image: circleci/golang:1.14
+    steps:
+      - checkout
+      - run:
+          name: Prepare
+          command: |
+            go get -u github.com/jstemmer/go-junit-report;
+            mkdir results;
+      - run:
+          name: Tests
+          command: go test -v -race -timeout 60s -run '^(Test00ST.*|Test01Tools.*)$' -coverprofile coverTools.out 2>&1 | tee /dev/tty | go-junit-report > results/results.xml
+      - store_test_results:
+          path: results
+      - persist_to_workspace:
+          root: .
+          paths:
+            - ./coverTools.out
+
+  testdb:
+    docker:
+      - image: circleci/golang:1.14
+    steps:
+      - checkout
+      - run:
+          name: Prepare
+          command: |
+            go get -u github.com/jstemmer/go-junit-report;
+            mkdir results;
+      - run:
+          name: Tests
+          command: go test -v -race -timeout 60s -run '^Test05DBR.*' -coverprofile coverDB.out 2>&1 | tee /dev/tty | go-junit-report > results/results.xml
+      - store_test_results:
+          path: results
+      - persist_to_workspace:
+          root: .
+          paths:
+            - ./coverDB.out
+
+  report:
+    docker:
+      - image: circleci/golang:1.14
+    steps:
+      - checkout
+      - attach_workspace:
+          at: ./artifacts
+      - run:
+          name: Join coverage files
+          command: |
+            echo 'mode: atomic' > ./cover.out
+            cat ./artifacts/cover* | sed "/mode: atomic/d" >> ./cover.out
+      - run:
+          name: Report coverage to deepsource.io
+          command: |
+            curl https://deepsource.io/cli | sh
+            ./bin/deepsource report --analyzer test-coverage --key go --value-file ./cover.out
+      - run:
+          name: Format coverage
+          command: go tool cover -html=./cover.out -o coverage.html
+      - store_artifacts:
+          path: coverage.html
+      - store_artifacts:
+          path: cover.out
+
   build:
     docker:
       - image: circleci/golang:1.14
@@ -16,32 +122,6 @@ jobs:
           paths:
             - ./URLshortener
             - ./VERSION
-
-  test:
-    docker:
-      - image: circleci/golang:1.14
-    steps:
-      - checkout
-      - run:
-          name: Prepare
-          command: |
-            go get -u github.com/jstemmer/go-junit-report;
-            mkdir results;
-      - run:
-          name: Tests
-          command: go test -v -race -timeout 60s -coverprofile cover.out 2>&1 | tee /dev/tty | go-junit-report > results/results.xml
-      - run:
-          name: Report coverage to deepsource.io
-          command: |
-            curl https://deepsource.io/cli | sh
-            ./bin/deepsource report --analyzer test-coverage --key go --value-file ./cover.out
-      - run:
-          name: Format coverage
-          command: go tool cover -html=cover.out -o coverage.html
-      - store_artifacts:
-          path: coverage.html
-      - store_test_results:
-          path: results
 
   upload_github:
     docker:
@@ -80,8 +160,22 @@ workflows:
   version: 2.1
   build_test_upload:
     jobs:
-      - build
       - test
+      - testmain
+      - testdb
+      - testtools
+      - report:
+          requires:
+            - test
+            - testmain
+            - testdb
+            - testtools
+      - build:
+          requires:
+            - test
+            - testmain
+            - testdb
+            - testtools
       - upload_github:
           requires:
             - build
