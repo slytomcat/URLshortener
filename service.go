@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -222,17 +223,9 @@ func (s serviceHandler) getNewToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// check body length
-	if r.ContentLength <= 0 {
-		log.Printf("%s: request ContentLength: %v", rMess, r.ContentLength)
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
 	// read the request body
-	buf := make([]byte, r.ContentLength)
-	_, err := r.Body.Read(buf)
-	if err != nil && !errors.Is(err, io.EOF) {
+	buf, err := ioutil.ReadAll(r.Body)
+	if err != nil {
 		log.Printf("%s: request body reading error: %v", rMess, err)
 		w.WriteHeader(http.StatusBadRequest)
 		return
@@ -306,17 +299,9 @@ func (s serviceHandler) expireToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// check body length
-	if r.ContentLength <= 0 {
-		log.Printf("%s: request ContentLength: %v", rMess, r.ContentLength)
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
 	// read the request body
-	buf := make([]byte, r.ContentLength)
-	_, err := r.Body.Read(buf)
-	if err != nil && !errors.Is(err, io.EOF) {
+	buf, err := ioutil.ReadAll(r.Body)
+	if err != nil {
 		log.Printf("%s: request body reading error: %v", rMess, err)
 		w.WriteHeader(http.StatusBadRequest)
 		return
