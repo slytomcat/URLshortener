@@ -5,7 +5,10 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/signal"
 	"path/filepath"
+	"syscall"
+	"time"
 )
 
 var (
@@ -44,7 +47,44 @@ func doMain(configPath string, exit chan bool) error {
 		return fmt.Errorf("configuration read error: %w", err)
 	}
 
-	// run service
-	return ServiceStart(config, exit)
+	// initialize database connection
+	tokenDB, err := NewTokenDB(config.ConnectOptions)
+	if err != nil {
+		return fmt.Errorf("database interface creation error: %w", err)
+	}
+
+	// get service handler
+	handler, err := NewHandler(config, tokenDB, NewShortToken(config.TokenLength), exit)
+	if err != nil {
+		return fmt.Errorf("service handler creation error: %w", err)
+	}
+
+	// register the SIGINT and SIGTERM handler
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, syscall.SIGINT, syscall.SIGTERM)
+	// start signal handler
+	go func() {
+		// sleep until a signal is received.
+		<-c
+		// Close service
+		handler.Stop()
+	}()
+
+	// start health checker
+	go func() {
+		// wait for server start
+		<-time.After(300 * time.Millisecond)
+		// and perform health-check
+		if err := handler.HealthCheck(); err != nil {
+			log.Printf("initial health-check failed: %v", err)
+			// Close service
+			handler.Stop()
+			return
+		}
+		log.Println("initial health-check successfuly passed")
+	}()
+
+	// run server
+	return handler.Start()
 
 }

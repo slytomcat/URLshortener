@@ -1,24 +1,48 @@
 package main
 
 import (
+	"errors"
 	"strings"
 	"testing"
 )
 
-// SetDebug sets debuging mode and return
-// func() that resets the debog mode to 0.
-func SetDebug(mode int) func() {
-	SetShortTokenDebug(mode)
-	return func() { SetShortTokenDebug(0) }
+type shortTokenD struct {
+	len int
+}
+
+func NewShortTokenD(len int) ShortToken {
+	return &shortTokenD{len}
+}
+
+func (s shortTokenD) Get() (string, error) {
+	return strings.Repeat("_", s.len), nil
+}
+
+func (s shortTokenD) Check(sToken string) error {
+	return nil
+}
+
+type shortTokenE struct {
+}
+
+func NewShortTokenE(_ int) ShortToken {
+	return &shortTokenE{}
+}
+
+func (s shortTokenE) Get() (string, error) {
+	return "", errors.New("debugging error")
+}
+
+func (s shortTokenE) Check(sToken string) error {
+	return nil
 }
 
 // try to create new token from debugging source
 func Test00ST05NewShortTokenFake(t *testing.T) {
-
-	defer SetDebug(1)()
+	st := NewShortTokenD(6)
 
 	DEBUGToken := strings.Repeat("_", 6)
-	tc, err := NewShortToken(6)
+	tc, err := st.Get()
 	if err != nil {
 		t.Error("error of ShortToken creation from debug source:", err)
 	}
@@ -29,12 +53,14 @@ func Test00ST05NewShortTokenFake(t *testing.T) {
 
 // try to make two tokens from random source and compare them
 func Test00ST07NewShortTokenReal(t *testing.T) {
-	tc, err := NewShortToken(6)
+	st := NewShortToken(6)
+
+	tc, err := st.Get()
 	if err != nil {
 		t.Error("error of ShortToken creation from random:", err)
 	}
 
-	tc1, _ := NewShortToken(6)
+	tc1, _ := st.Get()
 
 	if len(tc) != len(tc1) || len(tc) != 6 {
 		t.Error("wrong token length")
@@ -47,12 +73,14 @@ func Test00ST07NewShortTokenReal(t *testing.T) {
 
 // try to make two tokens from random source and compare them
 func Test00ST07NewShortTokenReal2(t *testing.T) {
-	tc, err := NewShortToken(2)
+	st := NewShortToken(2)
+
+	tc, err := st.Get()
 	if err != nil {
 		t.Error("error of ShortToken creation from random:", err)
 	}
 
-	tc1, _ := NewShortToken(2)
+	tc1, err := st.Get()
 
 	if len(tc) != len(tc1) || len(tc) != 2 {
 		t.Error("wrong token length")
@@ -65,27 +93,70 @@ func Test00ST07NewShortTokenReal2(t *testing.T) {
 
 // test debug error
 func Test00ST08DebugError(t *testing.T) {
+	st := NewShortTokenE(2)
 
-	defer SetDebug(-1)()
-
-	_, err := NewShortToken(2)
+	_, err := st.Get()
 	if err == nil {
-		t.Error("no error when expected:")
+		t.Error("no error when expected")
 	}
 }
 
+// test Check with correct token
+func Test00ST10CheckOk(t *testing.T) {
+	st := NewShortToken(2)
+
+	sToken, err := st.Get()
+	if err != nil {
+		t.Errorf("token creation error: %v", err)
+	}
+
+	err = st.Check(sToken)
+	if err != nil {
+		t.Errorf("token check error: %v", err)
+	}
+}
+
+// test Check with wrong token length
+func Test00ST15CheckNoOk(t *testing.T) {
+	st := NewShortToken(2)
+
+	sToken, err := st.Get()
+	if err != nil {
+		t.Errorf("token creation error: %v", err)
+	}
+
+	err = st.Check(sToken + "wrong")
+	if err == nil {
+		t.Error("no error when expected")
+	}
+}
+
+// test Check with wrong token alphabet
+func Test00ST15CheckNoOk2(t *testing.T) {
+	st := NewShortToken(2)
+
+	err := st.Check("#$") // check nonBase64 symbols
+	if err == nil {
+		t.Error("no error when expected")
+	}
+}
+
+// Benchmark for the 6 symbols token
 func Benchmark00ST00Create6(b *testing.B) {
+	st := NewShortToken(6)
 	for i := 0; i < b.N; i++ {
-		_, err := NewShortToken(6)
+		_, err := st.Get()
 		if err != nil {
 			b.Error(err)
 		}
 	}
 }
 
+// Benchmark for the 8 symbols token
 func Benchmark00ST00Create8(b *testing.B) {
+	st := NewShortToken(8)
 	for i := 0; i < b.N; i++ {
-		_, err := NewShortToken(8)
+		_, err := st.Get()
 		if err != nil {
 			b.Error(err)
 		}

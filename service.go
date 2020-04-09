@@ -14,10 +14,8 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
-	"os"
-	"os/signal"
 	"strings"
-	"syscall"
+	"sync/atomic"
 	"time"
 )
 
@@ -34,16 +32,26 @@ var (
 `
 )
 
+// ServiceHandler interface
+type ServiceHandler interface {
+	ServeHTTP(http.ResponseWriter, *http.Request)
+	HealthCheck() error
+	Start() error
+	Stop()
+}
+
 type serviceHandler struct {
-	tokenDB Token        // Database interface
-	config  *Config      // servuce configuration
-	exit    chan bool    // exit report
-	server  *http.Server // service server
+	tokenDB    TokenDB      // Database interface
+	shortToken ShortToken   // Short token generator
+	config     *Config      // servuce configuration
+	exit       chan bool    // exit report
+	server     *http.Server // service server
+	attempts   int32        // calculated number of attempts during time-out
 }
 
 // ServeHTTP selects the handler function according to request URL
 func (s serviceHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	log.Println(r.RemoteAddr, r.Method, r.RequestURI, r.ContentLength, r.Header)
+	log.Println("new request from:", r.RemoteAddr, r.Method, r.RequestURI, r.Header)
 	switch r.URL.Path {
 	case "/":
 		// request for health-check
@@ -56,7 +64,7 @@ func (s serviceHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		s.expireToken(w, r)
 	case "/favicon.ico":
 		// WEB-brousers make such requests together with main request to show the site icon on tab header
-		// In this code it is used for health check
+		// In this code it is used for health check (as point to redirect from short url)
 		return
 	default:
 		// all the rest are requests for redirect (probably)
@@ -72,7 +80,7 @@ curl -i -v http://localhost:8080/
 func (s serviceHandler) home(w http.ResponseWriter, r *http.Request) {
 	rMess := fmt.Sprintf("health-check request from %s (%s)", r.RemoteAddr, r.Referer())
 	// Perform self-test
-	if err := s.healthCheck(); err != nil {
+	if err := s.HealthCheck(); err != nil {
 		// report error
 		log.Printf("%s: error: %v\n", rMess, err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -80,12 +88,12 @@ func (s serviceHandler) home(w http.ResponseWriter, r *http.Request) {
 		// log self-test results
 		log.Printf("%s: success\n", rMess)
 		// show the home page if self-test was successfully passed
-		w.Write([]byte(fmt.Sprintf(homePage, s.tokenDB.Attempts(), s.config.Timeout)))
+		w.Write([]byte(fmt.Sprintf(homePage, atomic.LoadInt32(&s.attempts), s.config.Timeout)))
 	}
 }
 
 // healthCheck performs full self-test of service in all service modes
-func (s serviceHandler) healthCheck() error {
+func (s serviceHandler) HealthCheck() error {
 
 	// url for sef-check redirect
 	url := "http://" + s.config.ShortDomain + "/favicon.ico"
@@ -96,13 +104,15 @@ func (s serviceHandler) healthCheck() error {
 		Token string `json:"token"`
 	}
 	var err error
+	sToken := "Debug.Token"
 
 	// self-test part 1: get short URL
 	if s.config.Mode&disableShortener != 0 {
 		// use tokenDB inteface as web-interface is locked in this service mode
-		if repl.Token, err = s.tokenDB.New(url, 1); err != nil {
+		if ok, err := s.tokenDB.Set(sToken, url, 1); err != nil || !ok {
 			return fmt.Errorf("new token creation error: %w", err)
 		}
+		repl.Token = sToken
 		repl.URL = s.config.ShortDomain + "/" + repl.Token
 	} else {
 		// make the HTTP request for new token
@@ -111,6 +121,7 @@ func (s serviceHandler) healthCheck() error {
 		if err != nil {
 			return fmt.Errorf("new token request error: %w", err)
 		}
+
 		defer resp.Body.Close()
 		// check response status code
 		if resp.StatusCode != http.StatusOK {
@@ -118,8 +129,7 @@ func (s serviceHandler) healthCheck() error {
 		}
 
 		// read response body
-		buf := make([]byte, resp.ContentLength)
-		_, err = resp.Body.Read(buf)
+		buf, err := ioutil.ReadAll(resp.Body)
 		if err != nil && !errors.Is(err, io.EOF) {
 			return fmt.Errorf("new token response body reading error : %w", err)
 		}
@@ -127,6 +137,9 @@ func (s serviceHandler) healthCheck() error {
 		// parse response body
 		if err = json.Unmarshal(buf, &repl); err != nil {
 			return fmt.Errorf("new token response body parsing error: %w", err)
+		}
+		if repl.Token == "" {
+			return errors.New("empty token returned")
 		}
 	}
 
@@ -202,7 +215,7 @@ func (s serviceHandler) redirect(w http.ResponseWriter, r *http.Request) {
 	log.Printf("%s: redirected to %s\n", rMess, longURL)
 
 	// make redirect response
-	http.Redirect(w, r, longURL, http.StatusMovedPermanently)
+	http.Redirect(w, r, longURL, http.StatusFound)
 }
 
 /* test for test env:
@@ -253,12 +266,70 @@ func (s serviceHandler) getNewToken(w http.ResponseWriter, r *http.Request) {
 		params.Exp = s.config.DefaultExp
 	}
 
-	// create new token
-	sToken, err := s.tokenDB.New(params.URL, params.Exp)
-	if err != nil {
-		log.Printf("%s: token creation error: %v\n", rMess, err)
-		w.WriteHeader(http.StatusRequestTimeout)
-		return
+	// Using many attempts to store the new random token dramatically increases maximum amount of
+	// used tokens since:
+	// probability of the failure of n attempts = (probability of failure of single attempt)^n.
+
+	// Limit number of attempts by time not by count
+
+	// Count attempts and time for reports
+	var attempt, startTime int64
+
+	// Calculate statistics and report if some dangerous situation appears
+	defer func() {
+		elapsedTime := time.Now().UnixNano() - startTime
+		// perform statistical calculation and reporting in another go-routine
+		go func() {
+			if attempt > 0 {
+				MaxAtt := attempt * int64(s.config.Timeout) * 1000000 / elapsedTime
+				// use atomic to avoid race conditions
+				atomic.StoreInt32(&s.attempts, int32(MaxAtt))
+				// report warnings of some not good measurements
+				if MaxAtt*3/4 < attempt {
+					log.Printf("Warning: Measured %d attempts for %d ns. Calculated %d max attempts per %d ms\n", attempt, elapsedTime, MaxAtt, s.config.Timeout)
+				}
+				if MaxAtt > 0 && MaxAtt < 10 {
+					log.Printf("Warning: Too low number of attempts: %d per timeout (%d ms)\n", MaxAtt, s.config.Timeout)
+				}
+			}
+		}()
+	}()
+
+	sToken := ""
+
+	// make time-out chanel
+	stop := time.After(time.Millisecond * time.Duration(s.config.Timeout))
+
+	// Remember starting time
+	startTime = time.Now().UnixNano()
+
+	// start trying to store new token
+	for ok := false; ok == false; {
+		select {
+		case <-stop:
+			// timeout exceeded
+			log.Printf("%s: token creation error: %v, ok: %v\n", rMess, err, ok)
+			w.WriteHeader(http.StatusRequestTimeout)
+			return
+		default:
+			sToken, err = s.shortToken.Get()
+			if err != nil {
+				log.Printf("%s: token generation error: %v\n", rMess, err)
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+
+			ok, err = s.tokenDB.Set(sToken, params.URL, params.Exp)
+
+			// count attempts
+			attempt++
+
+			if err != nil {
+				log.Printf("%s: token storing error: %v\n", rMess, err)
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+		}
 	}
 
 	// prepare response body
@@ -335,7 +406,14 @@ func (s serviceHandler) expireToken(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-func (s serviceHandler) Close() {
+func (s *serviceHandler) Start() error {
+
+	log.Println("starting server at", s.config.ListenHostPort)
+
+	return s.server.ListenAndServe()
+}
+
+func (s *serviceHandler) Stop() {
 	// gracefully shut down the server
 	err := s.server.Shutdown(context.Background())
 	if err != nil {
@@ -350,56 +428,23 @@ func (s serviceHandler) Close() {
 	s.exit <- true
 }
 
-// ServiceStart starts new service with provided database interface
-func ServiceStart(config *Config, exit chan bool) error {
+// NewHandler returns new service handler
+func NewHandler(config *Config, tokenDB TokenDB, shortToken ShortToken, exit chan bool) (ServiceHandler, error) {
 
-	// initialize database connection
-	tokenDB, err := NewTokenDB(config.ConnectOptions, config.Timeout, config.TokenLength)
-	if err != nil {
-		return fmt.Errorf("error database interface creation: %w", err)
-	}
-
-	// handler
-	handler := serviceHandler{
-		tokenDB: tokenDB,
-		config:  config,
-		exit:    exit,
-		server:  nil,
+	// make handler
+	handler := &serviceHandler{
+		tokenDB:    tokenDB,
+		shortToken: shortToken,
+		config:     config,
+		exit:       exit,
+		server:     nil,
 	}
 
 	// create server
-	Server := &http.Server{
+	handler.server = &http.Server{
 		Addr:    config.ListenHostPort,
 		Handler: handler,
 	}
-	handler.server = Server
 
-	// register the SIGINT and SIGTERM handler
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, syscall.SIGINT, syscall.SIGTERM)
-	// start signal handler
-	go func() {
-		// sleep until a signal is received.
-		<-c
-		// Close service
-		handler.Close()
-	}()
-
-	// start health checker
-	go func() {
-		// wait for server start
-		<-time.After(300 * time.Millisecond)
-		// and perform health-check
-		if err := handler.healthCheck(); err != nil {
-			log.Printf("initial health-check failed: %v", err)
-			// Close service
-			handler.Close()
-			return
-		}
-		log.Println("initial health-check successfuly passed")
-	}()
-
-	// run server
-	log.Println("starting server at", handler.config.ListenHostPort)
-	return Server.ListenAndServe()
+	return handler, nil
 }
