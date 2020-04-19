@@ -56,7 +56,7 @@ URL: `<host>[:<port>]/<token>` - URL from response on request for short URL
 
 Method: `GET`
 
-Response contain the redirection to long URL (response code: HTTP 301 'Moved permanently' with 'Location' = long URL in response header)
+Response contain the redirection to long URL (response code: HTTP 302 'Found' with 'Location' = long URL in response header)
 
 ### Health-check:
 URL: `<host>[:<port>]/`

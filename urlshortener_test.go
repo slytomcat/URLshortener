@@ -39,7 +39,7 @@ func Test20Main05WrongDB(t *testing.T) {
 	if err == nil {
 		t.Error("no error when expected")
 	}
-	if !strings.HasPrefix(err.Error(), "error database interface creation") {
+	if !strings.HasPrefix(err.Error(), "database interface creation error") {
 		t.Errorf("wrong error: %v", err)
 	}
 }
@@ -86,9 +86,12 @@ func Test20Main20Success(t *testing.T) {
 		t.Errorf("received unexpected output: %s", buf)
 	}
 	log.Printf("%s", buf)
+}
 
-	logger = log.Writer()
-	r, w, _ = os.Pipe()
+func Test20Main25Kill(t *testing.T) {
+
+	logger := log.Writer()
+	r, w, _ := os.Pipe()
 	log.SetOutput(w)
 
 	syscall.Kill(syscall.Getpid(), syscall.SIGINT)
@@ -97,7 +100,7 @@ func Test20Main20Success(t *testing.T) {
 
 	w.Close()
 	log.SetOutput(logger)
-	buf, err = ioutil.ReadAll(r)
+	buf, err := ioutil.ReadAll(r)
 	if err != nil {
 		t.Error(err)
 	}
