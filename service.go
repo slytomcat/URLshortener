@@ -316,7 +316,7 @@ func (s serviceHandler) getNewToken(w http.ResponseWriter, r *http.Request) {
 	startTime = time.Now().UnixNano()
 
 	// start trying to store new token
-	for ok := false; ok == false; {
+	for ok := false; !ok; {
 		select {
 		case <-stop:
 			// timeout exceeded
