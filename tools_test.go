@@ -190,6 +190,7 @@ func Test01Tools30FullEnv(t *testing.T) {
 	}
 }
 
+// test wrong connection options
 func Test01Tools31WrongConnectionOptions(t *testing.T) {
 
 	defer saveEnv()()

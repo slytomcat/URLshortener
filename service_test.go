@@ -379,6 +379,7 @@ func Test10Serv85InteruptService(t *testing.T) {
 	log.Printf("%s", buf)
 }
 
+// try tokens' duplicate
 func Test10Serv90Duble(t *testing.T) {
 
 	servTestConfig, err := readConfig("./cnfr.json")

@@ -34,7 +34,7 @@ var (
 
 // ServiceHandler interface
 type ServiceHandler interface {
-	ServeHTTP(http.ResponseWriter, *http.Request)
+	ServeHTTP(http.ResponseWriter, *http.Request) // http server handler function
 	HealthCheck() error
 	Start() error
 	Stop()
