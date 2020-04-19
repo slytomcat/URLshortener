@@ -178,13 +178,13 @@ workflows:
       - testtools
       - report:
           requires:
-            - test
+            - testserv
             - testmain
             - testdb
             - testtools
       - build:
           requires:
-            - test
+            - testserv
             - testmain
             - testdb
             - testtools
