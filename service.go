@@ -138,17 +138,22 @@ func (s serviceHandler) HealthCheck() error {
 		if err = json.Unmarshal(buf, &repl); err != nil {
 			return fmt.Errorf("new token response body parsing error: %w", err)
 		}
+
+		// check receved token
 		if repl.Token == "" {
 			return errors.New("empty token returned")
 		}
 	}
 
 	// self-test part 2: check redirect
+	rURL := "" // vaiable to store redirect URL
 	if s.config.Mode&disableRedirect != 0 {
 		// use tokenDB interface as web-interface is locked in this service mode
-		if _, err = s.tokenDB.Get(repl.Token); err != nil {
+		rURL, err = s.tokenDB.Get(repl.Token)
+		if err != nil {
 			return fmt.Errorf("URL receiving error: %w", err)
 		}
+
 	} else {
 		// try to make the HTTP request for redirect by short URL
 		resp2, err := http.Get("http://" + repl.URL)
@@ -161,6 +166,13 @@ func (s serviceHandler) HealthCheck() error {
 		if resp2.StatusCode != http.StatusOK {
 			return fmt.Errorf("redirect request: unexpected responce status: %v", resp2.StatusCode)
 		}
+
+		// get redirection URL
+		rURL = resp2.Request.URL.String()
+	}
+	// check redirection URL
+	if rURL != url {
+		return fmt.Errorf("wrong redirection URL: expected %s, receved %v", url, rURL)
 	}
 
 	// self-test part 3: make received token as expired
@@ -429,7 +441,7 @@ func (s *serviceHandler) Stop() {
 }
 
 // NewHandler returns new service handler
-func NewHandler(config *Config, tokenDB TokenDB, shortToken ShortToken, exit chan bool) (ServiceHandler, error) {
+func NewHandler(config *Config, tokenDB TokenDB, shortToken ShortToken, exit chan bool) ServiceHandler {
 
 	// make handler
 	handler := &serviceHandler{
@@ -446,5 +458,5 @@ func NewHandler(config *Config, tokenDB TokenDB, shortToken ShortToken, exit cha
 		Handler: handler,
 	}
 
-	return handler, nil
+	return handler
 }
