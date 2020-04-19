@@ -19,8 +19,54 @@ var (
 	servTestConfig  *Config
 	servTestDB      TokenDB
 	servTestHandler ServiceHandler
-	servTestexit    chan bool
+	servTestexit    chan bool = make(chan bool)
 )
+
+// try to start service with not working db
+func Test10Serv03Start(t *testing.T) {
+	logger := log.Writer()
+	r, w, _ := os.Pipe()
+	log.SetOutput(w)
+
+	errDb, _ := testDBNewTokenDB(redis.UniversalOptions{})
+	testHandler := NewHandler(&Config{ListenHostPort: "localhost:8080"}, errDb, NewShortToken(5), servTestexit)
+
+	go func() {
+		log.Println(testHandler.Start())
+	}()
+
+	select {
+	case <-servTestexit:
+		t.Error("servise starting error")
+	case <-time.After(time.Second * 3):
+		break
+	}
+
+	w.Close()
+	log.SetOutput(logger)
+	buf, err := ioutil.ReadAll(r)
+	if err != nil {
+		t.Error(err)
+	}
+	if !bytes.Contains(buf, []byte("starting server at")) {
+		t.Errorf("received unexpected output: %s", buf)
+	}
+	log.Printf("%s", buf)
+
+	resp, err := http.Get("http://localhost:8080/")
+	if err != nil {
+		t.Errorf("token request error: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusInternalServerError {
+		t.Errorf("unexpected response status: %d", resp.StatusCode)
+	}
+	go testHandler.Stop()
+
+	<-servTestexit
+
+}
 
 // try to start service
 func Test10Serv05Start(t *testing.T) {
@@ -43,11 +89,8 @@ func Test10Serv05Start(t *testing.T) {
 	// create short token interface
 	sToken := NewShortToken(servTestConfig.TokenLength)
 
-	// make exit chanel
-	servTestexit = make(chan bool)
-
 	// create service handler
-	servTestHandler, err = NewHandler(servTestConfig, servTestDB, sToken, servTestexit)
+	servTestHandler = NewHandler(servTestConfig, servTestDB, sToken, servTestexit)
 	if err != nil {
 		t.Errorf("servece creation error: %v", err)
 	}
@@ -56,7 +99,12 @@ func Test10Serv05Start(t *testing.T) {
 		log.Println(servTestHandler.Start())
 	}()
 
-	time.Sleep(time.Second * 3)
+	select {
+	case <-servTestexit:
+		t.Error("servise starting error")
+	case <-time.After(time.Second * 3):
+		break
+	}
 
 	w.Close()
 	log.SetOutput(logger)
@@ -350,10 +398,7 @@ func Test10Serv90Duble(t *testing.T) {
 	servTestexit = make(chan bool)
 
 	// create service handler
-	servTestHandler, err := NewHandler(servTestConfig, servTestDB, sToken, servTestexit)
-	if err != nil {
-		t.Errorf("servece creation error: %v", err)
-	}
+	servTestHandler = NewHandler(servTestConfig, servTestDB, sToken, servTestexit)
 
 	token, _ := sToken.Get()
 	servTestDB.Delete(token)
@@ -412,7 +457,7 @@ func Test10Serv91BadToken(t *testing.T) {
 	servTestexit = make(chan bool)
 
 	// create service handler
-	servTestHandler, err := NewHandler(servTestConfig, servTestDB, sToken, servTestexit)
+	servTestHandler = NewHandler(servTestConfig, servTestDB, sToken, servTestexit)
 	if err != nil {
 		t.Errorf("servece creation error: %v", err)
 	}
@@ -458,10 +503,7 @@ func Test10Serv92BadDB(t *testing.T) {
 	servTestexit = make(chan bool)
 
 	// create service handler
-	servTestHandler, err := NewHandler(servTestConfig, servTestDB, sToken, servTestexit)
-	if err != nil {
-		t.Errorf("servece creation error: %v", err)
-	}
+	servTestHandler = NewHandler(servTestConfig, servTestDB, sToken, servTestexit)
 
 	go func() {
 		log.Println(servTestHandler.Start())

@@ -54,10 +54,7 @@ func doMain(configPath string, exit chan bool) error {
 	}
 
 	// get service handler
-	handler, err := NewHandler(config, tokenDB, NewShortToken(config.TokenLength), exit)
-	if err != nil {
-		return fmt.Errorf("service handler creation error: %w", err)
-	}
+	handler := NewHandler(config, tokenDB, NewShortToken(config.TokenLength), exit)
 
 	// register the SIGINT and SIGTERM handler
 	c := make(chan os.Signal, 1)
