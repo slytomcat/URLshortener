@@ -1,7 +1,7 @@
 version: 2.1
 jobs:
 
-  test:
+  testserv:
     docker:
       - image: circleci/golang:1.14
     steps:
@@ -14,6 +14,9 @@ jobs:
       - run:
           name: Tests
           command: go test -v -race -timeout 60s -run '^Test10Serv.*$' -coverprofile coverServ.out 2>&1 | tee /dev/tty | go-junit-report > results/results.xml
+      - run:
+          name: Filter coverage
+          command: sed -i -n "/.*\service\.go.* /p" coverTools.out
       - store_test_results:
           path: results
       - persist_to_workspace:
@@ -34,6 +37,9 @@ jobs:
       - run:
           name: Tests
           command: go test -v -race -timeout 60s -run '^Test20Main.*$' -coverprofile coverMain.out 2>&1 | tee /dev/tty | go-junit-report > results/results.xml
+      - run:
+          name: Filter coverage
+          command: sed -i -n "/.*\urlshortener\.go.* /p" coverTools.out
       - store_test_results:
           path: results
       - persist_to_workspace:
@@ -54,6 +60,9 @@ jobs:
       - run:
           name: Tests
           command: go test -v -race -timeout 60s -run '^(Test00ST.*|Test01Tools.*)$' -coverprofile coverTools.out 2>&1 | tee /dev/tty | go-junit-report > results/results.xml
+      - run:
+          name: Filter coverage
+          command: sed -i -n "/.*\(tools\|shortToken\)\.go.* /p" coverTools.out
       - store_test_results:
           path: results
       - persist_to_workspace:
@@ -74,6 +83,9 @@ jobs:
       - run:
           name: Tests
           command: go test -v -race -timeout 60s -run '^Test05DBR.*' -coverprofile coverDB.out 2>&1 | tee /dev/tty | go-junit-report > results/results.xml
+      - run:
+          name: Filter coverage
+          command: sed -i -n "/.*\dataBaseRedis\.go.* /p" coverTools.out
       - store_test_results:
           path: results
       - persist_to_workspace:
@@ -160,7 +172,7 @@ workflows:
   version: 2.1
   build_test_upload:
     jobs:
-      - test
+      - testserv
       - testmain
       - testdb
       - testtools
