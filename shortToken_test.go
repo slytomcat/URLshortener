@@ -80,7 +80,7 @@ func Test00ST07NewShortTokenReal2(t *testing.T) {
 		t.Error("error of ShortToken creation from random:", err)
 	}
 
-	tc1, err := st.Get()
+	tc1, _ := st.Get()
 
 	if len(tc) != len(tc1) || len(tc) != 2 {
 		t.Error("wrong token length")
