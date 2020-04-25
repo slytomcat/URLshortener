@@ -25,7 +25,8 @@ var (
 <html>
 	<body>
 	   <h1>Home page of URLshortener</h1>
-	   <br>	   Service status: healthy, %d attempts per %d ms <br><br>
+	   <br>URLshortener %s<br>
+	   <br>Service status: healthy, %d attempts per %d ms <br><br>
 	   See sources at <a href="https://github.com/slytomcat/URLshortener">https://github.com/slytomcat/URLshortener</a>
 	</body>
 </html>
@@ -34,7 +35,7 @@ var (
 
 // ServiceHandler interface
 type ServiceHandler interface {
-	ServeHTTP(http.ResponseWriter, *http.Request)
+	ServeHTTP(http.ResponseWriter, *http.Request) // http server handler function
 	HealthCheck() error
 	Start() error
 	Stop()
@@ -88,7 +89,7 @@ func (s serviceHandler) home(w http.ResponseWriter, r *http.Request) {
 		// log self-test results
 		log.Printf("%s: success\n", rMess)
 		// show the home page if self-test was successfully passed
-		w.Write([]byte(fmt.Sprintf(homePage, atomic.LoadInt32(&s.attempts), s.config.Timeout)))
+		w.Write([]byte(fmt.Sprintf(homePage, version, atomic.LoadInt32(&s.attempts), s.config.Timeout)))
 	}
 }
 
