@@ -51,7 +51,7 @@ type serviceHandler struct {
 }
 
 // ServeHTTP selects the handler function according to request URL
-func (s serviceHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (s *serviceHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	log.Println("new request from:", r.RemoteAddr, r.Method, r.RequestURI, r.Header)
 	switch r.URL.Path {
 	case "/":
@@ -78,7 +78,7 @@ curl -i -v http://localhost:8080/
 */
 
 // Home shows simple home page if self-check succesfuly passed
-func (s serviceHandler) home(w http.ResponseWriter, r *http.Request) {
+func (s *serviceHandler) home(w http.ResponseWriter, r *http.Request) {
 	rMess := fmt.Sprintf("health-check request from %s (%s)", r.RemoteAddr, r.Referer())
 	// Perform self-test
 	if err := s.HealthCheck(); err != nil {
@@ -88,13 +88,14 @@ func (s serviceHandler) home(w http.ResponseWriter, r *http.Request) {
 	} else {
 		// log self-test results
 		log.Printf("%s: success\n", rMess)
+		log.Printf(">>>>>>>>>> s.attempts=%d", atomic.LoadInt32(&s.attempts))
 		// show the home page if self-test was successfully passed
 		w.Write([]byte(fmt.Sprintf(homePage, version, atomic.LoadInt32(&s.attempts), s.config.Timeout)))
 	}
 }
 
 // healthCheck performs full self-test of service in all service modes
-func (s serviceHandler) HealthCheck() error {
+func (s *serviceHandler) HealthCheck() error {
 
 	// url for sef-check redirect
 	url := "http://" + s.config.ShortDomain + "/favicon.ico"
@@ -205,7 +206,7 @@ curl -i -v http://localhost:8080/<token>
 */
 
 // Redirect handles redirection to URL that was stored for the specified token
-func (s serviceHandler) redirect(w http.ResponseWriter, r *http.Request) {
+func (s *serviceHandler) redirect(w http.ResponseWriter, r *http.Request) {
 	sToken := r.URL.Path[1:]
 	rMess := fmt.Sprintf("redirect request from %s (%s), token: %s", r.RemoteAddr, r.Referer(), sToken)
 
@@ -236,7 +237,7 @@ curl -v POST -H "Content-Type: application/json" -d '{"url":"<long url>","exp":1
 */
 
 // getNewToken handle the new token creation for passed url and sets expiration for it
-func (s serviceHandler) getNewToken(w http.ResponseWriter, r *http.Request) {
+func (s *serviceHandler) getNewToken(w http.ResponseWriter, r *http.Request) {
 	// ????: check some authorisation???
 
 	rMess := fmt.Sprintf("token request from %s (%s)", r.RemoteAddr, r.Referer())
@@ -371,7 +372,7 @@ curl -v POST -H "Content-Type: application/json" -d '{"token":"<token>","exp":<e
 */
 
 // expireToken makes token-longURL record as expired
-func (s serviceHandler) expireToken(w http.ResponseWriter, r *http.Request) {
+func (s *serviceHandler) expireToken(w http.ResponseWriter, r *http.Request) {
 
 	rMess := fmt.Sprintf("expire request from %s (%s)", r.RemoteAddr, r.Referer())
 
@@ -451,6 +452,7 @@ func NewHandler(config *Config, tokenDB TokenDB, shortToken ShortToken, exit cha
 		config:     config,
 		exit:       exit,
 		server:     nil,
+		attempts:   0,
 	}
 
 	// create server

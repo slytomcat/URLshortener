@@ -126,17 +126,21 @@ func Test10Serv10Home(t *testing.T) {
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("unexpected response status: %d", resp.StatusCode)
+	}
+
 	buf, err := ioutil.ReadAll(resp.Body)
 	if err != nil && !errors.Is(err, io.EOF) {
 		t.Errorf("response body reading error: %v", err)
 	}
 
 	if !bytes.Contains(buf, []byte("Home page of URLshortener")) {
-		t.Errorf("wrong response on health check request: %v", buf)
+		t.Errorf("wrong response on health check request: %s", buf)
 	}
 
-	if resp.StatusCode != http.StatusOK {
-		t.Errorf("unexpected response status: %d", resp.StatusCode)
+	if bytes.Contains(buf, []byte("Service status: healthy, 0 attempts")) {
+		t.Errorf("zero attempts while success healtcheck: %s", buf)
 	}
 }
 
