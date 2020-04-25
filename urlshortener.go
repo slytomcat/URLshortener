@@ -14,13 +14,14 @@ import (
 var (
 	// ConfigFile - is the path to the configuration file
 	configFile string
+	version    string = "unknown version"
 )
 
 func init() {
 	// prepare command line parameter and usage
 	flag.StringVar(&configFile, "config", "./cnfr.json", "`path` to the configuration file")
 	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "Usage:\n\n\t\t"+filepath.Base(os.Args[0])+" [-config=<Path/to/config>]\n\n")
+		fmt.Fprintf(os.Stderr, "\nUsage:\n\n\t\t"+filepath.Base(os.Args[0])+" [-config=<Path/to/config>]\n\n")
 		flag.PrintDefaults()
 	}
 }
@@ -37,6 +38,9 @@ func main() {
 
 // doMain performs all preparation and starts server
 func doMain(configPath string, exit chan bool) error {
+
+	// log the version
+	log.Printf("URLshortener %s", version)
 
 	// parse command line parameters
 	flag.Parse()

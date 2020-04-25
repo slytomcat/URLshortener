@@ -124,11 +124,14 @@ jobs:
     steps:
       - checkout
       - run:
-          name: building
-          command: CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -installsuffix cgo .
+          name: Get version
+          command: git describe --tags > VERSION  
       - run:
-          name: Store version
-          command: git describe --tags | sed "s/^\(v\.[0-9]\+\.[0-9]\+\.[0-9]\+\).*/\1/" > VERSION
+          name: Build
+          command: CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -installsuffix cgo -ldflags "-X main.version=$(cat VERSION)"
+      - run:
+          name: Store major version
+          command: sed -i "s/^\(v\.[0-9]\+\.[0-9]\+\.[0-9]\+\).*/\1/" VERSION
       - persist_to_workspace:
           root: .
           paths:
