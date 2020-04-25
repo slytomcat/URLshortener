@@ -52,7 +52,7 @@ type serviceHandler struct {
 
 // ServeHTTP selects the handler function according to request URL
 func (s *serviceHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	log.Println("new request from:", r.RemoteAddr, r.Method, r.RequestURI, r.Header)
+	log.Println("access from:", r.RemoteAddr, r.Method, r.RequestURI, r.Header)
 	switch r.URL.Path {
 	case "/":
 		// request for health-check
@@ -88,7 +88,6 @@ func (s *serviceHandler) home(w http.ResponseWriter, r *http.Request) {
 	} else {
 		// log self-test results
 		log.Printf("%s: success\n", rMess)
-		log.Printf(">>>>>>>>>> s.attempts=%d", atomic.LoadInt32(&s.attempts))
 		// show the home page if self-test was successfully passed
 		w.Write([]byte(fmt.Sprintf(homePage, version, atomic.LoadInt32(&s.attempts), s.config.Timeout)))
 	}
