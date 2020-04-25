@@ -6,6 +6,7 @@ import (
 	"testing"
 )
 
+// shortTokenD - debugging ShortToken interface realization
 type shortTokenD struct {
 	len int
 }
@@ -22,6 +23,7 @@ func (s shortTokenD) Check(sToken string) error {
 	return nil
 }
 
+// shortTokenE - always error ShortToken interface realization
 type shortTokenE struct {
 }
 

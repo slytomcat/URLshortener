@@ -2,10 +2,10 @@ package main
 
 import (
 	"bytes"
+	"flag"
 	"io/ioutil"
 	"log"
 	"os"
-	"os/exec"
 	"strings"
 	"syscall"
 	"testing"
@@ -46,23 +46,22 @@ func Test20Main05WrongDB(t *testing.T) {
 
 // try to get usage message
 func Test20Main10Usage(t *testing.T) {
+	logger := os.Stderr
+	r, w, _ := os.Pipe()
+	os.Stderr = w
 
-	err := exec.Command("go", "build").Run()
+	flag.Usage()
+
+	w.Close()
+	os.Stderr = logger
+	buf, err := ioutil.ReadAll(r)
 	if err != nil {
-		t.Errorf("building error: %v", err)
+		t.Error(err)
 	}
 
-	buf, err := exec.Command("./URLshortener", "-wrongOption").CombinedOutput()
-
-	if err == nil {
-		t.Error("no error when expected")
-	}
-	t.Logf("received expected error: %v", err)
-
-	if !bytes.Contains(buf, []byte("Usage:")) {
+	if !bytes.Contains(buf, []byte("[-config=<Path/to/config>]")) {
 		t.Errorf("received unexpected output: %s", buf)
 	}
-	log.Printf("%s", buf)
 }
 
 // try to start correctly
@@ -84,6 +83,9 @@ func Test20Main20Success(t *testing.T) {
 	}
 	if !bytes.Contains(buf, []byte("starting server at")) {
 		t.Errorf("received unexpected output: %s", buf)
+	}
+	if !bytes.Contains(buf, []byte("URLshortener "+version)) {
+		t.Errorf("no version shown on start: %s", buf)
 	}
 	log.Printf("%s", buf)
 }
