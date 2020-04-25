@@ -62,7 +62,6 @@ func Test20Main10Usage(t *testing.T) {
 	if !bytes.Contains(buf, []byte("[-config=<Path/to/config>]")) {
 		t.Errorf("received unexpected output: %s", buf)
 	}
-	log.Printf("%s", buf)
 }
 
 // try to start correctly
