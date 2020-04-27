@@ -13,8 +13,8 @@ import (
 
 // ShortToken - interface for short token creation
 type ShortToken interface {
-	Get() (string, error)
-	Check(string) error
+	Get() (string, error) // returns new random short token
+	Check(string) error   // check the token length and alphabet
 }
 
 // NewShortToken returns new ShortToken instance
@@ -44,14 +44,17 @@ func (s *shortToken) Get() (string, error) {
 	return base64.URLEncoding.EncodeToString(buf)[:s.len], nil
 }
 
+// Check checks the lenght of token and its alphabet
 func (s *shortToken) Check(sToken string) error {
+
+	// check lenght
 	if len(sToken) != s.len {
 		return errors.New("wrong token length")
 	}
 
 	// check base64 alphabet
 	if _, err := base64.URLEncoding.DecodeString(sToken + "AAAA"[:4-len(sToken)%4]); err != nil {
-		return errors.New("wrong token")
+		return errors.New("wrong token alphabet")
 	}
 	return nil
 }
