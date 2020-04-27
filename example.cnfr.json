@@ -9,5 +9,5 @@
     "ListenHostPort":"0.0.0.0:80",
     "DefaultExp":30,
     "ShortDomain":"<shortDomain>",
-    "Mode":1
+    "Mode":4
 }
