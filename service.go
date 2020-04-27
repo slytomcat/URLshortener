@@ -4,13 +4,14 @@ package main
 // and to handle the redirection by generated short URLs.
 //
 // See details in README.md
+//
+// This file contains service handler interface
 
 import (
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -36,11 +37,12 @@ var (
 // ServiceHandler interface
 type ServiceHandler interface {
 	ServeHTTP(http.ResponseWriter, *http.Request) // http server handler function
-	HealthCheck() error
-	Start() error
-	Stop()
+	HealthCheck() error                           // Health-check function
+	Start() error                                 // Service start method
+	Stop()                                        // Service stop method
 }
 
+// serviceHandler is an istance of ServiceHandler interface
 type serviceHandler struct {
 	tokenDB    TokenDB      // Database interface
 	shortToken ShortToken   // Short token generator
@@ -52,19 +54,28 @@ type serviceHandler struct {
 
 // ServeHTTP selects the handler function according to request URL
 func (s *serviceHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	log.Println("new request from:", r.RemoteAddr, r.Method, r.RequestURI, r.Header)
+	log.Println("access from:", r.RemoteAddr, r.Method, r.RequestURI, r.Header)
+
+	// read the request body
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		log.Printf("request body reading error: %v", err)
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
 	switch r.URL.Path {
 	case "/":
 		// request for health-check
 		s.home(w, r)
 	case "/api/v1/token":
 		// request for new short url/token
-		s.getNewToken(w, r)
+		s.getNewToken(w, r, body)
 	case "/api/v1/expire":
 		// request for new short url/token
-		s.expireToken(w, r)
+		s.expireToken(w, r, body)
 	case "/favicon.ico":
-		// WEB-brousers make such requests together with main request to show the site icon on tab header
+		// WEB-browsers make such requests together with the main request in order to show the site icon on tab header
 		// In this code it is used for health check (as point to redirect from short url)
 		return
 	default:
@@ -88,7 +99,6 @@ func (s *serviceHandler) home(w http.ResponseWriter, r *http.Request) {
 	} else {
 		// log self-test results
 		log.Printf("%s: success\n", rMess)
-		log.Printf(">>>>>>>>>> s.attempts=%d", atomic.LoadInt32(&s.attempts))
 		// show the home page if self-test was successfully passed
 		w.Write([]byte(fmt.Sprintf(homePage, version, atomic.LoadInt32(&s.attempts), s.config.Timeout)))
 	}
@@ -96,24 +106,33 @@ func (s *serviceHandler) home(w http.ResponseWriter, r *http.Request) {
 
 // healthCheck performs full self-test of service in all service modes
 func (s *serviceHandler) HealthCheck() error {
+	// self-test makes three requests:
+	// 1. request for short URL
+	// 2. request for redirect from short to long URL
+	// 3. request to expire the token (received in the first request)
 
-	// url for sef-check redirect
+	// long URL for sef-check redirect
 	url := "http://" + s.config.ShortDomain + "/favicon.ico"
 
-	// short URL request's replay parameters
-	var repl struct {
-		URL   string `json:"url"`
-		Token string `json:"token"`
-	}
-	var err error
-	sToken := "Debug.Token"
+	var (
+		// short URL request's replay parameters
+		repl struct {
+			URL   string `json:"url"`
+			Token string `json:"token"`
+		}
+		err error
+	)
 
 	// self-test part 1: get short URL
 	if s.config.Mode&disableShortener != 0 {
+		// short token for this scenario
+		sToken := "Debug.Token"
+
 		// use tokenDB inteface as web-interface is locked in this service mode
 		if ok, err := s.tokenDB.Set(sToken, url, 1); err != nil || !ok {
 			return fmt.Errorf("new token creation error: %w", err)
 		}
+		// store results
 		repl.Token = sToken
 		repl.URL = s.config.ShortDomain + "/" + repl.Token
 	} else {
@@ -123,8 +142,8 @@ func (s *serviceHandler) HealthCheck() error {
 		if err != nil {
 			return fmt.Errorf("new token request error: %w", err)
 		}
-
 		defer resp.Body.Close()
+
 		// check response status code
 		if resp.StatusCode != http.StatusOK {
 			return fmt.Errorf("new token request: unexpected responce status: %v", resp.StatusCode)
@@ -132,7 +151,7 @@ func (s *serviceHandler) HealthCheck() error {
 
 		// read response body
 		buf, err := ioutil.ReadAll(resp.Body)
-		if err != nil && !errors.Is(err, io.EOF) {
+		if err != nil {
 			return fmt.Errorf("new token response body reading error : %w", err)
 		}
 
@@ -226,9 +245,11 @@ func (s *serviceHandler) redirect(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
+
+	// log the request results
 	log.Printf("%s: redirected to %s\n", rMess, longURL)
 
-	// make redirect response
+	// respond by redirect
 	http.Redirect(w, r, longURL, http.StatusFound)
 }
 
@@ -237,8 +258,8 @@ curl -v POST -H "Content-Type: application/json" -d '{"url":"<long url>","exp":1
 */
 
 // getNewToken handle the new token creation for passed url and sets expiration for it
-func (s *serviceHandler) getNewToken(w http.ResponseWriter, r *http.Request) {
-	// ????: check some authorisation???
+func (s *serviceHandler) getNewToken(w http.ResponseWriter, r *http.Request, body []byte) {
+	// TODO: check some authorisation ???
 
 	rMess := fmt.Sprintf("token request from %s (%s)", r.RemoteAddr, r.Referer())
 
@@ -250,24 +271,16 @@ func (s *serviceHandler) getNewToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// read the request body
-	buf, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		log.Printf("%s: request body reading error: %v", rMess, err)
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
-	// parse JSON to parameters structure
 	// the requst parameters structure
 	var params struct {
 		URL string `json:"url"`           // long URL
 		Exp int    `json:"exp,omitempty"` // Expiration
 	}
 
-	err = json.Unmarshal(buf, &params)
+	// parse body to parameters structure
+	err := json.Unmarshal(body, &params)
 	if err != nil || params.URL == "" {
-		log.Printf("%s: bad request parameters:%s", rMess, buf)
+		log.Printf("%s: bad request parameters:%s", rMess, body)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -326,6 +339,7 @@ func (s *serviceHandler) getNewToken(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusRequestTimeout)
 			return
 		default:
+			// get short token
 			sToken, err = s.shortToken.Get()
 			if err != nil {
 				log.Printf("%s: token generation error: %v\n", rMess, err)
@@ -333,11 +347,11 @@ func (s *serviceHandler) getNewToken(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 
-			ok, err = s.tokenDB.Set(sToken, params.URL, params.Exp)
-
 			// count attempts
 			attempt++
 
+			// store token in DB
+			ok, err = s.tokenDB.Set(sToken, params.URL, params.Exp)
 			if err != nil {
 				log.Printf("%s: token storing error: %v\n", rMess, err)
 				w.WriteHeader(http.StatusInternalServerError)
@@ -346,7 +360,7 @@ func (s *serviceHandler) getNewToken(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// prepare response body
+	// make response body
 	resp, err := json.Marshal(
 		struct {
 			Token string `json:"token"` // token
@@ -361,8 +375,9 @@ func (s *serviceHandler) getNewToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// log new token record
+	// log new token request information
 	log.Printf("%s: URL saved, token: %s , exp: %d\n", rMess, sToken, params.Exp)
+
 	// send response
 	w.Write(resp)
 }
@@ -372,7 +387,7 @@ curl -v POST -H "Content-Type: application/json" -d '{"token":"<token>","exp":<e
 */
 
 // expireToken makes token-longURL record as expired
-func (s *serviceHandler) expireToken(w http.ResponseWriter, r *http.Request) {
+func (s *serviceHandler) expireToken(w http.ResponseWriter, r *http.Request, body []byte) {
 
 	rMess := fmt.Sprintf("expire request from %s (%s)", r.RemoteAddr, r.Referer())
 
@@ -384,24 +399,16 @@ func (s *serviceHandler) expireToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// read the request body
-	buf, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		log.Printf("%s: request body reading error: %v", rMess, err)
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
 	// make the requst parameters structure
 	var params struct {
 		Token string `json:"token"`         // Token of short URL token
 		Exp   int    `json:"exp,omitempty"` // Expiration
 	}
 
-	// parse JSON from buffer to parameters structure
-	err = json.Unmarshal(buf, &params)
+	// parse JSON from body to parameters structure
+	err := json.Unmarshal(body, &params)
 	if err != nil || params.Token == "" {
-		log.Printf("%s: bad request parameters:%s", rMess, buf)
+		log.Printf("%s: bad request parameters:%s", rMess, body)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -414,12 +421,14 @@ func (s *serviceHandler) expireToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// log result
+	// log request results
 	log.Printf("%s: token expiration of %s has set to %d\n", rMess, params.Token, params.Exp)
+
 	// send response
 	w.WriteHeader(http.StatusOK)
 }
 
+// Start returns started server
 func (s *serviceHandler) Start() error {
 
 	log.Println("starting server at", s.config.ListenHostPort)
@@ -427,8 +436,10 @@ func (s *serviceHandler) Start() error {
 	return s.server.ListenAndServe()
 }
 
+// Stop performs graceful shutdown of server and database interfaces
+// It reports success shutdown via serviceHandler.exit chanel
 func (s *serviceHandler) Stop() {
-	// gracefully shut down the server
+	// gracefully shut down the HTTP server
 	err := s.server.Shutdown(context.Background())
 	if err != nil {
 		log.Printf("HTTP server shutdown error: %v", err)
@@ -438,7 +449,7 @@ func (s *serviceHandler) Stop() {
 	if err != nil {
 		log.Printf("DB connection close error: %v", err)
 	}
-	// report of success exit
+	// report of successful shutdown
 	s.exit <- true
 }
 
