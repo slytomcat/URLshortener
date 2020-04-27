@@ -28,8 +28,13 @@ func Test10Serv03Start(t *testing.T) {
 	r, w, _ := os.Pipe()
 	log.SetOutput(w)
 
+	conf := Config{
+		ListenHostPort: "localhost:8080",
+		ShortDomain:    "localhost:8080",
+	}
+
 	errDb, _ := testDBNewTokenDB(redis.UniversalOptions{})
-	testHandler := NewHandler(&Config{ListenHostPort: "localhost:8080"}, errDb, NewShortToken(5), servTestexit)
+	testHandler := NewHandler(&conf, errDb, NewShortToken(5), servTestexit)
 
 	go func() {
 		log.Println(testHandler.Start())
@@ -55,13 +60,26 @@ func Test10Serv03Start(t *testing.T) {
 
 	resp, err := http.Get("http://localhost:8080/")
 	if err != nil {
-		t.Errorf("token request error: %v", err)
+		t.Errorf("health-check request error: %v", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusInternalServerError {
 		t.Errorf("unexpected response status: %d", resp.StatusCode)
 	}
+
+	conf.Mode = disableShortener
+
+	resp, err = http.Get("http://localhost:8080/")
+	if err != nil {
+		t.Errorf("health-check request error: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusInternalServerError {
+		t.Errorf("unexpected response status: %d", resp.StatusCode)
+	}
+
 	go testHandler.Stop()
 
 	<-servTestexit

@@ -1,5 +1,12 @@
 package main
 
+// URLshortener is a microservice to shorten long URLs
+// and to handle the redirection by generated short URLs.
+//
+// See details in README.md
+//
+// This file contains the configuration reading tools
+
 import (
 	"encoding/json"
 	"errors"
@@ -31,9 +38,9 @@ const (
 	defaultMode           = 0                // default service mode
 
 	// Service modes
-	disableRedirect  = 1 << iota // disable redirect request
-	disableShortener             // disable request for short URL
-	disableExpire                // disable expire request
+	disableRedirect  int = 1 // disable redirect request
+	disableShortener int = 2 // disable request for short URL
+	disableExpire    int = 4 // disable expire request
 )
 
 func parseConOpt(s string) (redis.UniversalOptions, error) {
