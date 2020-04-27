@@ -39,8 +39,8 @@ const (
 
 	// Service modes
 	disableRedirect  int = 1 // disable redirect request
-	disableShortener     = 2 // disable request for short URL
-	disableExpire        = 4 // disable expire request
+	disableShortener int = 2 // disable request for short URL
+	disableExpire    int = 4 // disable expire request
 )
 
 func parseConOpt(s string) (redis.UniversalOptions, error) {
