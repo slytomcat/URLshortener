@@ -154,7 +154,7 @@ func Test01Tools20FullJSON(t *testing.T) {
 		config.ListenHostPort != "0.0.0.0:80" ||
 		config.DefaultExp != 30 ||
 		config.ShortDomain != "<shortDomain>" ||
-		config.Mode != 1 {
+		config.Mode != disableExpire {
 		t.Error("Wrong values set")
 	}
 }
@@ -172,7 +172,7 @@ func Test01Tools30FullEnv(t *testing.T) {
 	os.Setenv("URLSHORTENER_ListenHostPort", "testHost:testPort")
 	os.Setenv("URLSHORTENER_DefaultExp", "42")
 	os.Setenv("URLSHORTENER_ShortDomain", "test.domain")
-	os.Setenv("URLSHORTENER_Mode", "66")
+	os.Setenv("URLSHORTENER_Mode", "7")
 
 	config, err := readConfig("wrong.wrong.wrong.file.json")
 	if err != nil {
@@ -185,7 +185,7 @@ func Test01Tools30FullEnv(t *testing.T) {
 		config.ListenHostPort != "testHost:testPort" ||
 		config.DefaultExp != 42 ||
 		config.ShortDomain != "test.domain" ||
-		config.Mode != 66 {
+		config.Mode != disableRedirect|disableShortener|disableExpire {
 		t.Error("Wrong values set")
 	}
 }
