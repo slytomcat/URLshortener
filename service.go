@@ -55,16 +55,25 @@ type serviceHandler struct {
 // ServeHTTP selects the handler function according to request URL
 func (s *serviceHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	log.Println("access from:", r.RemoteAddr, r.Method, r.RequestURI, r.Header)
+
+	// read the request body
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		log.Printf("request body reading error: %v", err)
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
 	switch r.URL.Path {
 	case "/":
 		// request for health-check
 		s.home(w, r)
 	case "/api/v1/token":
 		// request for new short url/token
-		s.getNewToken(w, r)
+		s.getNewToken(w, r, body)
 	case "/api/v1/expire":
 		// request for new short url/token
-		s.expireToken(w, r)
+		s.expireToken(w, r, body)
 	case "/favicon.ico":
 		// WEB-browsers make such requests together with the main request in order to show the site icon on tab header
 		// In this code it is used for health check (as point to redirect from short url)
@@ -249,7 +258,7 @@ curl -v POST -H "Content-Type: application/json" -d '{"url":"<long url>","exp":1
 */
 
 // getNewToken handle the new token creation for passed url and sets expiration for it
-func (s *serviceHandler) getNewToken(w http.ResponseWriter, r *http.Request) {
+func (s *serviceHandler) getNewToken(w http.ResponseWriter, r *http.Request, body []byte) {
 	// TODO: check some authorisation ???
 
 	rMess := fmt.Sprintf("token request from %s (%s)", r.RemoteAddr, r.Referer())
@@ -262,24 +271,16 @@ func (s *serviceHandler) getNewToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// read the request body
-	buf, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		log.Printf("%s: request body reading error: %v", rMess, err)
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
-	// parse JSON to parameters structure
 	// the requst parameters structure
 	var params struct {
 		URL string `json:"url"`           // long URL
 		Exp int    `json:"exp,omitempty"` // Expiration
 	}
 
-	err = json.Unmarshal(buf, &params)
+	// parse body to parameters structure
+	err := json.Unmarshal(body, &params)
 	if err != nil || params.URL == "" {
-		log.Printf("%s: bad request parameters:%s", rMess, buf)
+		log.Printf("%s: bad request parameters:%s", rMess, body)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -386,7 +387,7 @@ curl -v POST -H "Content-Type: application/json" -d '{"token":"<token>","exp":<e
 */
 
 // expireToken makes token-longURL record as expired
-func (s *serviceHandler) expireToken(w http.ResponseWriter, r *http.Request) {
+func (s *serviceHandler) expireToken(w http.ResponseWriter, r *http.Request, body []byte) {
 
 	rMess := fmt.Sprintf("expire request from %s (%s)", r.RemoteAddr, r.Referer())
 
@@ -398,24 +399,16 @@ func (s *serviceHandler) expireToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// read the request body
-	buf, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		log.Printf("%s: request body reading error: %v", rMess, err)
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
 	// make the requst parameters structure
 	var params struct {
 		Token string `json:"token"`         // Token of short URL token
 		Exp   int    `json:"exp,omitempty"` // Expiration
 	}
 
-	// parse JSON from buffer to parameters structure
-	err = json.Unmarshal(buf, &params)
+	// parse JSON from body to parameters structure
+	err := json.Unmarshal(body, &params)
 	if err != nil || params.Token == "" {
-		log.Printf("%s: bad request parameters:%s", rMess, buf)
+		log.Printf("%s: bad request parameters:%s", rMess, body)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}

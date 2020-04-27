@@ -1,5 +1,12 @@
 package main
 
+// URLshortener is a microservice to shorten long URLs
+// and to handle the redirection by generated short URLs.
+//
+// See details in README.md
+//
+// This file contains the main routine
+
 import (
 	"flag"
 	"fmt"

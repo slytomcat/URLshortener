@@ -15,17 +15,22 @@ var (
 	testDBConfig *Config
 	testDB       TokenDB
 	testDBerr    TokenDB
-	testDBToken1 string = "AAAA"
-	testDBToken2 string = "BBBB"
+	testDBToken  string = "AAAA"
 )
 
 type testDBErr struct {
 }
 
 func (t testDBErr) Set(sToken, longURL string, expiration int) (bool, error) {
+	if longURL == "http://localhost:8080/favicon.ico" {
+		return true, nil
+	}
 	return false, errors.New("test Set() error")
 }
 func (t testDBErr) Get(sToken string) (string, error) {
+	if sToken == "Debug.Token" {
+		return "http://localhost:8080/favicon.ico", nil
+	}
 	return "", errors.New("test Get() error")
 }
 func (t testDBErr) Expire(sToken string, expiration int) error {
@@ -65,31 +70,30 @@ func Test05DBR10NewTokenDB(t *testing.T) {
 		t.Error(err)
 	}
 
-	testDB.Delete(testDBToken1)
-	testDB.Delete(testDBToken2)
+	testDB.Delete(testDBToken)
 }
 
 // try to add 2 same tokens
 func Test05DBR15OneTokenTwice(t *testing.T) {
 
-	testDB.Delete(testDBToken1)
+	testDB.Delete(testDBToken)
 
 	url := "https://golang.org/pkg/time/"
-	ok, err := testDB.Set(testDBToken1, url, 1)
+	ok, err := testDB.Set(testDBToken, url, 1)
 	if err != nil || !ok {
 		t.Errorf("unexpected error: %s; Ok: %v", err, ok)
 	} else {
-		t.Logf("expected result: token for %s: %v\n", url, testDBToken1)
+		t.Logf("expected result: token for %s: %v\n", url, testDBToken)
 	}
-	ok, err = testDB.Set(testDBToken1, url, 1)
+	ok, err = testDB.Set(testDBToken, url, 1)
 	if err != nil {
-		t.Errorf("unexpected error: %s; token: %s", err, testDBToken1)
+		t.Errorf("unexpected error: %s; token: %s", err, testDBToken)
 	}
 	if ok {
 		t.Error("same token stored twice succesfily")
 	}
 	// clear
-	testDB.Delete(testDBToken1)
+	testDB.Delete(testDBToken)
 }
 
 // concurrent goroutines tries to make new short URL in the same time with the same token (debugging)
@@ -110,7 +114,7 @@ func raceNewToken(db TokenDB, url string, t *testing.T) {
 		t.Logf("%v Racer %d: Ready!\n", time.Now(), i)
 		start.RLock()
 
-		ok, err := db.Set(testDBToken1, url, 1)
+		ok, err := db.Set(testDBToken, url, 1)
 
 		if err != nil {
 			t.Logf("%v Racer %d: %v \n", time.Now(), i, err)
@@ -124,7 +128,7 @@ func raceNewToken(db TokenDB, url string, t *testing.T) {
 			return
 		}
 
-		t.Logf("%v Racer %d: Token for %s: %v\n", time.Now(), i, url, testDBToken1)
+		t.Logf("%v Racer %d: Token for %s: %v\n", time.Now(), i, url, testDBToken)
 		atomic.AddInt64(&succes, 1)
 	}
 
@@ -150,7 +154,7 @@ func Test05DBR20NewTokenRace(t *testing.T) {
 
 // try to make token expired
 func Test05DBR25ExpireToken(t *testing.T) {
-	err := testDB.Expire(testDBToken1, -1)
+	err := testDB.Expire(testDBToken, -1)
 	if err != nil {
 		t.Error(err)
 	}
@@ -164,22 +168,22 @@ func Test05DBR30OneMoreTokenRace(t *testing.T) {
 // try to receive long URL by token
 func Test05DBR35GetToken(t *testing.T) {
 
-	lURL, err := testDB.Get(testDBToken1)
+	lURL, err := testDB.Get(testDBToken)
 	if err != nil {
 		t.Error(err)
 	}
-	t.Logf("URL for token %s: %s\n", testDBToken1, lURL)
+	t.Logf("URL for token %s: %s\n", testDBToken, lURL)
 }
 
 // try to delete token
 func Test05DBR40DelToken(t *testing.T) {
 
-	err := testDB.Delete(testDBToken1)
+	err := testDB.Delete(testDBToken)
 	if err != nil {
 		t.Error(err)
 	}
 
-	_, err = testDB.Get(testDBToken1)
+	_, err = testDB.Get(testDBToken)
 	if err == nil {
 		t.Error("no error when expected")
 	}
@@ -187,7 +191,7 @@ func Test05DBR40DelToken(t *testing.T) {
 
 // try to expire non existing token
 func Test05DBR45ExpNonExisting(t *testing.T) {
-	err := testDB.Expire(testDBToken1+"$", -1)
+	err := testDB.Expire(testDBToken+"$", -1)
 	if err == nil {
 		t.Error("no error when expected")
 	}
@@ -195,7 +199,7 @@ func Test05DBR45ExpNonExisting(t *testing.T) {
 
 // try to delete non existing token
 func Test05DBR50DelNonExisting(t *testing.T) {
-	err := testDB.Delete(testDBToken1 + "$")
+	err := testDB.Delete(testDBToken + "$")
 	if err == nil {
 		t.Error("no error when expected")
 	}
@@ -203,7 +207,7 @@ func Test05DBR50DelNonExisting(t *testing.T) {
 
 // try to get non existing token
 func Test05DBR55GetNonExisting(t *testing.T) {
-	_, err := testDB.Get(testDBToken1 + "$")
+	_, err := testDB.Get(testDBToken + "$")
 	if err == nil {
 		t.Error("no error when expected")
 	}
