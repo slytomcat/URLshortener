@@ -30,6 +30,11 @@ type Config struct {
 }
 
 const (
+	// Service modes
+	disableRedirect  = 1 << iota // = 1 disable redirect request
+	disableShortener             // = 2 disable request for short URL
+	disableExpire                // = 4 disable expire request
+
 	defaultTokenLength    = 6                // default length of token
 	defaultTimeout        = 500              // default timeout of new token creation
 	defaultListenHostPort = "localhost:8080" // default host and port to listen on
@@ -37,10 +42,6 @@ const (
 	defaultShortDomain    = "localhost:8080" // default short domain
 	defaultMode           = 0                // default service mode
 
-	// Service modes
-	disableRedirect  int = 1 // disable redirect request
-	disableShortener int = 2 // disable request for short URL
-	disableExpire    int = 4 // disable expire request
 )
 
 func parseConOpt(s string) (redis.UniversalOptions, error) {
