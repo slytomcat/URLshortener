@@ -162,6 +162,18 @@ func Test10Serv10Home(t *testing.T) {
 	}
 }
 
+// test bad method
+func Test10Serv13BadMethod(t *testing.T) {
+	resp, err := http.Head("http://" + servTestConfig.ListenHostPort)
+	if err != nil {
+		t.Errorf("request error: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Errorf("unexpected response status: %d while expected: %d", resp.StatusCode, http.StatusBadRequest)
+	}
+}
+
 // test request for short URL with empty request body
 func Test10Serv15BadTokenRequest(t *testing.T) {
 	resp, err := http.Post("http://"+servTestConfig.ListenHostPort+"/api/v1/token", "application/json",
@@ -172,7 +184,7 @@ func Test10Serv15BadTokenRequest(t *testing.T) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusBadRequest {
-		t.Errorf("unexpected response status: %d", resp.StatusCode)
+		t.Errorf("unexpected response status: %d while expected: %d", resp.StatusCode, http.StatusBadRequest)
 	}
 }
 
@@ -192,9 +204,6 @@ func Test10Serv20BadTokenRequest2(t *testing.T) {
 
 //test request for short URL without expiration in request
 func Test10Serv25GetTokenWOexp(t *testing.T) {
-
-	// clear debug token
-	servTestDB.Delete(strings.Repeat("_", servTestConfig.TokenLength))
 
 	resp, err := http.Post("http://"+servTestConfig.ListenHostPort+"/api/v1/token", "application/json",
 		strings.NewReader(`{"url": "http://`+servTestConfig.ShortDomain+`"}`))
@@ -220,10 +229,9 @@ func Test10Serv30ExpireTokenWObody(t *testing.T) {
 	if resp.StatusCode != http.StatusBadRequest {
 		t.Errorf("unexpected response status: %d", resp.StatusCode)
 	}
-
 }
 
-// request expire without parameters
+// request expire with empty JSON
 func Test10Serv35ExpireTokenWOparams(t *testing.T) {
 
 	resp, err := http.Post("http://"+servTestConfig.ListenHostPort+"/api/v1/expire", "application/json",
