@@ -56,6 +56,12 @@ type serviceHandler struct {
 func (s *serviceHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	log.Println("access from:", r.RemoteAddr, r.Method, r.RequestURI, r.Header)
 
+	if r.Method != "GET" && r.Method != "POST" {
+		log.Printf("bad method: %s", r.Method)
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
 	// read the request body
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
@@ -226,7 +232,8 @@ curl -i -v http://localhost:8080/<token>
 
 // Redirect handles redirection to URL that was stored for the specified token
 func (s *serviceHandler) redirect(w http.ResponseWriter, r *http.Request) {
-	sToken := r.URL.Path[1:]
+
+	sToken := r.URL.Path[1:] // GET and POST always contain at least "/" in URL
 	rMess := fmt.Sprintf("redirect request from %s (%s), token: %s", r.RemoteAddr, r.Referer(), sToken)
 
 	// check that service mode allows this request
