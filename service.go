@@ -56,12 +56,6 @@ type serviceHandler struct {
 func (s *serviceHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	log.Println("access from:", r.RemoteAddr, r.Method, r.RequestURI, r.Header)
 
-	if r.Method != "GET" && r.Method != "POST" {
-		log.Printf("bad method: %s", r.Method)
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
 	// read the request body
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
@@ -70,24 +64,33 @@ func (s *serviceHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	switch r.URL.Path {
-	case "/":
+	switch r.Method + r.URL.Path {
+	case "GET/":
 		// request for health-check
 		s.home(w, r)
-	case "/api/v1/token":
+		return
+	case "POST/api/v1/token":
 		// request for new short url/token
 		s.getNewToken(w, r, body)
-	case "/api/v1/expire":
+		return
+	case "POST/api/v1/expire":
 		// request for new short url/token
 		s.expireToken(w, r, body)
-	case "/favicon.ico":
+		return
+	case "GET/favicon.ico":
 		// WEB-browsers make such requests together with the main request in order to show the site icon on tab header
 		// In this code it is used for health check (as point to redirect from short url)
 		return
 	default:
-		// all the rest are requests for redirect (probably)
-		s.redirect(w, r)
+		// all the rest GET requests are requests for redirect (probably)
+		if r.Method == "GET" {
+			s.redirect(w, r)
+			return
+		}
 	}
+	log.Printf("bad method/path: %s %s", r.Method, r.URL.Path)
+	w.WriteHeader(http.StatusBadRequest)
+
 }
 
 /* test for test env:
