@@ -28,6 +28,10 @@ Success response: `HTTP 200 OK` with body containing JSON with following paramet
 - `token`: string, token for short URL
 - `url`: string, short URL
 
+Request example using `curl` and `s-t-c.tk` (micro-service demo):
+
+`curl -v POST -H "Content-Type: application/json" -d '{"url":"<long url>","exp":10}' http://s-t-c.tk/api/v1/token`
+
 Note: Token is created as random and the saving it to DB may cause duplicate error. In order to avoid such error the service makes several attempts to store random token. The number of attempts is limited by the `Timeout` configuration value by time, not by amount. When time-out expired and no one attempt was not successful then service returns response code `408 Request Timeout`. This response mean that the request can be repeated.
 
 The maximum number of possible attempts to store token during time-out is calculated every time a new token stored. The last measured value is displayed on the homepage.
@@ -37,6 +41,7 @@ If measured number of attempts is too small (1-5) then log can contain warnings 
 When the service time-out errors appears often and log contains many errors like `can't store a new token for 75 attempts` then it most probably means that active (not expired) token amount is near to maximum possible tokens amount (for configured token length). Consider increasing of token length (`TokenLength` configuration value) or decrease token expiration (`DefaultExp` configuration value and/or `exp` parameter in the request for new short URL).
 
 Note also the log warnings such as `Warning: Measured 45 attempts for 423621 ns. Calculated 62 max attempts per 500 ms`. Such warnings also can be a signal that token space is filled near to maximum capacity.
+
 
 ### Request for set new expiration of token:
 
@@ -51,6 +56,11 @@ Request body: JSON with following parameter:
 
 Success response: `HTTP 200 OK` with empty body
 
+Request example using `curl` and `s-t-c.tk` (micro-service demo):
+
+`curl -v POST -H "Content-Type: application/json" -d '{"token":"<token>","exp":<exp>}' http://s-t-c.tk/api/v1/expire
+
+
 ### Redirect to long URL:
 URL: `<host>[:<port>]/<token>` - URL from response on request for short URL
 
@@ -58,12 +68,21 @@ Method: `GET`
 
 Response contain the redirection to long URL (response code: HTTP 302 'Found' with 'Location' = long URL in response header)
 
+Request example using `curl` and `s-t-c.tk` (micro-service demo):
+
+`curl -i -v http://s-t-c.tk/<token>`
+
+
 ### Health-check:
 URL: `<host>[:<port>]/`
 
 Method: `GET`
 
 Response: simple home page and `HTTP 200 OK` in case of successful self-health-check, or `HTTP 500 Server error` in case of any error during self-health-check.
+
+Request example using `curl` and `s-t-c.tk` (micro-service demo):
+
+`curl -i -v http://s-t-c.tk/`
 
 
 ### Service configuration
@@ -107,6 +126,7 @@ Value of `Mode` can be a sum of several modes, for example `"Mode":6` disables t
 Configuration data can be also provided via environment variables URLSHORTENER_ConnectOptions (JSON string with Redis connection options), URLSHORTENER_Timeout, URLSHORTENER_ListenHostPort, URLSHORTENER_DefaultExp, URLSHORTENER_ShortDomain and URLSHORTENER_Mode.
 
 When some configuration value is set in both configuration file and environment variable then value from configuration file is used.
+
 
 ### Logs
 
