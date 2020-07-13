@@ -31,6 +31,8 @@ func Test10Serv03Start(t *testing.T) {
 	conf := Config{
 		ListenHostPort: "localhost:8080",
 		ShortDomain:    "localhost:8080",
+		Timeout:        500,
+		TokenLength:    6,
 	}
 
 	errDb, _ := testDBNewTokenDB(redis.UniversalOptions{})
@@ -263,9 +265,9 @@ func Test10Serv40ExpireNotExistingToken(t *testing.T) {
 
 }
 
-// test redirect with wrong token
+// test redirect with wrong token (wrong lenght and wrong symbols)
 func Test10Serv45RedirectTo404(t *testing.T) {
-	resp, err := http.Get("http://" + servTestConfig.ListenHostPort + "/not_existing_token")
+	resp, err := http.Get("http://" + servTestConfig.ListenHostPort + "/not+existing+token")
 	if err != nil {
 		t.Errorf("not-existing token request error: %v", err)
 	}
@@ -275,9 +277,21 @@ func Test10Serv45RedirectTo404(t *testing.T) {
 	}
 }
 
-// test redirect with wrong token
-func Test10Serv50RedirectTo404_(t *testing.T) {
+// test redirect with wrong token (correct lenght and wrong symbols)
+func Test10Serv50RedirectTo404(t *testing.T) {
 	resp, err := http.Get("http://" + servTestConfig.ListenHostPort + "/" + strings.Repeat("(", servTestConfig.TokenLength))
+	if err != nil {
+		t.Errorf("not-existing token request error: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusNotFound {
+		t.Errorf("unexpected response status: %d", resp.StatusCode)
+	}
+}
+
+// test redirect with wrong token (correct lenght and correct symbols)
+func Test10Serv53RedirectTo404(t *testing.T) {
+	resp, err := http.Get("http://" + servTestConfig.ListenHostPort + "/" + strings.Repeat("A", servTestConfig.TokenLength))
 	if err != nil {
 		t.Errorf("not-existing token request error: %v", err)
 	}
