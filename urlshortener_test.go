@@ -18,7 +18,7 @@ func Test20Main00WrongConfig(t *testing.T) {
 	defer saveEnv()()
 	os.Unsetenv("URLSHORTENER_ConnectOptions")
 
-	err := doMain("/bad/path/to/config/file", nil)
+	err := doMain("/bad/path/to/config/file", make(chan bool, 1))
 
 	if err == nil {
 		t.Error("no error when expected")
@@ -33,15 +33,24 @@ func Test20Main05WrongDB(t *testing.T) {
 	// use saveEnv from tools_test
 	defer saveEnv()()
 	os.Setenv("URLSHORTENER_ConnectOptions", `{"Addrs":["wrong.host:6379"]}`)
+	SaveConfigFile := configFile
+	configFile = "/bad/path/to/config/file"
+	defer func() { configFile = SaveConfigFile }()
+	// defer the panic recovery and error handling
+	defer func() {
+		err := recover()
+		if err == nil {
+			t.Error("no error when expected")
+		}
+		if !strings.HasPrefix(err.(error).Error(), "database interface creation error") {
+			t.Errorf("wrong error received: %v", err)
+		}
+	}()
+	// run service
+	main()
+	// we shouldn't get here as main() have to panic with wrong DB connection address
+	t.Error("no error when expected")
 
-	err := doMain("/bad/path", nil)
-
-	if err == nil {
-		t.Error("no error when expected")
-	}
-	if !strings.HasPrefix(err.Error(), "database interface creation error") {
-		t.Errorf("wrong error: %v", err)
-	}
 }
 
 // try to get usage message
@@ -70,6 +79,11 @@ func Test20Main20Success(t *testing.T) {
 	r, w, _ := os.Pipe()
 	log.SetOutput(w)
 
+	defer func() {
+		if err := recover(); err != nil {
+			t.Errorf("server starting error:%v", err)
+		}
+	}()
 	// run service
 	go main()
 
