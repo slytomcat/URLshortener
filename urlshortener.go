@@ -72,6 +72,10 @@ func doMain(configPath string, exit chan bool) error {
 		exit <- true
 		return fmt.Errorf("database interface creation error: %w", err)
 	}
+	return stratService(config, tokenDB, exit)
+}
+
+func stratService(config *Config, tokenDB TokenDB, exit chan bool) error {
 
 	// get service handler
 	handler := NewHandler(config, tokenDB, NewShortToken(config.TokenLength), exit)
