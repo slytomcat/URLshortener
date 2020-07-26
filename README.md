@@ -58,7 +58,7 @@ Success response: `HTTP 200 OK` with empty body
 
 Request example using `curl` and `s-t-c.tk` (micro-service demo):
 
-`curl -v POST -H "Content-Type: application/json" -d '{"token":"<token>","exp":<exp>}' http://s-t-c.tk/api/v1/expire
+`curl -v POST -H "Content-Type: application/json" -d '{"token":"<token>","exp":<exp>}' http://s-t-c.tk/api/v1/expire`
 
 
 ### Redirect to long URL:
