@@ -20,7 +20,7 @@ type ShortToken interface {
 // NewShortToken returns new ShortToken instance
 func NewShortToken(length int) ShortToken {
 	return &shortToken{
-		length: int,
+		length: length,
 	}
 }
 
