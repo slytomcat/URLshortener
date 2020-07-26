@@ -463,11 +463,6 @@ func (s *serviceHandler) Stop() {
 	if err != nil {
 		log.Printf("HTTP server shutdown error: %v", err)
 	}
-	// close DB connection
-	err = s.tokenDB.Close()
-	if err != nil {
-		log.Printf("DB connection close error: %v", err)
-	}
 	// report of successful shutdown
 	s.exit <- true
 }
