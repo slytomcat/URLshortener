@@ -72,6 +72,14 @@ func doMain(configPath string, exit chan bool) error {
 		exit <- true
 		return fmt.Errorf("database interface creation error: %w", err)
 	}
+	defer func() {
+		// close DB connection
+		err = tokenDB.Close()
+		if err != nil {
+			log.Printf("DB connection close error: %v", err)
+		}
+	}()
+
 	return stratService(config, tokenDB, exit)
 }
 
