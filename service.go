@@ -136,10 +136,11 @@ func (s *serviceHandler) HealthCheck() error {
 	if s.config.Mode&disableShortener != 0 {
 		// short token for this scenario
 		sToken := "Debug.Token"
+		_ = s.tokenDB.Delete(sToken)
 
 		// use tokenDB inteface as web-interface is locked in this service mode
 		if ok, err := s.tokenDB.Set(sToken, url, 1); err != nil || !ok {
-			return fmt.Errorf("new token creation error: %w", err)
+			return fmt.Errorf("new token creation error: %w, ok: %v", err, ok)
 		}
 		// store results
 		repl.Token = sToken
@@ -246,6 +247,14 @@ func (s *serviceHandler) redirect(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
+
+	// // check the token
+	// err := s.shortToken.Check(sToken)
+	// if err != nil {
+	// 	log.Printf("%s: token check failed: %v\n", rMess, err)
+	// 	http.NotFound(w, r)
+	// 	return
+	// }
 
 	// get the long URL
 	longURL, err := s.tokenDB.Get(sToken)
@@ -453,11 +462,6 @@ func (s *serviceHandler) Stop() {
 	err := s.server.Shutdown(context.Background())
 	if err != nil {
 		log.Printf("HTTP server shutdown error: %v", err)
-	}
-	// close DB connection
-	err = s.tokenDB.Close()
-	if err != nil {
-		log.Printf("DB connection close error: %v", err)
 	}
 	// report of successful shutdown
 	s.exit <- true
