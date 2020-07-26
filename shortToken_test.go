@@ -8,15 +8,15 @@ import (
 
 // shortTokenD - debugging ShortToken interface realization
 type shortTokenD struct {
-	len int
+	length int
 }
 
-func NewShortTokenD(len int) ShortToken {
-	return &shortTokenD{len}
+func NewShortTokenD(length int) ShortToken {
+	return &shortTokenD{length}
 }
 
 func (s shortTokenD) Get() (string, error) {
-	return strings.Repeat("_", s.len), nil
+	return strings.Repeat("_", s.length), nil
 }
 
 func (s shortTokenD) Check(sToken string) error {
