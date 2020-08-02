@@ -403,13 +403,15 @@ func Test10Serv85InteruptService(t *testing.T) {
 	log.SetOutput(w)
 
 	go servTestHandler.Stop()
+	t.Log("exit requested")
 
 	select {
 	case <-time.After(time.Second * 2):
-		t.Error("no exit reported")
+		t.Error("no exit reported in 2 seconds")
 	case <-servTestexit:
 		t.Log("exit reported")
 	}
+	time.Sleep(time.Millisecond)
 
 	w.Close()
 	log.SetOutput(logger)

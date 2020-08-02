@@ -36,7 +36,7 @@ const (
 	disableExpire                // = 4 disable expire request
 
 	defaultTokenLength    = 6                // default length of token
-	defaultTimeout        = 500              // default timeout of new token creation
+	defaultTimeout        = 500              // default timeout of new token creation (ms)
 	defaultListenHostPort = "localhost:8080" // default host and port to listen on
 	defaultDefaultExp     = 1                // default token expiration
 	defaultShortDomain    = "localhost:8080" // default short domain
@@ -58,7 +58,7 @@ func readConfig(cfgFile string) (*Config, error) {
 	config := Config{
 		ConnectOptions: redis.UniversalOptions{}, // read it from file or rfom URLSHORTENER_ConnectOptions env var
 		TokenLength:    defaultTokenLength,       // default length of token
-		Timeout:        defaultTimeout,           // default timeout of new token creation
+		Timeout:        defaultTimeout,           // default timeout of new token creation (ms)
 		ListenHostPort: defaultListenHostPort,    // default host and port to listen on
 		DefaultExp:     defaultDefaultExp,        // default token expiration
 		ShortDomain:    defaultShortDomain,       // default short domain

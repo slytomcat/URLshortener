@@ -42,11 +42,7 @@ func main() {
 	// wait for service exit
 	<-exit
 	if err != nil {
-		if err.Error() != "http: Server closed" {
-			panic(err)
-		} else {
-			log.Println(err)
-		}
+		panic(err)
 	}
 }
 
