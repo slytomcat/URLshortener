@@ -461,7 +461,7 @@ func (s *serviceHandler) Start() error {
 	return err
 }
 
-// Stop successfulperforms graceful shutdown of server and database interfaces
+// Stop performs graceful shutdown of server and database interfaces
 // It reports success shutdown via serviceHandler.exit chanel
 func (s *serviceHandler) Stop() {
 	// gracefully shut down the HTTP server
