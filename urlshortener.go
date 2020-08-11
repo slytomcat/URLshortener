@@ -36,11 +36,14 @@ func init() {
 func main() {
 	// set logging format
 	log.SetFlags(log.Ldate | log.Ltime | log.Lmicroseconds | log.Lshortfile)
-	exit := make(chan bool)
-	// log exiting error
-	log.Println(doMain(configFile, exit))
+	exit := make(chan bool, 2)
+	// get exiting error
+	err := doMain(configFile, exit)
 	// wait for service exit
 	<-exit
+	if err != nil {
+		panic(err)
+	}
 }
 
 // doMain performs all preparation and starts server
@@ -55,14 +58,28 @@ func doMain(configPath string, exit chan bool) error {
 	// get the configuratin variables
 	config, err := readConfig(configPath)
 	if err != nil {
+		exit <- true
 		return fmt.Errorf("configuration read error: %w", err)
 	}
 
 	// initialize database connection
 	tokenDB, err := NewTokenDB(config.ConnectOptions)
 	if err != nil {
+		exit <- true
 		return fmt.Errorf("database interface creation error: %w", err)
 	}
+	defer func() {
+		// close DB connection
+		err = tokenDB.Close()
+		if err != nil {
+			log.Printf("DB connection close error: %v", err)
+		}
+	}()
+
+	return stratService(config, tokenDB, exit)
+}
+
+func stratService(config *Config, tokenDB TokenDB, exit chan bool) error {
 
 	// get service handler
 	handler := NewHandler(config, tokenDB, NewShortToken(config.TokenLength), exit)

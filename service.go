@@ -46,7 +46,7 @@ type ServiceHandler interface {
 type serviceHandler struct {
 	tokenDB    TokenDB      // Database interface
 	shortToken ShortToken   // Short token generator
-	config     *Config      // servuce configuration
+	config     *Config      // service configuration
 	exit       chan bool    // exit report
 	server     *http.Server // service server
 	attempts   int32        // calculated number of attempts during time-out
@@ -136,10 +136,11 @@ func (s *serviceHandler) HealthCheck() error {
 	if s.config.Mode&disableShortener != 0 {
 		// short token for this scenario
 		sToken := "Debug.Token"
+		_ = s.tokenDB.Delete(sToken)
 
 		// use tokenDB inteface as web-interface is locked in this service mode
 		if ok, err := s.tokenDB.Set(sToken, url, 1); err != nil || !ok {
-			return fmt.Errorf("new token creation error: %w", err)
+			return fmt.Errorf("new token creation error: %w, ok: %v", err, ok)
 		}
 		// store results
 		repl.Token = sToken
@@ -247,6 +248,14 @@ func (s *serviceHandler) redirect(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// // check the token
+	// err := s.shortToken.Check(sToken)
+	// if err != nil {
+	// 	log.Printf("%s: token check failed: %v\n", rMess, err)
+	// 	http.NotFound(w, r)
+	// 	return
+	// }
+
 	// get the long URL
 	longURL, err := s.tokenDB.Get(sToken)
 	if err != nil {
@@ -310,15 +319,16 @@ func (s *serviceHandler) getNewToken(w http.ResponseWriter, r *http.Request, bod
 	// Limit number of attempts by time not by count
 
 	// Count attempts and time for reports
-	var attempt, startTime int64
+	var attempt int64
+	var startTime time.Time
 
 	// Calculate statistics and report if some dangerous situation appears
 	defer func() {
-		elapsedTime := time.Now().UnixNano() - startTime
+		elapsedTime := time.Since(startTime)
 		// perform statistical calculation and reporting in another go-routine
 		go func() {
 			if attempt > 0 {
-				MaxAtt := attempt * int64(s.config.Timeout) * 1000000 / elapsedTime
+				MaxAtt := attempt * int64(s.config.Timeout) * 1000000 / elapsedTime.Nanoseconds()
 				// use atomic to avoid race conditions
 				atomic.StoreInt32(&s.attempts, int32(MaxAtt))
 				// report warnings of some not good measurements
@@ -338,7 +348,7 @@ func (s *serviceHandler) getNewToken(w http.ResponseWriter, r *http.Request, bod
 	stop := time.After(time.Millisecond * time.Duration(s.config.Timeout))
 
 	// Remember starting time
-	startTime = time.Now().UnixNano()
+	startTime = time.Now()
 
 	// start trying to store new token
 	for ok := false; !ok; {
@@ -443,7 +453,12 @@ func (s *serviceHandler) Start() error {
 
 	log.Println("starting server at", s.config.ListenHostPort)
 
-	return s.server.ListenAndServe()
+	err := s.server.ListenAndServe()
+	if err == http.ErrServerClosed {
+		log.Println(err)
+		return nil
+	}
+	return err
 }
 
 // Stop performs graceful shutdown of server and database interfaces
@@ -454,12 +469,7 @@ func (s *serviceHandler) Stop() {
 	if err != nil {
 		log.Printf("HTTP server shutdown error: %v", err)
 	}
-	// close DB connection
-	err = s.tokenDB.Close()
-	if err != nil {
-		log.Printf("DB connection close error: %v", err)
-	}
-	// report of successful shutdown
+	// report shutdown
 	s.exit <- true
 }
 

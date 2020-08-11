@@ -9,7 +9,7 @@
 
 The service requires Redis database connection. See example how to run Redis in Docker in [redisDockerRun.sh](https://github.com/slytomcat/URLshortener/blob/master/redisDockerRun.sh)
 
-When `URLshortener` starts it also performs a self-healthcheck.
+When `URLshortener` starts it also performs a self-healthcheck. If `URLshortener` misconfigured or initial healthcheck failed then it returns non zero exit code
 
 
 ### Request for short URL:
@@ -58,7 +58,7 @@ Success response: `HTTP 200 OK` with empty body
 
 Request example using `curl` and `s-t-c.tk` (micro-service demo):
 
-`curl -v POST -H "Content-Type: application/json" -d '{"token":"<token>","exp":<exp>}' http://s-t-c.tk/api/v1/expire
+`curl -v POST -H "Content-Type: application/json" -d '{"token":"<token>","exp":<exp>}' http://s-t-c.tk/api/v1/expire`
 
 
 ### Redirect to long URL:
@@ -125,7 +125,7 @@ Value of `Mode` can be a sum of several modes, for example `"Mode":6` disables t
 
 Configuration data can be also provided via environment variables URLSHORTENER_ConnectOptions (JSON string with Redis connection options), URLSHORTENER_Timeout, URLSHORTENER_ListenHostPort, URLSHORTENER_DefaultExp, URLSHORTENER_ShortDomain and URLSHORTENER_Mode.
 
-When some configuration value is set in both configuration file and environment variable then value from configuration file is used.
+When some configuration value is set in both configuration file and environment variable then value from environment is used.
 
 
 ### Logs

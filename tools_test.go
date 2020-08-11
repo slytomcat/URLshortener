@@ -99,14 +99,14 @@ func Test01Tools10EmptyJSON(t *testing.T) {
 }
 
 // test with empty JSON file but with set URLSHORTENER_ConnectOptions
-func Test01Tools15EmptyJSON_(t *testing.T) {
+func Test01Tools15EmptyJSONwEnv(t *testing.T) {
 	tmpfile, err := ioutil.TempFile(os.TempDir(), "testing*.json")
 	if err != nil {
 		t.Errorf("temp file creation error: %w", err)
 	}
 	defer os.Remove(tmpfile.Name())
 
-	err = ioutil.WriteFile(tmpfile.Name(), []byte(`{ }`), 0600)
+	err = ioutil.WriteFile(tmpfile.Name(), []byte(`{"someVar": "someVal"}`), 0600)
 	if err != nil {
 		t.Errorf("temp file write error: %v", err)
 	}

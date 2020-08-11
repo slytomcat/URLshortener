@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"math/rand"
+	"strconv"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -217,5 +218,45 @@ func Test05DBR55GetNonExisting(t *testing.T) {
 func Test05DBR65Close(t *testing.T) {
 	if err := testDB.Close(); err != nil {
 		t.Errorf("error DB connection closing: %v", err)
+	}
+}
+
+func Benchmark05DBR10set(b *testing.B) {
+	var err error
+	testDBConfig, err = readConfig("cnfr.json")
+	if err != nil {
+		b.Error(err)
+	}
+
+	testDB, err = NewTokenDB(testDBConfig.ConnectOptions)
+	if err != nil {
+		b.Error(err)
+	}
+
+	for i := 0; i < b.N; i++ {
+		_, err := testDB.Set(strconv.Itoa(i), "test", 0)
+		if err != nil {
+			b.Error(err)
+		}
+	}
+}
+
+func Benchmark05DBR00del(b *testing.B) {
+	var err error
+	testDBConfig, err = readConfig("cnfr.json")
+	if err != nil {
+		b.Error(err)
+	}
+
+	testDB, err = NewTokenDB(testDBConfig.ConnectOptions)
+	if err != nil {
+		b.Error(err)
+	}
+
+	for i := 0; i < b.N; i++ {
+		err := testDB.Delete(strconv.Itoa(i))
+		if err != nil {
+			b.Logf("i=%v err=%v", i, err)
+		}
 	}
 }

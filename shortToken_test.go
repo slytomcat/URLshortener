@@ -8,15 +8,15 @@ import (
 
 // shortTokenD - debugging ShortToken interface realization
 type shortTokenD struct {
-	len int
+	length int
 }
 
-func NewShortTokenD(len int) ShortToken {
-	return &shortTokenD{len}
+func NewShortTokenD(length int) ShortToken {
+	return &shortTokenD{length}
 }
 
 func (s shortTokenD) Get() (string, error) {
-	return strings.Repeat("_", s.len), nil
+	return strings.Repeat("_", s.length), nil
 }
 
 func (s shortTokenD) Check(sToken string) error {
@@ -73,7 +73,7 @@ func Test00ST07NewShortTokenReal(t *testing.T) {
 	}
 }
 
-// try to make two tokens from random source and compare them
+// try to make two very short tokens from random source and compare them
 func Test00ST07NewShortTokenReal2(t *testing.T) {
 	st := NewShortToken(2)
 
@@ -140,6 +140,17 @@ func Test00ST15CheckNoOk2(t *testing.T) {
 	err := st.Check("#$") // check nonBase64 symbols
 	if err == nil {
 		t.Error("no error when expected")
+	}
+}
+
+// Benchmark for the 2 symbols token
+func Benchmark00ST00Create2(b *testing.B) {
+	st := NewShortToken(2)
+	for i := 0; i < b.N; i++ {
+		_, err := st.Get()
+		if err != nil {
+			b.Error(err)
+		}
 	}
 }
 
