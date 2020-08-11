@@ -9,7 +9,7 @@
 
 The service requires Redis database connection. See example how to run Redis in Docker in [redisDockerRun.sh](https://github.com/slytomcat/URLshortener/blob/master/redisDockerRun.sh)
 
-When `URLshortener` starts it also performs a self-healthcheck.
+When `URLshortener` starts it also performs a self-healthcheck. If `URLshortener` misconfigured or initial healthcheck failed then it returns non zero exit code
 
 
 ### Request for short URL:
