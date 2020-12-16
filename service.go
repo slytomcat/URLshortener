@@ -80,6 +80,7 @@ func (s *serviceHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case "GET/favicon.ico":
 		// WEB-browsers make such requests together with the main request in order to show the site icon on tab header
 		// In this code it is used for health check (as point to redirect from short url)
+		w.Write(favicon)
 		return
 	default:
 		// all the rest GET requests are requests for redirect (probably)
