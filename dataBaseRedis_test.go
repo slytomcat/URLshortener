@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"errors"
 	"math/rand"
 	"strconv"
@@ -50,7 +51,8 @@ func testDBNewTokenDB(_ redis.UniversalOptions) (TokenDB, error) {
 // test new TokenDB creation errors
 func Test05DBR01NewTokenDBError(t *testing.T) {
 
-	connect, _ := parseConOpt(`{"Addrs":["Wrong.Host:6379"]}`)
+	connect := redis.UniversalOptions{}
+	json.Unmarshal([]byte(`{"Addrs":["Wrong.Host:6379"]}`), &connect)
 
 	_, err := NewTokenDB(connect)
 	if err == nil {

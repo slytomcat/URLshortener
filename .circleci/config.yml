@@ -3,7 +3,7 @@ jobs:
 
   testserv:
     docker:
-      - image: circleci/golang:1.14
+      - image: circleci/golang:1.16
     steps:
       - checkout
       - run:
@@ -26,7 +26,7 @@ jobs:
 
   testmain:
     docker:
-      - image: circleci/golang:1.14
+      - image: circleci/golang:1.16
     steps:
       - checkout
       - run:
@@ -49,7 +49,7 @@ jobs:
 
   testtools:
     docker:
-      - image: circleci/golang:1.14
+      - image: circleci/golang:1.16
     steps:
       - checkout
       - run:
@@ -72,7 +72,7 @@ jobs:
 
   testdb:
     docker:
-      - image: circleci/golang:1.14
+      - image: circleci/golang:1.16
     steps:
       - checkout
       - run:
@@ -95,7 +95,7 @@ jobs:
 
   report:
     docker:
-      - image: circleci/golang:1.14
+      - image: circleci/golang:1.16
     steps:
       - checkout
       - attach_workspace:
@@ -120,7 +120,7 @@ jobs:
 
   build:
     docker:
-      - image: circleci/golang:1.14
+      - image: circleci/golang:1.16
     steps:
       - checkout
       - run:
@@ -154,7 +154,7 @@ jobs:
 
   upload_docker:
     docker:
-      - image: circleci/golang:1.14
+      - image: circleci/golang:1.16
     steps:
       - checkout
       - attach_workspace:

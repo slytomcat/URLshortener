@@ -3,7 +3,7 @@ package main
 import (
 	"bytes"
 	"flag"
-	"io/ioutil"
+	"io"
 	"log"
 	"os"
 	"strings"
@@ -84,7 +84,7 @@ func Test20Main10Usage(t *testing.T) {
 
 	w.Close()
 	os.Stderr = logger
-	buf, err := ioutil.ReadAll(r)
+	buf, err := io.ReadAll(r)
 	if err != nil {
 		t.Error(err)
 	}
@@ -112,7 +112,7 @@ func Test20Main20Success(t *testing.T) {
 
 	w.Close()
 	log.SetOutput(logger)
-	buf, err := ioutil.ReadAll(r)
+	buf, err := io.ReadAll(r)
 	if err != nil {
 		t.Error(err)
 	}
@@ -137,7 +137,7 @@ func Test20Main25Kill(t *testing.T) {
 
 	w.Close()
 	log.SetOutput(logger)
-	buf, err := ioutil.ReadAll(r)
+	buf, err := io.ReadAll(r)
 	if err != nil {
 		t.Error(err)
 	}

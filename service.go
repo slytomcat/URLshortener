@@ -9,18 +9,24 @@ package main
 
 import (
 	"context"
+	_ "embed"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"strings"
 	"sync/atomic"
 	"time"
+
+	_ "embed"
 )
 
 var (
+	// favicon is binary image (PNG) that is a response on /favicon.ico request
+	//go:embed favicon.png
+	favicon []byte
 	// simple home page to display on health check request
 	homePage = `
 <html>
@@ -57,7 +63,7 @@ func (s *serviceHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	log.Println("access from:", r.RemoteAddr, r.Method, r.RequestURI, r.Header)
 
 	// read the request body
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		log.Printf("request body reading error: %v", err)
 		w.WriteHeader(http.StatusBadRequest)
@@ -161,7 +167,7 @@ func (s *serviceHandler) HealthCheck() error {
 		}
 
 		// read response body
-		buf, err := ioutil.ReadAll(resp.Body)
+		buf, err := io.ReadAll(resp.Body)
 		if err != nil {
 			return fmt.Errorf("new token response body reading error : %w", err)
 		}

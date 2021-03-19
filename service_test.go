@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"io"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -51,7 +50,7 @@ func Test10Serv03Start(t *testing.T) {
 
 	w.Close()
 	log.SetOutput(logger)
-	buf, err := ioutil.ReadAll(r)
+	buf, err := io.ReadAll(r)
 	if err != nil {
 		t.Error(err)
 	}
@@ -128,7 +127,7 @@ func Test10Serv05Start(t *testing.T) {
 
 	w.Close()
 	log.SetOutput(logger)
-	buf, err := ioutil.ReadAll(r)
+	buf, err := io.ReadAll(r)
 	if err != nil {
 		t.Error(err)
 	}
@@ -150,7 +149,7 @@ func Test10Serv10Home(t *testing.T) {
 		t.Errorf("unexpected response status: %d", resp.StatusCode)
 	}
 
-	buf, err := ioutil.ReadAll(resp.Body)
+	buf, err := io.ReadAll(resp.Body)
 	if err != nil && !errors.Is(err, io.EOF) {
 		t.Errorf("response body reading error: %v", err)
 	}
@@ -415,7 +414,7 @@ func Test10Serv85InteruptService(t *testing.T) {
 
 	w.Close()
 	log.SetOutput(logger)
-	buf, err := ioutil.ReadAll(r)
+	buf, err := io.ReadAll(r)
 	if err != nil {
 		t.Error(err)
 	}

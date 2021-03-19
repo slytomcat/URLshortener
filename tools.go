@@ -44,11 +44,6 @@ const (
 
 )
 
-func parseConOpt(s string) (redis.UniversalOptions, error) {
-	conOpt := redis.UniversalOptions{}
-	return conOpt, json.Unmarshal([]byte(s), &conOpt)
-}
-
 // readConfig reads configuration file and also tries to get data from environment variables
 func readConfig(cfgFile string) (*Config, error) {
 	var err error
@@ -80,7 +75,8 @@ func readConfig(cfgFile string) (*Config, error) {
 	// try to read config data from evirinment
 	if value = os.Getenv("URLSHORTENER_ConnectOptions"); value != "" {
 		// parse JSON value of ConnectOptions
-		connectOptions, err := parseConOpt(value)
+		connectOptions := redis.UniversalOptions{}
+		err := json.Unmarshal([]byte(value), &connectOptions)
 		if err != nil {
 			log.Printf("Warning: environments variable URLSHORTENER_ConnectOptions parsing error: %v\n", err)
 		} else {
