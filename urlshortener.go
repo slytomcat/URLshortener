@@ -92,7 +92,7 @@ func stratService(config *Config, tokenDB TokenDB, exit chan bool) error {
 		// sleep until a signal is received.
 		<-c
 		// Close service
-		handler.Stop()
+		handler.stop()
 	}()
 
 	// start health checker
@@ -100,16 +100,16 @@ func stratService(config *Config, tokenDB TokenDB, exit chan bool) error {
 		// wait for server start
 		<-time.After(300 * time.Millisecond)
 		// and perform health-check
-		if err := handler.HealthCheck(); err != nil {
+		if err := handler.healthCheck(); err != nil {
 			log.Printf("initial health-check failed: %v", err)
 			// Close service
-			handler.Stop()
+			handler.stop()
 			return
 		}
 		log.Println("initial health-check successfuly passed")
 	}()
 
 	// run server
-	return handler.Start()
+	return handler.start()
 
 }

@@ -38,7 +38,7 @@ func Test10Serv03Start(t *testing.T) {
 	testHandler := NewHandler(&conf, errDb, NewShortToken(5), servTestexit)
 
 	go func() {
-		log.Println(testHandler.Start())
+		log.Println(testHandler.start())
 	}()
 
 	select {
@@ -81,7 +81,7 @@ func Test10Serv03Start(t *testing.T) {
 		t.Errorf("unexpected response status: %d", resp.StatusCode)
 	}
 
-	go testHandler.Stop()
+	go testHandler.stop()
 
 	<-servTestexit
 
@@ -115,7 +115,7 @@ func Test10Serv05Start(t *testing.T) {
 	}
 
 	go func() {
-		log.Println(servTestHandler.Start())
+		log.Println(servTestHandler.start())
 	}()
 
 	select {
@@ -401,7 +401,7 @@ func Test10Serv85InteruptService(t *testing.T) {
 	r, w, _ := os.Pipe()
 	log.SetOutput(w)
 
-	go servTestHandler.Stop()
+	go servTestHandler.stop()
 	t.Log("exit requested")
 
 	select {
@@ -450,7 +450,7 @@ func Test10Serv90Duble(t *testing.T) {
 	servTestDB.Delete(token)
 
 	go func() {
-		log.Println(servTestHandler.Start())
+		log.Println(servTestHandler.start())
 	}()
 
 	time.Sleep(time.Second * 2)
@@ -479,7 +479,7 @@ func Test10Serv90Duble(t *testing.T) {
 	token, _ = sToken.Get()
 	servTestDB.Delete(token)
 
-	go servTestHandler.Stop()
+	go servTestHandler.stop()
 
 	<-servTestexit
 }
@@ -509,7 +509,7 @@ func Test10Serv91BadToken(t *testing.T) {
 	}
 
 	go func() {
-		log.Println(servTestHandler.Start())
+		log.Println(servTestHandler.start())
 	}()
 
 	time.Sleep(time.Second * 2)
@@ -525,7 +525,7 @@ func Test10Serv91BadToken(t *testing.T) {
 	}
 	resp.Body.Close()
 
-	go servTestHandler.Stop()
+	go servTestHandler.stop()
 
 	<-servTestexit
 }
@@ -552,7 +552,7 @@ func Test10Serv92BadDB(t *testing.T) {
 	servTestHandler = NewHandler(servTestConfig, servTestDB, sToken, servTestexit)
 
 	go func() {
-		log.Println(servTestHandler.Start())
+		log.Println(servTestHandler.start())
 	}()
 
 	time.Sleep(time.Second * 2)
@@ -568,7 +568,7 @@ func Test10Serv92BadDB(t *testing.T) {
 	}
 	resp.Body.Close()
 
-	go servTestHandler.Stop()
+	go servTestHandler.stop()
 
 	<-servTestexit
 }
