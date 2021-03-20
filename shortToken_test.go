@@ -11,6 +11,7 @@ type shortTokenD struct {
 	length int
 }
 
+// NewShortTokenD returns the shortToken interface that always returns the same token
 func NewShortTokenD(length int) ShortToken {
 	return &shortTokenD{length}
 }
@@ -27,6 +28,7 @@ func (s shortTokenD) Check(sToken string) error {
 type shortTokenE struct {
 }
 
+// NewShortTokenE returns ShortToken that always returns error
 func NewShortTokenE(_ int) ShortToken {
 	return &shortTokenE{}
 }

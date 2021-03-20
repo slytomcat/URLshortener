@@ -383,10 +383,17 @@ func (s *serviceHandler) new(w http.ResponseWriter, r *http.Request, body []byte
 	}
 
 	sToken, err := s.generateToken(params.URL, params.Exp)
-
+	// handle token generation error
 	if err != nil {
-
+		log.Printf("%s: token generation error:%s", rMess, body)
+		if strings.Contains(err.Error(), "creation error") {
+			w.WriteHeader(http.StatusRequestTimeout)
+		} else {
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+		return
 	}
+
 	// make response body
 	resp, err := json.Marshal(
 		struct {
@@ -460,7 +467,7 @@ func (s *serviceHandler) generateToken(url string, exp int) (string, error) {
 			// get short token
 			sToken, err = s.shortToken.Get()
 			if err != nil {
-				return "", fmt.Errorf("token generation error: %v\n", err)
+				return "", fmt.Errorf("random token generation error: %v\n", err)
 			}
 
 			// count attempts
