@@ -11,6 +11,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -36,18 +37,18 @@ func init() {
 func main() {
 	// set logging format
 	log.SetFlags(log.Ldate | log.Ltime | log.Lmicroseconds | log.Lshortfile)
-	exit := make(chan bool, 2)
+
 	// get exiting error
-	err := doMain(configFile, exit)
-	// wait for service exit
-	<-exit
-	if err != nil {
+	err := doMain(configFile)
+	if err != http.ErrServerClosed {
 		panic(err)
+	} else {
+		log.Println(err)
 	}
 }
 
 // doMain performs all preparation and starts server
-func doMain(configPath string, exit chan bool) error {
+func doMain(configPath string) error {
 
 	// log the version
 	log.Printf("URLshortener %s", version)
@@ -56,16 +57,14 @@ func doMain(configPath string, exit chan bool) error {
 	flag.Parse()
 
 	// get the configuratin variables
-	config, err := readConfig(configPath)
+	config, err := readConfig()
 	if err != nil {
-		exit <- true
 		return fmt.Errorf("configuration read error: %w", err)
 	}
 
 	// initialize database connection
-	tokenDB, err := NewTokenDB(config.ConnectOptions)
+	tokenDB, err := NewTokenDB(config.RedisAddrs, config.RedisPassword)
 	if err != nil {
-		exit <- true
 		return fmt.Errorf("database interface creation error: %w", err)
 	}
 	defer func() {
@@ -76,40 +75,32 @@ func doMain(configPath string, exit chan bool) error {
 		}
 	}()
 
-	return stratService(config, tokenDB, exit)
+	return stratService(config, tokenDB)
 }
 
-func stratService(config *Config, tokenDB TokenDB, exit chan bool) error {
+func stratService(config *Config, tokenDB TokenDB) error {
 
-	// get service handler
-	handler := NewHandler(config, tokenDB, NewShortToken(config.TokenLength), exit)
-
-	// register the SIGINT and SIGTERM handler
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, syscall.SIGINT, syscall.SIGTERM)
-	// start signal handler
+	// make service handler
+	handler := NewHandler(config, tokenDB, NewShortToken(config.TokenLength))
+	handlerErr := make(chan error, 1)
+	// start service
 	go func() {
+		handlerErr <- handler.start()
+	}()
+
+	// wait for server start
+	time.Sleep(300 * time.Millisecond)
+	if err := handler.healthCheck(); err != nil {
+		fmt.Printf("initial health-check failed: %v\nexiting...\n", err)
+	} else {
+		log.Println("initial health-check successfuly passed")
+		c := make(chan os.Signal, 1)
+		signal.Notify(c, syscall.SIGINT, syscall.SIGTERM)
 		// sleep until a signal is received.
 		<-c
-		// Close service
-		handler.stop()
-	}()
+	}
+	// Close service
+	handler.stop()
 
-	// start health checker
-	go func() {
-		// wait for server start
-		<-time.After(300 * time.Millisecond)
-		// and perform health-check
-		if err := handler.healthCheck(); err != nil {
-			log.Printf("initial health-check failed: %v", err)
-			// Close service
-			handler.stop()
-			return
-		}
-		log.Println("initial health-check successfuly passed")
-	}()
-
-	// run server
-	return handler.start()
-
+	return <-handlerErr
 }

@@ -11,7 +11,7 @@ The service requires Redis database connection. See example how to run Redis in 
 
 When `URLshortener` starts it also performs a self-healthcheck. If `URLshortener` misconfigured or initial healthcheck failed then it returns non zero exit code
 
-### UI for short URL generation:
+### Web UI for short URL generation:
 
 URL `<host>[:<port>]/ui/generate`
 
@@ -81,9 +81,15 @@ Method: `GET`
 
 Response contain the redirection to long URL (response code: HTTP 302 'Found' with 'Location' = long URL in response header)
 
-Request example using `curl` and `s-t-c.tk` (micro-service demo):
+Request example using `s-t-c.tk` (micro-service demo):
+
+Via `curl`:
 
 `curl -i -v http://s-t-c.tk/<token>`
+
+Via browser:
+
+`http://s-t-c.tk/<token>`
 
 
 ### Health-check:
@@ -122,7 +128,7 @@ Where:
     - `Addrs` - array of strings: Redis single node address or list of addresses of cluster/sentinel nodes (mandatory)
     - `Password` - string, password for Redis authorization (mandatory for connections to remote Redis node/cluster)
     - `DB` - int, database to be selected after connecting to Redis DB (optional, applicable only for connection to single node and fail-over nodes, default: 0)
-    - ... all possible connection options can be fount [here](https://godoc.org/github.com/go-redis/redis#UniversalOptions)
+    - ... all possible connection options can be found [here](https://godoc.org/github.com/go-redis/redis#UniversalOptions)
 - `TokenLength` - int, number of BASE64 symbols in token
 - `Timeout` - int, new token creation time-out in milliseconds (optional, default: 500)
 - `ListenHostPort` - string: host and port to listen on (optional, default: "localhost:8080")
@@ -133,6 +139,7 @@ Where:
     - 1 - request for redirect is disabled
     - 2 - request for short URL is disabled
     - 4 - request for set new expiration of token is disabled
+    - 8 - WEB UI is disabled
 
 Value of `Mode` can be a sum of several modes, for example `"Mode":6` disables two requests: request for short URL and request to set new expiration of token.
 

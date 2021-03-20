@@ -13,8 +13,8 @@ import (
 
 // ShortToken - interface for short token creation
 type ShortToken interface {
-	Get() (string, error) // returns new random short token
-	Check(string) error   // check the token length and alphabet
+	Get() string        // returns new random short token
+	Check(string) error // check the token length and alphabet
 }
 
 // NewShortToken returns new ShortToken instance
@@ -29,7 +29,7 @@ type shortToken struct {
 }
 
 // Get creates the token from random or debugging source
-func (s *shortToken) Get() (string, error) {
+func (s *shortToken) Get() string {
 
 	// prepare bytes bufer
 	bLen := s.length*6/8 + 1
@@ -38,10 +38,10 @@ func (s *shortToken) Get() (string, error) {
 	// get secure random bytes
 	n, err := rand.Read(buf)
 	if err != nil || n != bLen {
-		return "", fmt.Errorf("error while retriving random data: %v", err.Error())
+		panic(fmt.Errorf("error while retriving random data: %d %v", n, err.Error()))
 	}
 	// return shortened to tokenLenS BASE64 representation
-	return base64.URLEncoding.EncodeToString(buf)[:s.length], nil
+	return base64.URLEncoding.EncodeToString(buf)[:s.length]
 }
 
 // Check checks the lenght of token and its alphabet
