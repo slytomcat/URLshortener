@@ -18,7 +18,6 @@ import (
 	"net/http"
 	"strings"
 	"sync/atomic"
-	"text/template"
 	"time"
 
 	_ "embed"
@@ -38,6 +37,8 @@ const (
 		<br><br>
 		Service status: healthy, %d attempts per %d ms
 		<br><br>
+		<a href=/ui/generate>Create short URL manually</a>
+		<br><br><br><br>
 		See sources at <a href="https://github.com/slytomcat/URLshortener">https://github.com/slytomcat/URLshortener</a>
 	</body>
 </html>`
@@ -49,26 +50,28 @@ const (
 	</head>
 	<body>
 	   <br>
-	   {{if .}}
-	   <br><br>
-	   Short URL: {{.}}
-	   <br><br>
-	   QR code for short URL:
+	   %s
 	   <br>
-	   <img src="http://chart.apis.google.com/chart?chs=300x300&cht=qr&choe=UTF-8&chl={{.}}" />
-	   <br>
-	   <br>
-	   {{end}}
 	   <form action="/ui/generate" name=f method="GET">
 		   <input maxLength=1024 size=70 name=s value="" title="URL to be shortened">
-		   <input type=submit value="get short URL" name=qr>
+		   <input type=submit value="get short URL">
 	   </form>   
 	</body>
 </html>`
+	generatorPagePart = `
+<br><br>
+Short URL: %s
+<br><br>
+QR code for short URL:
+<br>
+<img src="http://chart.apis.google.com/chart?chs=300x300&cht=qr&choe=UTF-8&chl=%s" />
+<br>
+<br>
+Short URL lifetime: %d days
+<br>`
 )
 
 var (
-	templ = template.Must(template.New("gen").Parse(generatePage))
 
 	// favicon is binary image (PNG) that is a response on /favicon.ico request
 	//go:embed favicon.png
@@ -150,27 +153,26 @@ func (s *serviceHandler) generate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	url := r.FormValue("s")
+	part := ""
 
-	// just display UI for empty URL
-	if url == "" {
+	if url != "" {
 		// TO DO: make more sophisticated check for URL
-		templ.Execute(w, "")
-		log.Printf("%s: ui interface displayed", rMess)
-		return
+		// if URL provided then make short URL for it
+		sToken, err := s.generateToken(url, s.config.DefaultExp)
+
+		if err != nil {
+			log.Printf("%s: token generation error: %v", rMess, err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		sUrl := s.config.ShortDomain + "/" + sToken
+		part = fmt.Sprintf(generatorPagePart, sUrl, sUrl, s.config.DefaultExp)
+		rMess = fmt.Sprintf("%s: new token generated: %s", rMess, sToken)
 	}
 
-	// if URL provided then make short URL for it
-	sToken, err := s.generateToken(url, s.config.DefaultExp)
-
-	if err != nil {
-		log.Printf("%s: token generation error: %v", rMess, err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	// store results
-	templ.Execute(w, s.config.ShortDomain+"/"+sToken)
-	log.Printf("%s: new token generated: %s", rMess, sToken)
+	// display results
+	w.Write([]byte(fmt.Sprintf(generatePage, part)))
+	log.Printf("%s: ui interface displaed", rMess)
 
 }
 
@@ -190,7 +192,11 @@ func (s *serviceHandler) home(w http.ResponseWriter, r *http.Request) {
 		// log self-test results
 		log.Printf("%s: success\n", rMess)
 		// show the home page if self-test was successfully passed
-		w.Write([]byte(fmt.Sprintf(homePage, version, atomic.LoadInt32(&s.attempts), s.config.Timeout)))
+		w.Write([]byte(fmt.Sprintf(
+			homePage,
+			version,
+			atomic.LoadInt32(&s.attempts),
+			s.config.Timeout)))
 	}
 }
 
@@ -202,7 +208,7 @@ func (s *serviceHandler) healthCheck() error {
 	// 3. request to expire the token (received in the first request)
 
 	// long URL for sef-check redirect
-	url := "http://" + s.config.ShortDomain + "/favicon.ico"
+	url := s.config.ShortDomain + "/favicon.ico"
 
 	var (
 		// short URL request's replay parameters
@@ -220,7 +226,7 @@ func (s *serviceHandler) healthCheck() error {
 		_ = s.tokenDB.Delete(sToken)
 
 		// use tokenDB inteface as web-interface is locked in this service mode
-		if ok, err := s.tokenDB.Set(sToken, url, 1); err != nil || !ok {
+		if ok, err := s.tokenDB.Set(sToken, "http://"+url, 1); err != nil || !ok {
 			return fmt.Errorf("new token creation error: %w, ok: %v", err, ok)
 		}
 		// store results
@@ -283,7 +289,7 @@ func (s *serviceHandler) healthCheck() error {
 		rURL = resp2.Request.URL.String()
 	}
 	// check redirection URL
-	if rURL != url {
+	if rURL != "http://"+url {
 		return fmt.Errorf("wrong redirection URL: expected %s, receved %v", url, rURL)
 	}
 
@@ -391,6 +397,11 @@ func (s *serviceHandler) new(w http.ResponseWriter, r *http.Request, body []byte
 	// set the default expiration if it is not passed
 	if params.Exp == 0 {
 		params.Exp = s.config.DefaultExp
+	}
+
+	// add referenece type if it is missing
+	if !strings.HasPrefix(strings.ToLower(params.URL), "http") {
+		params.URL = "http://" + params.URL
 	}
 
 	sToken, err := s.generateToken(params.URL, params.Exp)
