@@ -11,6 +11,19 @@ The service requires Redis database connection. See example how to run Redis in 
 
 When `URLshortener` starts it also performs a self-healthcheck. If `URLshortener` misconfigured or initial healthcheck failed then it returns non zero exit code
 
+### UI for short URL generation:
+
+URL `<host>[:<port>]/ui/generate`
+
+Method: `GET`
+
+Shows the simple user interface for short URL generation. It also generated QR code containing the short URL.
+
+Note that the lifetime of generated short URL is via `DefaultExp` value in the configuration file.
+
+Request example using `s-t-c.tk` (micro-service demo):
+
+Open in browser: `http://s-t-c.tk/ui/generate`
 
 ### Request for short URL:
 

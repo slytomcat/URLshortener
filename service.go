@@ -58,7 +58,6 @@ const (
 	   <img src="http://chart.apis.google.com/chart?chs=300x300&cht=qr&choe=UTF-8&chl={{.}}" />
 	   <br>
 	   <br>
-	   Note: token lifetime is 30 days.
 	   {{end}}
 	   <form action="/ui/generate" name=f method="GET">
 		   <input maxLength=1024 size=70 name=s value="" title="URL to be shortened">
@@ -161,7 +160,7 @@ func (s *serviceHandler) generate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// if URL provided then make short URL for it
-	sToken, err := s.generateToken(url, 30)
+	sToken, err := s.generateToken(url, s.config.DefaultExp)
 
 	if err != nil {
 		log.Printf("%s: token generation error: %v", rMess, err)
