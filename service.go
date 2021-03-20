@@ -58,6 +58,7 @@ const (
 	   <img src="http://chart.apis.google.com/chart?chs=300x300&cht=qr&choe=UTF-8&chl={{.}}" />
 	   <br>
 	   <br>
+	   Note: token lifetime is 30 days.
 	   {{end}}
 	   <form action="/ui/generate" name=f method="GET">
 		   <input maxLength=1024 size=70 name=s value="" title="URL to be shortened">
@@ -121,6 +122,7 @@ func (s *serviceHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case "GET/ui/generate":
 		// UI short URL generation page
 		s.generate(w, r)
+		return
 	case "GET/favicon.ico":
 		// WEB-browsers make such requests together with the main request in order to show the site icon on tab header
 		// In this code it is used for health check (as point to redirect from short url)
@@ -150,13 +152,23 @@ func (s *serviceHandler) generate(w http.ResponseWriter, r *http.Request) {
 	}
 	url := r.FormValue("s")
 
-	sToken, err := s.generateToken(url, 1)
+	// just display UI for empty URL
+	if url == "" {
+		// TO DO: make more sophisticated check for URL
+		templ.Execute(w, "")
+		log.Printf("%s: ui interface displayed", rMess)
+		return
+	}
+
+	// if URL provided then make short URL for it
+	sToken, err := s.generateToken(url, 30)
 
 	if err != nil {
 		log.Printf("%s: token generation error: %v", rMess, err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+
 	// store results
 	templ.Execute(w, s.config.ShortDomain+"/"+sToken)
 	log.Printf("%s: new token generated: %s", rMess, sToken)

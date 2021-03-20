@@ -380,7 +380,7 @@ func Test10Serv75HealthCheckModeDisableShortener(t *testing.T) {
 }
 
 // try health check in service mode disableExpire
-func Test10Serv80HealthCheckModeDisableExpire(t *testing.T) {
+func Test10Serv77HealthCheckModeDisableExpire(t *testing.T) {
 
 	servTestConfig.Mode = disableExpire
 
@@ -395,8 +395,60 @@ func Test10Serv80HealthCheckModeDisableExpire(t *testing.T) {
 	time.Sleep(time.Second)
 }
 
+// test generate UI interface
+func Test10Serv80genUI(t *testing.T) {
+	resp, err := http.Get("http://" + servTestConfig.ListenHostPort + "/ui/generate")
+	if err != nil {
+		t.Errorf("UI request error: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("unexpected response status: %d", resp.StatusCode)
+	}
+
+	buf, err := io.ReadAll(resp.Body)
+	if err != nil && !errors.Is(err, io.EOF) {
+		t.Errorf("response body reading error: %v", err)
+	}
+	if bytes.Contains(buf, []byte("Short URL:")) {
+		t.Error("generated url when no parameters")
+	}
+}
+
+// test generate UI interface
+func Test10Serv83genUIwp(t *testing.T) {
+	resp, err := http.Get("http://" + servTestConfig.ListenHostPort + "/ui/generate?s=http:/some.url")
+	if err != nil {
+		t.Errorf("UI request error: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("unexpected response status: %d", resp.StatusCode)
+	}
+
+	buf, err := io.ReadAll(resp.Body)
+	if err != nil && !errors.Is(err, io.EOF) {
+		t.Errorf("response body reading error: %v", err)
+	}
+	if !bytes.Contains(buf, []byte("Short URL:")) {
+		t.Error("short URL is not generated fog given URL")
+	}
+}
+
+func Test10Serv85genUIdisabled(t *testing.T) {
+	servTestConfig.Mode = disableUI
+	resp, err := http.Get("http://" + servTestConfig.ListenHostPort + "/ui/generate?s=http:/some.url")
+	if err != nil {
+		t.Errorf("UI request error: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusNotFound {
+		t.Errorf("unexpected response status: %d", resp.StatusCode)
+	}
+}
+
 // try to stop service
-func Test10Serv85InteruptService(t *testing.T) {
+func Test10Serv89InteruptService(t *testing.T) {
 	logger := log.Writer()
 	r, w, _ := os.Pipe()
 	log.SetOutput(w)
@@ -524,6 +576,17 @@ func Test10Serv91BadToken(t *testing.T) {
 		t.Errorf("unexpected response status: %d", resp.StatusCode)
 	}
 	resp.Body.Close()
+
+	// test UI interface also
+
+	resp, err = http.Get("http://" + servTestConfig.ListenHostPort + "/ui/generate?s=http:/some.url")
+	if err != nil {
+		t.Errorf("token request error: %v", err)
+	}
+
+	if resp.StatusCode != http.StatusInternalServerError {
+		t.Errorf("unexpected response status: %d", resp.StatusCode)
+	}
 
 	go servTestHandler.stop()
 
