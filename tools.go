@@ -34,6 +34,7 @@ const (
 	disableRedirect  = 1 << iota // = 1 disable redirect request
 	disableShortener             // = 2 disable request for short URL
 	disableExpire                // = 4 disable expire request
+	disableUI                    // = 8 disable UI generation page
 
 	defaultTokenLength    = 6                // default length of token
 	defaultTimeout        = 500              // default timeout of new token creation (ms)

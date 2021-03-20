@@ -23,29 +23,67 @@ import (
 	_ "embed"
 )
 
+const (
+	// homePage is a simple home page template to display on health check request
+	homePage = `
+<html>
+	<head>
+		<title>URL shortener</title>
+	</head>
+	<body>
+		<h1>Home page of URLshortener</h1>
+		<br>
+		URLshortener %s
+		<br><br>
+		Service status: healthy, %d attempts per %d ms
+		<br><br>
+		<a href=/ui/generate>Create short URL manually</a>
+		<br><br><br><br>
+		See sources at <a href="https://github.com/slytomcat/URLshortener">https://github.com/slytomcat/URLshortener</a>
+	</body>
+</html>`
+	// generatePage - is a template for short URL generation
+	generatePage = `	 
+<html>
+	<head>
+	<title>Short URL generator</title>
+	</head>
+	<body>
+	   <br>
+	   %s
+	   <br>
+	   <form action="/ui/generate" name=f method="GET">
+		   <input maxLength=1024 size=70 name=s value="" title="URL to be shortened">
+		   <input type=submit value="get short URL">
+	   </form>   
+	</body>
+</html>`
+	generatorPagePart = `
+<br><br>
+Short URL: %s
+<br><br>
+QR code for short URL:
+<br>
+<img src="http://chart.apis.google.com/chart?chs=300x300&cht=qr&choe=UTF-8&chl=%s" />
+<br>
+<br>
+Short URL lifetime: %d days
+<br>`
+)
+
 var (
+
 	// favicon is binary image (PNG) that is a response on /favicon.ico request
 	//go:embed favicon.png
 	favicon []byte
-	// simple home page to display on health check request
-	homePage = `
-<html>
-	<body>
-	   <h1>Home page of URLshortener</h1>
-	   <br>URLshortener %s<br>
-	   <br>Service status: healthy, %d attempts per %d ms <br><br>
-	   See sources at <a href="https://github.com/slytomcat/URLshortener">https://github.com/slytomcat/URLshortener</a>
-	</body>
-</html>
-`
 )
 
 // ServiceHandler interface
 type ServiceHandler interface {
 	ServeHTTP(http.ResponseWriter, *http.Request) // http server handler function
-	HealthCheck() error                           // Health-check function
-	Start() error                                 // Service start method
-	Stop()                                        // Service stop method
+	healthCheck() error                           // Health-check function
+	start() error                                 // Service start method
+	stop()                                        // Service stop method
 }
 
 // serviceHandler is an istance of ServiceHandler interface
@@ -77,11 +115,15 @@ func (s *serviceHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	case "POST/api/v1/token":
 		// request for new short url/token
-		s.getNewToken(w, r, body)
+		s.new(w, r, body)
 		return
 	case "POST/api/v1/expire":
 		// request for new short url/token
-		s.expireToken(w, r, body)
+		s.expire(w, r, body)
+		return
+	case "GET/ui/generate":
+		// UI short URL generation page
+		s.generate(w, r)
 		return
 	case "GET/favicon.ico":
 		// WEB-browsers make such requests together with the main request in order to show the site icon on tab header
@@ -100,6 +142,40 @@ func (s *serviceHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 }
 
+// generate is UI short URL|QR generator
+func (s *serviceHandler) generate(w http.ResponseWriter, r *http.Request) {
+	rMess := fmt.Sprintf("UI generate request from %s (%s)", r.RemoteAddr, r.Referer())
+	// check that service mode allows this request
+	if s.config.Mode&disableUI != 0 {
+		log.Printf("%s: this request is disabled by current service mode\n", rMess)
+		// send 404 response
+		http.NotFound(w, r)
+		return
+	}
+	url := r.FormValue("s")
+	part := ""
+
+	if url != "" {
+		// TO DO: make more sophisticated check for URL
+		// if URL provided then make short URL for it
+		sToken, err := s.generateToken(url, s.config.DefaultExp)
+
+		if err != nil {
+			log.Printf("%s: token generation error: %v", rMess, err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		sUrl := s.config.ShortDomain + "/" + sToken
+		part = fmt.Sprintf(generatorPagePart, sUrl, sUrl, s.config.DefaultExp)
+		rMess = fmt.Sprintf("%s: new token generated: %s", rMess, sToken)
+	}
+
+	// display results
+	w.Write([]byte(fmt.Sprintf(generatePage, part)))
+	log.Printf("%s: ui interface displaed", rMess)
+
+}
+
 /* test for test env:
 curl -i -v http://localhost:8080/
 */
@@ -108,7 +184,7 @@ curl -i -v http://localhost:8080/
 func (s *serviceHandler) home(w http.ResponseWriter, r *http.Request) {
 	rMess := fmt.Sprintf("health-check request from %s (%s)", r.RemoteAddr, r.Referer())
 	// Perform self-test
-	if err := s.HealthCheck(); err != nil {
+	if err := s.healthCheck(); err != nil {
 		// report error
 		log.Printf("%s: error: %v\n", rMess, err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -116,19 +192,23 @@ func (s *serviceHandler) home(w http.ResponseWriter, r *http.Request) {
 		// log self-test results
 		log.Printf("%s: success\n", rMess)
 		// show the home page if self-test was successfully passed
-		w.Write([]byte(fmt.Sprintf(homePage, version, atomic.LoadInt32(&s.attempts), s.config.Timeout)))
+		w.Write([]byte(fmt.Sprintf(
+			homePage,
+			version,
+			atomic.LoadInt32(&s.attempts),
+			s.config.Timeout)))
 	}
 }
 
 // healthCheck performs full self-test of service in all service modes
-func (s *serviceHandler) HealthCheck() error {
+func (s *serviceHandler) healthCheck() error {
 	// self-test makes three requests:
 	// 1. request for short URL
 	// 2. request for redirect from short to long URL
 	// 3. request to expire the token (received in the first request)
 
 	// long URL for sef-check redirect
-	url := "http://" + s.config.ShortDomain + "/favicon.ico"
+	url := s.config.ShortDomain + "/favicon.ico"
 
 	var (
 		// short URL request's replay parameters
@@ -146,7 +226,7 @@ func (s *serviceHandler) HealthCheck() error {
 		_ = s.tokenDB.Delete(sToken)
 
 		// use tokenDB inteface as web-interface is locked in this service mode
-		if ok, err := s.tokenDB.Set(sToken, url, 1); err != nil || !ok {
+		if ok, err := s.tokenDB.Set(sToken, "http://"+url, 1); err != nil || !ok {
 			return fmt.Errorf("new token creation error: %w, ok: %v", err, ok)
 		}
 		// store results
@@ -209,7 +289,7 @@ func (s *serviceHandler) HealthCheck() error {
 		rURL = resp2.Request.URL.String()
 	}
 	// check redirection URL
-	if rURL != url {
+	if rURL != "http://"+url {
 		return fmt.Errorf("wrong redirection URL: expected %s, receved %v", url, rURL)
 	}
 
@@ -283,8 +363,8 @@ func (s *serviceHandler) redirect(w http.ResponseWriter, r *http.Request) {
 curl -v POST -H "Content-Type: application/json" -d '{"url":"<long url>","exp":10}' http://localhost:8080/api/v1/token
 */
 
-// getNewToken handle the new token creation for passed url and sets expiration for it
-func (s *serviceHandler) getNewToken(w http.ResponseWriter, r *http.Request, body []byte) {
+// new handle the new token creation for passed url and sets expiration for it
+func (s *serviceHandler) new(w http.ResponseWriter, r *http.Request, body []byte) {
 	// TODO: check some authorisation ???
 
 	rMess := fmt.Sprintf("token request from %s (%s)", r.RemoteAddr, r.Referer())
@@ -319,6 +399,47 @@ func (s *serviceHandler) getNewToken(w http.ResponseWriter, r *http.Request, bod
 		params.Exp = s.config.DefaultExp
 	}
 
+	// add referenece type if it is missing
+	if !strings.HasPrefix(strings.ToLower(params.URL), "http") {
+		params.URL = "http://" + params.URL
+	}
+
+	sToken, err := s.generateToken(params.URL, params.Exp)
+	// handle token generation error
+	if err != nil {
+		log.Printf("%s: token generation error:%s", rMess, body)
+		if strings.Contains(err.Error(), "creation error") {
+			w.WriteHeader(http.StatusRequestTimeout)
+		} else {
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+		return
+	}
+
+	// make response body
+	resp, err := json.Marshal(
+		struct {
+			Token string `json:"token"` // token
+			URL   string `json:"url"`   // short URL
+		}{
+			Token: sToken,
+			URL:   s.config.ShortDomain + "/" + sToken,
+		})
+	if err != nil {
+		log.Printf("%s: response body marshaling error: %v\n", rMess, err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	// log new token request information
+	log.Printf("%s: URL saved, token: %s , exp: %d\n", rMess, sToken, params.Exp)
+
+	// send response
+	w.Write(resp)
+}
+
+// generateToken generates token or writes the error in w
+func (s *serviceHandler) generateToken(url string, exp int) (string, error) {
 	// Using many attempts to store the new random token dramatically increases maximum amount of
 	// used tokens since:
 	// probability of the failure of n attempts = (probability of failure of single attempt)^n.
@@ -328,6 +449,7 @@ func (s *serviceHandler) getNewToken(w http.ResponseWriter, r *http.Request, bod
 	// Count attempts and time for reports
 	var attempt int64
 	var startTime time.Time
+	var err error
 
 	// Calculate statistics and report if some dangerous situation appears
 	defer func() {
@@ -362,59 +484,34 @@ func (s *serviceHandler) getNewToken(w http.ResponseWriter, r *http.Request, bod
 		select {
 		case <-stop:
 			// timeout exceeded
-			log.Printf("%s: token creation error: %v, ok: %v\n", rMess, err, ok)
-			w.WriteHeader(http.StatusRequestTimeout)
-			return
+			return "", fmt.Errorf("token creation error: %v, ok: %v\n", err, ok)
 		default:
 			// get short token
 			sToken, err = s.shortToken.Get()
 			if err != nil {
-				log.Printf("%s: token generation error: %v\n", rMess, err)
-				w.WriteHeader(http.StatusInternalServerError)
-				return
+				return "", fmt.Errorf("random token generation error: %v\n", err)
 			}
 
 			// count attempts
 			attempt++
 
 			// store token in DB
-			ok, err = s.tokenDB.Set(sToken, params.URL, params.Exp)
+			ok, err = s.tokenDB.Set(sToken, url, exp)
 			if err != nil {
-				log.Printf("%s: token storing error: %v\n", rMess, err)
-				w.WriteHeader(http.StatusInternalServerError)
-				return
+				return "", fmt.Errorf("token storing error: %v\n", err)
 			}
 		}
 	}
 
-	// make response body
-	resp, err := json.Marshal(
-		struct {
-			Token string `json:"token"` // token
-			URL   string `json:"url"`   // short URL
-		}{
-			Token: sToken,
-			URL:   s.config.ShortDomain + "/" + sToken,
-		})
-	if err != nil {
-		log.Printf("%s: response body marshaling error: %v\n", rMess, err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	// log new token request information
-	log.Printf("%s: URL saved, token: %s , exp: %d\n", rMess, sToken, params.Exp)
-
-	// send response
-	w.Write(resp)
+	return sToken, nil
 }
 
 /* test for test env:
 curl -v POST -H "Content-Type: application/json" -d '{"token":"<token>","exp":<exp>}' http://localhost:8080/api/v1/expire
 */
 
-// expireToken makes token-longURL record as expired
-func (s *serviceHandler) expireToken(w http.ResponseWriter, r *http.Request, body []byte) {
+// expire makes token-longURL record as expired
+func (s *serviceHandler) expire(w http.ResponseWriter, r *http.Request, body []byte) {
 
 	rMess := fmt.Sprintf("expire request from %s (%s)", r.RemoteAddr, r.Referer())
 
@@ -456,7 +553,7 @@ func (s *serviceHandler) expireToken(w http.ResponseWriter, r *http.Request, bod
 }
 
 // Start returns started server
-func (s *serviceHandler) Start() error {
+func (s *serviceHandler) start() error {
 
 	log.Println("starting server at", s.config.ListenHostPort)
 
@@ -470,7 +567,7 @@ func (s *serviceHandler) Start() error {
 
 // Stop performs graceful shutdown of server and database interfaces
 // It reports success shutdown via serviceHandler.exit chanel
-func (s *serviceHandler) Stop() {
+func (s *serviceHandler) stop() {
 	// gracefully shut down the HTTP server
 	err := s.server.Shutdown(context.Background())
 	if err != nil {
