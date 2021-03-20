@@ -394,16 +394,6 @@ func (s *serviceHandler) new(w http.ResponseWriter, r *http.Request, body []byte
 	// log received params
 	rMess += fmt.Sprintf(" parameters: '%s', %d", params.URL, params.Exp)
 
-	// set the default expiration if it is not passed
-	if params.Exp == 0 {
-		params.Exp = s.config.DefaultExp
-	}
-
-	// add referenece type if it is missing
-	if !strings.HasPrefix(strings.ToLower(params.URL), "http") {
-		params.URL = "http://" + params.URL
-	}
-
 	sToken, err := s.generateToken(params.URL, params.Exp)
 	// handle token generation error
 	if err != nil {
@@ -450,6 +440,16 @@ func (s *serviceHandler) generateToken(url string, exp int) (string, error) {
 	var attempt int64
 	var startTime time.Time
 	var err error
+
+	// add referenece type if it is missing
+	if !strings.HasPrefix(strings.ToLower(url), "http") {
+		url = "http://" + url
+	}
+
+	// set the default expiration if it is not passed
+	if exp == 0 {
+		exp = s.config.DefaultExp
+	}
 
 	// Calculate statistics and report if some dangerous situation appears
 	defer func() {
