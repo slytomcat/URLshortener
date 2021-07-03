@@ -165,8 +165,8 @@ func (s *serviceHandler) generate(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		sUrl := s.config.ShortDomain + "/" + sToken
-		part = fmt.Sprintf(generatorPagePart, sUrl, sUrl, s.config.DefaultExp)
+		sURL := s.config.ShortDomain + "/" + sToken
+		part = fmt.Sprintf(generatorPagePart, sURL, sURL, s.config.DefaultExp)
 		rMess = fmt.Sprintf("%s: new token generated: %s", rMess, sToken)
 	}
 
@@ -484,12 +484,12 @@ func (s *serviceHandler) generateToken(url string, exp int) (string, error) {
 		select {
 		case <-stop:
 			// timeout exceeded
-			return "", fmt.Errorf("token creation error: %v, ok: %v\n", err, ok)
+			return "", fmt.Errorf("token creation error: %v, ok: %v", err, ok)
 		default:
 			// get short token
 			sToken, err = s.shortToken.Get()
 			if err != nil {
-				return "", fmt.Errorf("random token generation error: %v\n", err)
+				return "", fmt.Errorf("random token generation error: %v", err)
 			}
 
 			// count attempts
@@ -498,7 +498,7 @@ func (s *serviceHandler) generateToken(url string, exp int) (string, error) {
 			// store token in DB
 			ok, err = s.tokenDB.Set(sToken, url, exp)
 			if err != nil {
-				return "", fmt.Errorf("token storing error: %v\n", err)
+				return "", fmt.Errorf("token storing error: %v", err)
 			}
 		}
 	}
