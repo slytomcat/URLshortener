@@ -34,6 +34,7 @@ jobs:
         run: go test -v --race ./...
         env:
           URLSHORTENER_REDISADDRS: localhost:6379
+          URLSHORTENER_REDISPASSWORD: ""
   build:
     needs: test
     runs-on: ubuntu-latest
