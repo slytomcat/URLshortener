@@ -139,6 +139,7 @@ func Test05DBR10All(t *testing.T) {
 		url := "https://golang.org/pkg/time/"
 		ok, err := testDB.Set(testDBToken, url, 1)
 		assert.NoError(t, err)
+		assert.True(t, ok)
 
 		ok, err = testDB.Set(testDBToken, url, 1)
 		assert.NoError(t, err)
