@@ -1,13 +1,11 @@
 package main
 
-
 // URLshortener is a microservice to shorten long URLs
 // and to handle the redirection by generated short URLs.
 //
 // See details in README.md
 //
 // This file contains database interface
-
 
 import (
 	"errors"
@@ -19,11 +17,11 @@ import (
 
 // TokenDB is the interface to token database
 type TokenDB interface {
-	Set(sToken, longURL string, expiration int) (bool, error)	// store token and long URL and set the expiration  
-	Get(sToken string) (string, error)							// find the long URL for given token 
-	Expire(sToken string, expiration int) error 				// change the given token expiration
-	Delete(sToken string) error 								// delete given token - for tests only
-	Close() error 												// close the database connection
+	Set(sToken, longURL string, expiration int) (bool, error) // store token and long URL and set the expiration
+	Get(sToken string) (string, error)                        // find the long URL for given token
+	Expire(sToken string, expiration int) error               // change the given token expiration
+	Delete(sToken string) error                               // delete given token - for tests only
+	Close() error                                             // close the database connection
 }
 
 // tokenDBR is a structure to handle the DB token operations via Redis database
@@ -32,10 +30,13 @@ type tokenDBR struct {
 }
 
 // NewTokenDB creates new database interface to Redis database
-func NewTokenDB(connect redis.UniversalOptions) (TokenDB, error) {
+func NewTokenDB(addrs []string, password string) (TokenDB, error) {
 
 	// create new UniversalClient from CONFIG.ConnectOptions
-	db := redis.NewUniversalClient(&connect)
+	db := redis.NewUniversalClient(&redis.UniversalOptions{
+		Addrs:    addrs,
+		Password: password,
+	})
 
 	// try to ping data base
 	if _, err := db.Ping().Result(); err != nil {

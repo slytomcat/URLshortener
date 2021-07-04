@@ -11,6 +11,8 @@ import (
 	"time"
 
 	"github.com/go-redis/redis/v7"
+	"github.com/joho/godotenv"
+	"github.com/stretchr/testify/assert"
 )
 
 var (
@@ -90,7 +92,7 @@ func Test05DBR01NewTokenDBError(t *testing.T) {
 	connect := redis.UniversalOptions{}
 	json.Unmarshal([]byte(`{"Addrs":["Wrong.Host:6379"]}`), &connect)
 
-	_, err := NewTokenDB(connect)
+	_, err := NewTokenDB([]string{"Wrong.Host:6379"}, "")
 	if err == nil {
 		t.Error("No error when expected")
 	}
@@ -99,15 +101,13 @@ func Test05DBR01NewTokenDBError(t *testing.T) {
 // test new TokenDBR creation
 func Test05DBR10NewTokenDB(t *testing.T) {
 	var err error
-	testDBConfig, err = readConfig("cnfr.json")
-	if err != nil {
-		t.Error(err)
-	}
+	godotenv.Load()
 
-	testDB, err = NewTokenDB(testDBConfig.ConnectOptions)
-	if err != nil {
-		t.Error(err)
-	}
+	testDBConfig, err = readConfig()
+	assert.NoError(t, err)
+
+	testDB, err = NewTokenDB(testDBConfig.RedisAddrs, testDBConfig.RedisPassword)
+	assert.NoError(t, err)
 
 	testDB.Delete(testDBToken)
 }
@@ -261,12 +261,12 @@ func Test05DBR65Close(t *testing.T) {
 
 func Benchmark05DBR10set(b *testing.B) {
 	var err error
-	testDBConfig, err = readConfig("cnfr.json")
+	testDBConfig, err = readConfig()
 	if err != nil {
 		b.Error(err)
 	}
 
-	testDB, err = NewTokenDB(testDBConfig.ConnectOptions)
+	testDB, err = NewTokenDB(testDBConfig.RedisAddrs, testDBConfig.RedisPassword)
 	if err != nil {
 		b.Error(err)
 	}
@@ -281,12 +281,12 @@ func Benchmark05DBR10set(b *testing.B) {
 
 func Benchmark05DBR00del(b *testing.B) {
 	var err error
-	testDBConfig, err = readConfig("cnfr.json")
+	testDBConfig, err = readConfig()
 	if err != nil {
 		b.Error(err)
 	}
 
-	testDB, err = NewTokenDB(testDBConfig.ConnectOptions)
+	testDB, err = NewTokenDB(testDBConfig.RedisAddrs, testDBConfig.RedisPassword)
 	if err != nil {
 		b.Error(err)
 	}

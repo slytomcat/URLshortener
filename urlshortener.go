@@ -57,13 +57,13 @@ func doMain(configPath string) error {
 	flag.Parse()
 
 	// get the configuratin variables
-	config, err := readConfig(configPath)
+	config, err := readConfig()
 	if err != nil {
 		return fmt.Errorf("configuration read error: %w", err)
 	}
 
 	// initialize database connection
-	tokenDB, err := NewTokenDB(config.ConnectOptions)
+	tokenDB, err := NewTokenDB(config.RedisAddrs, config.RedisPassword)
 	if err != nil {
 		return fmt.Errorf("database interface creation error: %w", err)
 	}

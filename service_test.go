@@ -62,11 +62,11 @@ func Test10Serv05Start(t *testing.T) {
 	r, w, _ := os.Pipe()
 	log.SetOutput(w)
 
-	servTestConfig, err = readConfig("./cnfr.json")
+	servTestConfig, err = readConfig()
 	assert.NoError(t, err)
 
 	// initialize database connection
-	servTestDB, err = NewTokenDB(servTestConfig.ConnectOptions)
+	servTestDB, err = NewTokenDB(servTestConfig.RedisAddrs, servTestConfig.RedisPassword)
 	assert.NoError(t, err)
 
 	// create short token interface
@@ -332,10 +332,10 @@ func Test10Serv89InteruptService(t *testing.T) {
 // try tokens' duplicate
 func Test10Serv90Duble(t *testing.T) {
 
-	servTestConfig, err := readConfig("./cnfr.json")
+	servTestConfig, err := readConfig()
 	assert.NoError(t, err)
 
-	servTestDB, err := NewTokenDB(servTestConfig.ConnectOptions)
+	servTestDB, err := NewTokenDB(servTestConfig.RedisAddrs, servTestConfig.RedisPassword)
 	assert.NoError(t, err)
 
 	// create short token interface
@@ -375,7 +375,7 @@ func Test10Serv90Duble(t *testing.T) {
 
 func Test10Serv92BadDB(t *testing.T) {
 
-	servTestConfig, err := readConfig("./cnfr.json")
+	servTestConfig, err := readConfig()
 	assert.NoError(t, err)
 
 	servTestDB := newMockDB()

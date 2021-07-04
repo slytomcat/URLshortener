@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -16,23 +17,19 @@ import (
 func Test20Main00WrongConfig(t *testing.T) {
 	// use saveEnv from tools_test
 	defer saveEnv()()
-	os.Unsetenv("URLSHORTENER_ConnectOptions")
+	os.Unsetenv("URLSHORTENER_REDISADDRS")
 
 	err := doMain("/bad/path/to/config/file")
 
 	assert.Error(t, err)
-	assert.Equal(t, "configuration read error: mandatory configuration value ConnectOptions is not set", err.Error())
+	assert.Equal(t, "configuration read error: config error: required key URLSHORTENER_REDISADDRS missing value", err.Error())
 }
 
 // try to pass wrong path to config
 func Test20Main05WrongDB(t *testing.T) {
 	// use saveEnv from tools_test to save/restore the environment
 	defer saveEnv()()
-	os.Setenv("URLSHORTENER_ConnectOptions", `{"Addrs":["wrong.host:6379"]}`)
-	// save configFile and restore it in defer func
-	SaveConfigFile := configFile
-	configFile = "/bad/path/to/config/file"
-	defer func() { configFile = SaveConfigFile }()
+	os.Setenv("URLSHORTENER_REDISADDRS", "wrong.host:1234")
 	// defer the panic recovery and error handling
 	defer func() {
 		if err := recover(); err != nil {
@@ -82,7 +79,7 @@ func Test20Main20SuccessAndKill(t *testing.T) {
 	r, w, _ := os.Pipe()
 	log.SetOutput(w)
 
-	defer assert.Nil(t, recover())
+	godotenv.Load()
 	// run service
 	go main()
 
