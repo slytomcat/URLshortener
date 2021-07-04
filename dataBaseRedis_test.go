@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"errors"
 	"math/rand"
 	"strconv"
 	"sync"
@@ -50,39 +49,13 @@ func (m *mockDB) Close() error {
 	return m.closeFunc()
 }
 
-func testSet(sToken, longURL string, expiration int) (bool, error) {
-	if longURL == "http://localhost:8080/favicon.ico" {
-		return true, nil
-	}
-	return false, errors.New("test Set() error")
-}
-
-func testGet(sToken string) (string, error) {
-	if sToken == "Debug.Token" {
-		return "http://localhost:8080/favicon.ico", nil
-	}
-	return "", errors.New("test Get() error")
-}
-
-func testExpire(sToken string, expiration int) error {
-	return errors.New("test Expire() error")
-}
-
-func testDelete(sToken string) error {
-	return errors.New("test Delete() error")
-}
-
-func testClose() error {
-	return errors.New("test Close() error")
-}
-
-func newMockDB() TokenDB {
+func newMockDB() *mockDB {
 	return &mockDB{
-		setFunc:   testSet,
-		getFunc:   testGet,
-		expFunc:   testExpire,
-		delfunc:   testDelete,
-		closeFunc: testClose,
+		setFunc:   func(_, _ string, _ int) (bool, error) { return true, nil },
+		getFunc:   func(_ string) (string, error) { return "http://localhost:8080/favicon.ico", nil },
+		expFunc:   func(_ string, _ int) error { return nil },
+		delfunc:   func(_ string) error { return nil },
+		closeFunc: func() error { return nil },
 	}
 }
 
@@ -93,46 +66,7 @@ func Test05DBR01NewTokenDBError(t *testing.T) {
 	json.Unmarshal([]byte(`{"Addrs":["Wrong.Host:6379"]}`), &connect)
 
 	_, err := NewTokenDB([]string{"Wrong.Host:6379"}, "")
-	if err == nil {
-		t.Error("No error when expected")
-	}
-}
-
-// test new TokenDBR creation
-func Test05DBR10NewTokenDB(t *testing.T) {
-	var err error
-	godotenv.Load()
-
-	testDBConfig, err = readConfig()
-	assert.NoError(t, err)
-
-	testDB, err = NewTokenDB(testDBConfig.RedisAddrs, testDBConfig.RedisPassword)
-	assert.NoError(t, err)
-
-	testDB.Delete(testDBToken)
-}
-
-// try to add 2 same tokens
-func Test05DBR15OneTokenTwice(t *testing.T) {
-
-	testDB.Delete(testDBToken)
-
-	url := "https://golang.org/pkg/time/"
-	ok, err := testDB.Set(testDBToken, url, 1)
-	if err != nil || !ok {
-		t.Errorf("unexpected error: %s; Ok: %v", err, ok)
-	} else {
-		t.Logf("expected result: token for %s: %v\n", url, testDBToken)
-	}
-	ok, err = testDB.Set(testDBToken, url, 1)
-	if err != nil {
-		t.Errorf("unexpected error: %s; token: %s", err, testDBToken)
-	}
-	if ok {
-		t.Error("same token stored twice succesfily")
-	}
-	// clear
-	testDB.Delete(testDBToken)
+	assert.Error(t, err)
 }
 
 // concurrent goroutines tries to make new short URL in the same time with the same token (debugging)
@@ -150,24 +84,24 @@ func raceNewToken(db TokenDB, url string, t *testing.T) {
 		defer wg.Done()
 
 		time.Sleep(time.Duration(rand.Intn(42)) * time.Microsecond * 100)
-		t.Logf("%v Racer %d: Ready!\n", time.Now(), i)
+		//t.Logf("%v Racer %d: Ready!\n", time.Now(), i)
 		start.RLock()
 
 		ok, err := db.Set(testDBToken, url, 1)
 
 		if err != nil {
-			t.Logf("%v Racer %d: %v \n", time.Now(), i, err)
+			//t.Logf("%v Racer %d: %v \n", time.Now(), i, err)
 			atomic.AddInt64(&fail, 1)
 			return
 		}
 
 		if !ok {
-			t.Logf("%v Racer %d: %v \n", time.Now(), i, "dubicate detected")
+			//t.Logf("%v Racer %d: %v \n", time.Now(), i, "dubicate detected")
 			atomic.AddInt64(&fail, 1)
 			return
 		}
 
-		t.Logf("%v Racer %d: Token for %s: %v\n", time.Now(), i, url, testDBToken)
+		//t.Logf("%v Racer %d: Token for %s: %v\n", time.Now(), i, url, testDBToken)
 		atomic.AddInt64(&succes, 1)
 	}
 
@@ -175,10 +109,10 @@ func raceNewToken(db TokenDB, url string, t *testing.T) {
 		wg.Add(1)
 		go racer(i)
 	}
-	t.Logf("%v Ready?\n", time.Now())
+	//t.Logf("%v Ready?\n", time.Now())
 	time.Sleep(time.Second * 2)
 	start.Unlock()
-	t.Logf("%v Go!!!\n", time.Now())
+	//t.Logf("%v Go!!!\n", time.Now())
 	wg.Wait()
 
 	if succes != 1 || fail != cnt-1 {
@@ -186,77 +120,70 @@ func raceNewToken(db TokenDB, url string, t *testing.T) {
 	}
 }
 
-// try to insert new token from concurrent goroutines
-func Test05DBR20NewTokenRace(t *testing.T) {
-	raceNewToken(testDB, "https://golang.org", t)
-}
+// test new TokenDBR creation
+func Test05DBR10All(t *testing.T) {
 
-// try to make token expired
-func Test05DBR25ExpireToken(t *testing.T) {
-	err := testDB.Expire(testDBToken, -1)
-	if err != nil {
-		t.Error(err)
-	}
-}
+	godotenv.Load()
 
-// try to update expired token from several concurrent goroutines
-func Test05DBR30OneMoreTokenRace(t *testing.T) {
-	raceNewToken(testDB, "https://golang.org/pkg/time/error", t)
-}
+	testDBConfig, err := readConfig()
+	assert.NoError(t, err)
 
-// try to receive long URL by token
-func Test05DBR35GetToken(t *testing.T) {
+	testDB, err = NewTokenDB(testDBConfig.RedisAddrs, testDBConfig.RedisPassword)
+	assert.NoError(t, err)
 
-	lURL, err := testDB.Get(testDBToken)
-	if err != nil {
-		t.Error(err)
-	}
-	t.Logf("URL for token %s: %s\n", testDBToken, lURL)
-}
+	testDB.Delete(testDBToken)
+	defer testDB.Delete(testDBToken)
 
-// try to delete token
-func Test05DBR40DelToken(t *testing.T) {
+	t.Run("store 2 equal tokens: fail", func(t *testing.T) {
 
-	err := testDB.Delete(testDBToken)
-	if err != nil {
-		t.Error(err)
-	}
+		url := "https://golang.org/pkg/time/"
+		ok, err := testDB.Set(testDBToken, url, 1)
+		assert.NoError(t, err)
 
-	_, err = testDB.Get(testDBToken)
-	if err == nil {
-		t.Error("no error when expected")
-	}
-}
+		ok, err = testDB.Set(testDBToken, url, 1)
+		assert.NoError(t, err)
+		assert.False(t, ok)
+		// clear
+		testDB.Delete(testDBToken)
+	})
 
-// try to expire non existing token
-func Test05DBR45ExpNonExisting(t *testing.T) {
-	err := testDB.Expire(testDBToken+"$", -1)
-	if err == nil {
-		t.Error("no error when expected")
-	}
-}
+	t.Run("detect race on token store: success", func(t *testing.T) {
+		raceNewToken(testDB, "https://golang.org", t)
+		assert.NoError(t, testDB.Expire(testDBToken, -1))
+	})
 
-// try to delete non existing token
-func Test05DBR50DelNonExisting(t *testing.T) {
-	err := testDB.Delete(testDBToken + "$")
-	if err == nil {
-		t.Error("no error when expected")
-	}
-}
+	t.Run("one more time: success", func(t *testing.T) {
+		raceNewToken(testDB, "https://golang.org/pkg/time/error", t)
+	})
 
-// try to get non existing token
-func Test05DBR55GetNonExisting(t *testing.T) {
-	_, err := testDB.Get(testDBToken + "$")
-	if err == nil {
-		t.Error("no error when expected")
-	}
-}
+	t.Run("get: success", func(t *testing.T) {
 
-// try to close connection
-func Test05DBR65Close(t *testing.T) {
-	if err := testDB.Close(); err != nil {
-		t.Errorf("error DB connection closing: %v", err)
-	}
+		lURL, err := testDB.Get(testDBToken)
+		assert.NoError(t, err)
+		assert.NotEmpty(t, lURL)
+	})
+	t.Run("del: success", func(t *testing.T) {
+
+		assert.NoError(t, testDB.Delete(testDBToken))
+
+		_, err := testDB.Get(testDBToken)
+		assert.Error(t, err)
+	})
+
+	t.Run("expire non existing token", func(t *testing.T) {
+		assert.Error(t, testDB.Expire(testDBToken+"$", -1))
+	})
+	t.Run("delete non existing token", func(t *testing.T) {
+		assert.Error(t, testDB.Delete(testDBToken+"$"))
+	})
+	t.Run("get non existing token", func(t *testing.T) {
+		_, err := testDB.Get(testDBToken + "$")
+		assert.Error(t, err)
+	})
+
+	t.Run("close db: success", func(t *testing.T) {
+		assert.NoError(t, testDB.Close())
+	})
 }
 
 func Benchmark05DBR10set(b *testing.B) {

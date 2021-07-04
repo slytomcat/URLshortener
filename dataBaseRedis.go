@@ -87,7 +87,7 @@ func (t *tokenDBR) Delete(sToken string) error {
 func (t *tokenDBR) Close() error {
 	_, err := t.db.BgSave().Result()
 	if err != nil {
-		log.Printf("BGSave error: %v", err)
+		log.Printf("BgSave error: %v", err)
 	}
 	return t.db.Close()
 }

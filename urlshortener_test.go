@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"io"
 	"log"
@@ -53,6 +54,7 @@ func Test20Main07WrongDB2(t *testing.T) {
 		TokenLength:    6,
 	}
 	errDb := newMockDB()
+	errDb.setFunc = func(string, string, int) (bool, error) { return false, errors.New("some error") }
 	err := stratService(&conf, errDb)
 	assert.Error(t, err)
 	assert.Equal(t, "http: Server closed", err.Error())

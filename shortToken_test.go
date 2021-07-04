@@ -10,8 +10,8 @@ type shortTokenD struct {
 	length int
 }
 
-// NewShortTokenD returns the shortToken interface that always returns the same token
-func NewShortTokenD(length int) ShortToken {
+// mockShortToken returns the shortToken interface that always returns the same token
+func mockShortToken(length int) ShortToken {
 	return &shortTokenD{length}
 }
 
@@ -25,7 +25,7 @@ func (s shortTokenD) Check(_ string) error {
 
 // try to create new token from debugging source
 func Test00ST05NewShortTokenFake(t *testing.T) {
-	st := NewShortTokenD(6)
+	st := mockShortToken(6)
 
 	DEBUGToken := strings.Repeat("_", 6)
 	tc := st.Get()

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"io"
 	"log"
 	"net/http"
@@ -9,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -19,7 +21,7 @@ var (
 )
 
 // try to start service with not working db
-func Test10Serv03Start(t *testing.T) {
+func Test10Serv03CheckHealthCheck(t *testing.T) {
 	conf := Config{
 		ListenHostPort: "localhost:8080",
 		ShortDomain:    "localhost:8080",
@@ -40,7 +42,59 @@ func Test10Serv03Start(t *testing.T) {
 	resp, err := http.Get("http://localhost:8080/")
 	assert.NoError(t, err)
 	defer resp.Body.Close()
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
+	conf.Mode = disableExpire
+
+	resp, err = http.Get("http://localhost:8080/")
+	assert.NoError(t, err)
+	defer resp.Body.Close()
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+	conf.Mode = 0
+	errDb.expFunc = func(string, int) error { return errors.New("some error") }
+
+	resp, err = http.Get("http://localhost:8080/")
+	assert.NoError(t, err)
+	defer resp.Body.Close()
+	assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
+
+	conf.Mode = disableExpire
+
+	resp, err = http.Get("http://localhost:8080/")
+	assert.NoError(t, err)
+	defer resp.Body.Close()
+	assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
+
+	conf.Mode = disableShortener | disableRedirect
+	errDb.getFunc = func(s string) (string, error) { return "wrongURL", nil }
+
+	resp, err = http.Get("http://localhost:8080/")
+	assert.NoError(t, err)
+	defer resp.Body.Close()
+	assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
+
+	conf.Mode = 0
+	errDb.getFunc = func(string) (string, error) { return "", errors.New("some error") }
+
+	resp, err = http.Get("http://localhost:8080/")
+	assert.NoError(t, err)
+	defer resp.Body.Close()
+	assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
+
+	conf.Mode = disableRedirect
+
+	resp, err = http.Get("http://localhost:8080/")
+	assert.NoError(t, err)
+	defer resp.Body.Close()
+	assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
+
+	conf.Mode = 0
+	errDb.setFunc = func(string, string, int) (bool, error) { return false, nil }
+
+	resp, err = http.Get("http://localhost:8080/")
+	assert.NoError(t, err)
+	defer resp.Body.Close()
 	assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
 
 	conf.Mode = disableShortener
@@ -48,289 +102,259 @@ func Test10Serv03Start(t *testing.T) {
 	resp, err = http.Get("http://localhost:8080/")
 	assert.NoError(t, err)
 	defer resp.Body.Close()
-
 	assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
 
-	go testHandler.stop()
+	errDb.closeFunc = func() error { return errors.New("some error") }
+
+	testHandler.stop()
 
 }
 
 // try to start service
-func Test10Serv05Start(t *testing.T) {
-	var err error
-	logger := log.Writer()
-	r, w, _ := os.Pipe()
-	log.SetOutput(w)
+func Test10Serv05All(t *testing.T) {
 
-	servTestConfig, err = readConfig()
+	godotenv.Load()
+
+	servTestConfig, err := readConfig()
 	assert.NoError(t, err)
 
 	// initialize database connection
 	servTestDB, err = NewTokenDB(servTestConfig.RedisAddrs, servTestConfig.RedisPassword)
 	assert.NoError(t, err)
 
-	// create short token interface
-	sToken := NewShortToken(servTestConfig.TokenLength)
-
 	// create service handler
-	servTestHandler = NewHandler(servTestConfig, servTestDB, sToken)
+	servTestHandler = NewHandler(servTestConfig, servTestDB, NewShortToken(servTestConfig.TokenLength))
+
 	assert.NoError(t, err)
+	logger := log.Writer()
+	r, w, _ := os.Pipe()
+	log.SetOutput(w)
 
 	go func() {
 		log.Println(servTestHandler.start())
 	}()
 
+	time.Sleep(3 * time.Second)
 	w.Close()
 	log.SetOutput(logger)
 	buf, err := io.ReadAll(r)
 	assert.NoError(t, err)
+	assert.Contains(t, string(buf), "starting server at")
+
+	t.Run("do health check", func(t *testing.T) {
+		resp, err := http.Get("http://" + servTestConfig.ListenHostPort)
+		assert.NoError(t, err)
+		defer resp.Body.Close()
+
+		assert.Equal(t, http.StatusOK, resp.StatusCode)
+		buf, err := io.ReadAll(resp.Body)
+		assert.NoError(t, err)
+		assert.Contains(t, string(buf), "Home page of URLshortener")
+	})
+
+	t.Run("bad method", func(t *testing.T) {
+		resp, err := http.Head("http://" + servTestConfig.ListenHostPort)
+		assert.NoError(t, err)
+		defer resp.Body.Close()
+		assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+	})
+
+	t.Run("short URL query with empty request body", func(t *testing.T) {
+		resp, err := http.Post("http://"+servTestConfig.ListenHostPort+"/api/v1/token", "application/json",
+			strings.NewReader(``))
+		assert.NoError(t, err)
+		defer resp.Body.Close()
+
+		assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+	})
+
+	t.Run("short URL request with empty JSON", func(t *testing.T) {
+		resp, err := http.Post("http://"+servTestConfig.ListenHostPort+"/api/v1/token", "application/json",
+			strings.NewReader(`{}`))
+		assert.NoError(t, err)
+		defer resp.Body.Close()
+
+		assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+	})
+
+	t.Run("short URL request without expiration", func(t *testing.T) {
+		resp, err := http.Post("http://"+servTestConfig.ListenHostPort+"/api/v1/token", "application/json",
+			strings.NewReader(`{"url": "http://`+servTestConfig.ShortDomain+`"}`))
+		assert.NoError(t, err)
+		defer resp.Body.Close()
+		assert.Equal(t, http.StatusOK, resp.StatusCode)
+	})
+
+	t.Run("expire request without parameters", func(t *testing.T) {
+		resp, err := http.Post("http://"+servTestConfig.ListenHostPort+"/api/v1/expire", "application/json",
+			strings.NewReader(``))
+		assert.NoError(t, err)
+		defer resp.Body.Close()
+
+		assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+	})
+
+	t.Run("expire request with empty JSON", func(t *testing.T) {
+		resp, err := http.Post("http://"+servTestConfig.ListenHostPort+"/api/v1/expire", "application/json",
+			strings.NewReader(`{}`))
+		assert.NoError(t, err)
+		defer resp.Body.Close()
+
+		assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+	})
+
+	t.Run("expire request for not existing token", func(t *testing.T) {
+		resp, err := http.Post("http://"+servTestConfig.ListenHostPort+"/api/v1/expire", "application/json",
+			strings.NewReader(`{"token":"`+strings.Repeat("(", servTestConfig.TokenLength)+`"}`)) // use non Base64 symbols
+		assert.NoError(t, err)
+		defer resp.Body.Close()
+
+		assert.Equal(t, http.StatusNotModified, resp.StatusCode)
+	})
+
+	t.Run("redirect request with wrong token (wrong length)", func(t *testing.T) {
+		resp, err := http.Get("http://" + servTestConfig.ListenHostPort + "/not+existing+token")
+		assert.NoError(t, err)
+		defer resp.Body.Close()
+
+		assert.Equal(t, http.StatusNotFound, resp.StatusCode)
+	})
+
+	t.Run("redirect request with wrong token (wrong symbols)", func(t *testing.T) {
+		resp, err := http.Get("http://" + servTestConfig.ListenHostPort + "/" + strings.Repeat("(", servTestConfig.TokenLength))
+		assert.NoError(t, err)
+		defer resp.Body.Close()
+
+		assert.Equal(t, http.StatusNotFound, resp.StatusCode)
+	})
+
+	t.Run("redirect request with wrong token (correct lenght&symbols)", func(t *testing.T) {
+		resp, err := http.Get("http://" + servTestConfig.ListenHostPort + "/" + strings.Repeat("A", servTestConfig.TokenLength))
+		assert.NoError(t, err)
+		defer resp.Body.Close()
+
+		assert.Equal(t, http.StatusNotFound, resp.StatusCode)
+	})
+
+	t.Run("unsupported request in mode = disableRedirect", func(t *testing.T) {
+		servTestConfig.Mode = disableRedirect
+
+		resp, err := http.Get("http://" + servTestConfig.ListenHostPort + "/" + strings.Repeat("_", servTestConfig.TokenLength))
+		assert.NoError(t, err)
+		defer resp.Body.Close()
 
-	assert.Contains(t, "starting server at", string(buf))
-}
-
-// test health check
-func Test10Serv10Home(t *testing.T) {
-	resp, err := http.Get("http://" + servTestConfig.ListenHostPort)
-	assert.NoError(t, err)
-	defer resp.Body.Close()
-
-	assert.Equal(t, http.StatusOK, resp.StatusCode)
-
-	buf, err := io.ReadAll(resp.Body)
-	assert.NoError(t, err)
-
-	assert.Contains(t, string(buf), "Home page of URLshortener")
-}
-
-// test bad method
-func Test10Serv13BadMethod(t *testing.T) {
-	resp, err := http.Head("http://" + servTestConfig.ListenHostPort)
-	assert.NoError(t, err)
-	defer resp.Body.Close()
-	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
-}
-
-// test request for short URL with empty request body
-func Test10Serv15BadTokenRequest(t *testing.T) {
-	resp, err := http.Post("http://"+servTestConfig.ListenHostPort+"/api/v1/token", "application/json",
-		strings.NewReader(``))
-	assert.NoError(t, err)
-	defer resp.Body.Close()
+		assert.Equal(t, http.StatusNotFound, resp.StatusCode)
+	})
 
-	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
-}
+	t.Run("unsupported request in mode = disableShortener", func(t *testing.T) {
+		servTestConfig.Mode = disableShortener
 
-// test request for short URL with empty JSON
-func Test10Serv20BadTokenRequest2(t *testing.T) {
-	resp, err := http.Post("http://"+servTestConfig.ListenHostPort+"/api/v1/token", "application/json",
-		strings.NewReader(`{}`))
-	assert.NoError(t, err)
-	defer resp.Body.Close()
+		resp, err := http.Post("http://"+servTestConfig.ListenHostPort+"/api/v1/token", "application/json",
+			strings.NewReader(`{"url": "http://someother.url"}`))
+		assert.NoError(t, err)
+		defer resp.Body.Close()
 
-	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
-}
+		assert.Equal(t, http.StatusNotFound, resp.StatusCode)
+	})
 
-//test request for short URL without expiration in request
-func Test10Serv25GetTokenWOexp(t *testing.T) {
+	t.Run("unsupported request in mode = disableExpire", func(t *testing.T) {
+		servTestConfig.Mode = disableExpire
 
-	resp, err := http.Post("http://"+servTestConfig.ListenHostPort+"/api/v1/token", "application/json",
-		strings.NewReader(`{"url": "http://`+servTestConfig.ShortDomain+`"}`))
-	assert.NoError(t, err)
-	defer resp.Body.Close()
-	assert.Equal(t, http.StatusOK, resp.StatusCode)
-}
+		resp, err := http.Post("http://"+servTestConfig.ListenHostPort+"/api/v1/expire", "application/json",
+			strings.NewReader(`{"token": "`+strings.Repeat("_", servTestConfig.TokenLength)+`","exp":-1}`))
+		assert.NoError(t, err)
+		defer resp.Body.Close()
 
-// request expire without parameters
-func Test10Serv30ExpireTokenWObody(t *testing.T) {
+		assert.Equal(t, http.StatusNotFound, resp.StatusCode)
+	})
 
-	resp, err := http.Post("http://"+servTestConfig.ListenHostPort+"/api/v1/expire", "application/json",
-		strings.NewReader(``))
-	assert.NoError(t, err)
-	defer resp.Body.Close()
+	t.Run("health check in service mode disableRedirect", func(t *testing.T) {
+		servTestConfig.Mode = disableRedirect
 
-	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
-}
+		resp, err := http.Get("http://" + servTestConfig.ListenHostPort)
+		assert.NoError(t, err)
+		defer resp.Body.Close()
 
-// request expire with empty JSON
-func Test10Serv35ExpireTokenWOparams(t *testing.T) {
+		assert.Equal(t, http.StatusOK, resp.StatusCode)
+		time.Sleep(time.Second)
+	})
 
-	resp, err := http.Post("http://"+servTestConfig.ListenHostPort+"/api/v1/expire", "application/json",
-		strings.NewReader(`{}`))
-	assert.NoError(t, err)
-	defer resp.Body.Close()
+	t.Run("health check in service mode disableShortener", func(t *testing.T) {
+		servTestConfig.Mode = disableShortener
 
-	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
-}
+		resp, err := http.Get("http://" + servTestConfig.ListenHostPort)
+		assert.NoError(t, err)
+		defer resp.Body.Close()
 
-// request expire for not existing token
-func Test10Serv40ExpireNotExistingToken(t *testing.T) {
+		assert.Equal(t, http.StatusOK, resp.StatusCode)
+		time.Sleep(time.Second)
+	})
 
-	resp, err := http.Post("http://"+servTestConfig.ListenHostPort+"/api/v1/expire", "application/json",
-		strings.NewReader(`{"token":"`+strings.Repeat("(", servTestConfig.TokenLength)+`"}`)) // use non Base64 symbols
-	assert.NoError(t, err)
-	defer resp.Body.Close()
+	t.Run("health check in service mode disableExpire", func(t *testing.T) {
+		servTestConfig.Mode = disableExpire
 
-	assert.Equal(t, http.StatusNotModified, resp.StatusCode)
-}
+		resp, err := http.Get("http://" + servTestConfig.ListenHostPort)
+		assert.NoError(t, err)
+		defer resp.Body.Close()
 
-// test redirect with wrong token (wrong lenght and wrong symbols)
-func Test10Serv45RedirectTo404(t *testing.T) {
-	resp, err := http.Get("http://" + servTestConfig.ListenHostPort + "/not+existing+token")
-	assert.NoError(t, err)
-	defer resp.Body.Close()
+		assert.Equal(t, http.StatusOK, resp.StatusCode)
+		time.Sleep(time.Second)
+	})
 
-	assert.Equal(t, http.StatusNotFound, resp.StatusCode)
-}
+	t.Run("generate UI interface", func(t *testing.T) {
+		resp, err := http.Get("http://" + servTestConfig.ListenHostPort + "/ui/generate")
+		assert.NoError(t, err)
+		defer resp.Body.Close()
 
-// test redirect with wrong token (correct lenght and wrong symbols)
-func Test10Serv50RedirectTo404(t *testing.T) {
-	resp, err := http.Get("http://" + servTestConfig.ListenHostPort + "/" + strings.Repeat("(", servTestConfig.TokenLength))
-	assert.NoError(t, err)
-	defer resp.Body.Close()
+		assert.Equal(t, http.StatusOK, resp.StatusCode)
 
-	assert.Equal(t, http.StatusNotFound, resp.StatusCode)
-}
+		buf, err := io.ReadAll(resp.Body)
+		assert.NoError(t, err)
 
-// test redirect with wrong token (correct lenght and correct symbols)
-func Test10Serv53RedirectTo404(t *testing.T) {
-	resp, err := http.Get("http://" + servTestConfig.ListenHostPort + "/" + strings.Repeat("A", servTestConfig.TokenLength))
-	assert.NoError(t, err)
-	defer resp.Body.Close()
+		assert.Contains(t, string(buf), "URL to be shortened")
+	})
 
-	assert.Equal(t, http.StatusNotFound, resp.StatusCode)
-}
+	t.Run("generate UI interface with QR", func(t *testing.T) {
+		resp, err := http.Get("http://" + servTestConfig.ListenHostPort + "/ui/generate?s=http:/some.url")
+		assert.NoError(t, err)
+		defer resp.Body.Close()
 
-// try unsupported request in mode = disableRedirect
-func Test10Serv55ServiceModeDisableRedirect(t *testing.T) {
+		assert.Equal(t, http.StatusOK, resp.StatusCode)
 
-	servTestConfig.Mode = disableRedirect
+		buf, err := io.ReadAll(resp.Body)
+		assert.NoError(t, err)
+		assert.Contains(t, string(buf), "Short URL:")
+	})
 
-	resp, err := http.Get("http://" + servTestConfig.ListenHostPort + "/" + strings.Repeat("_", servTestConfig.TokenLength))
-	assert.NoError(t, err)
-	defer resp.Body.Close()
+	t.Run("generate UI interface disabled", func(t *testing.T) {
+		servTestConfig.Mode = disableUI
+		resp, err := http.Get("http://" + servTestConfig.ListenHostPort + "/ui/generate?s=http:/some.url")
+		assert.NoError(t, err)
+		defer resp.Body.Close()
 
-	assert.Equal(t, http.StatusNotFound, resp.StatusCode)
-}
+		assert.Equal(t, http.StatusNotFound, resp.StatusCode)
+	})
 
-// try unsupported request in mode = disableShortener
-func Test10Serv60ServiceModeDisableShortener(t *testing.T) {
+	t.Run("stop service", func(t *testing.T) {
+		logger := log.Writer()
+		r, w, _ := os.Pipe()
+		log.SetOutput(w)
 
-	servTestConfig.Mode = disableShortener
+		servTestHandler.stop()
+		time.Sleep(time.Second)
 
-	resp, err := http.Post("http://"+servTestConfig.ListenHostPort+"/api/v1/token", "application/json",
-		strings.NewReader(`{"url": "http://someother.url"}`))
-	assert.NoError(t, err)
-	defer resp.Body.Close()
+		w.Close()
+		log.SetOutput(logger)
+		buf, err := io.ReadAll(r)
+		assert.NoError(t, err)
 
-	assert.Equal(t, http.StatusNotFound, resp.StatusCode)
-}
-
-// try unsupported request in mode = disableExpire
-func Test10Serv65ServiceModeDisableExpire(t *testing.T) {
-
-	servTestConfig.Mode = disableExpire
-
-	resp, err := http.Post("http://"+servTestConfig.ListenHostPort+"/api/v1/expire", "application/json",
-		strings.NewReader(`{"token": "`+strings.Repeat("_", servTestConfig.TokenLength)+`","exp":-1}`))
-	assert.NoError(t, err)
-	defer resp.Body.Close()
-
-	assert.Equal(t, http.StatusNotFound, resp.StatusCode)
-}
-
-// try health check in service mode disableRedirect
-func Test10Serv70HealthCheckModeDisableRedirect(t *testing.T) {
-
-	servTestConfig.Mode = disableRedirect
-
-	resp, err := http.Get("http://" + servTestConfig.ListenHostPort)
-	assert.NoError(t, err)
-	defer resp.Body.Close()
-
-	assert.Equal(t, http.StatusOK, resp.StatusCode)
-	time.Sleep(time.Second)
-}
-
-// try health check in service mode disableShortener
-func Test10Serv75HealthCheckModeDisableShortener(t *testing.T) {
-
-	servTestConfig.Mode = disableShortener
-
-	resp, err := http.Get("http://" + servTestConfig.ListenHostPort)
-	assert.NoError(t, err)
-	defer resp.Body.Close()
-
-	assert.Equal(t, http.StatusOK, resp.StatusCode)
-	time.Sleep(time.Second)
-}
-
-// try health check in service mode disableExpire
-func Test10Serv77HealthCheckModeDisableExpire(t *testing.T) {
-
-	servTestConfig.Mode = disableExpire
-
-	resp, err := http.Get("http://" + servTestConfig.ListenHostPort)
-	assert.NoError(t, err)
-	defer resp.Body.Close()
-
-	assert.Equal(t, http.StatusOK, resp.StatusCode)
-	time.Sleep(time.Second)
-}
-
-// test generate UI interface
-func Test10Serv80genUI(t *testing.T) {
-	resp, err := http.Get("http://" + servTestConfig.ListenHostPort + "/ui/generate")
-	assert.NoError(t, err)
-	defer resp.Body.Close()
-
-	assert.Equal(t, http.StatusOK, resp.StatusCode)
-
-	buf, err := io.ReadAll(resp.Body)
-	assert.NoError(t, err)
-
-	assert.Contains(t, string(buf), "URL to be shortened")
-}
-
-// test generate UI interface
-func Test10Serv83genUIwp(t *testing.T) {
-	resp, err := http.Get("http://" + servTestConfig.ListenHostPort + "/ui/generate?s=http:/some.url")
-	assert.NoError(t, err)
-	defer resp.Body.Close()
-
-	assert.Equal(t, http.StatusOK, resp.StatusCode)
-
-	buf, err := io.ReadAll(resp.Body)
-	assert.NoError(t, err)
-	assert.Contains(t, string(buf), "Short URL:")
-}
-
-func Test10Serv85genUIdisabled(t *testing.T) {
-	servTestConfig.Mode = disableUI
-	resp, err := http.Get("http://" + servTestConfig.ListenHostPort + "/ui/generate?s=http:/some.url")
-	assert.NoError(t, err)
-	defer resp.Body.Close()
-
-	assert.Equal(t, http.StatusNotFound, resp.StatusCode)
-}
-
-// try to stop service
-func Test10Serv89InteruptService(t *testing.T) {
-	// logger := log.Writer()
-	// r, w, _ := os.Pipe()
-	// log.SetOutput(w)
-
-	servTestHandler.stop()
-
-	// w.Close()
-	// log.SetOutput(logger)
-	// buf, err := io.ReadAll(r)
-	// assert.NoError(t, err)
-
-	//assert.Contains(t, string(buf), "http: Server closed")
+		assert.Contains(t, string(buf), "http: Server closed")
+	})
 }
 
 // try tokens' duplicate
 func Test10Serv90Duble(t *testing.T) {
+	godotenv.Load()
 
 	servTestConfig, err := readConfig()
 	assert.NoError(t, err)
@@ -339,13 +363,12 @@ func Test10Serv90Duble(t *testing.T) {
 	assert.NoError(t, err)
 
 	// create short token interface
-	sToken := NewShortTokenD(servTestConfig.TokenLength)
+	sToken := mockShortToken(servTestConfig.TokenLength)
 
 	// create service handler
 	servTestHandler = NewHandler(servTestConfig, servTestDB, sToken)
 
-	token := sToken.Get()
-	servTestDB.Delete(token)
+	servTestDB.Delete(sToken.Get())
 
 	go func() {
 		log.Println(servTestHandler.start())
@@ -367,18 +390,19 @@ func Test10Serv90Duble(t *testing.T) {
 	resp.Body.Close()
 	assert.Equal(t, http.StatusRequestTimeout, resp2.StatusCode)
 
-	token = sToken.Get()
-	servTestDB.Delete(token)
+	servTestDB.Delete(sToken.Get())
 
 	servTestHandler.stop()
 }
 
 func Test10Serv92BadDB(t *testing.T) {
 
+	godotenv.Load()
 	servTestConfig, err := readConfig()
 	assert.NoError(t, err)
 
 	servTestDB := newMockDB()
+	servTestDB.setFunc = func(string, string, int) (bool, error) { return false, errors.New("some error") }
 
 	// create short token interface
 	sToken := NewShortToken(5)
