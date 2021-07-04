@@ -1,4 +1,4 @@
-cnf*.json
 URLshortener
 URLshortener-amd64
 .vscode
+.env

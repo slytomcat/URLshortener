@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"errors"
 	"io"
 	"log"
@@ -11,22 +10,18 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-redis/redis/v7"
+	"github.com/joho/godotenv"
+	"github.com/stretchr/testify/assert"
 )
 
 var (
 	servTestConfig  *Config
 	servTestDB      TokenDB
 	servTestHandler ServiceHandler
-	servTestexit    chan bool = make(chan bool)
 )
 
 // try to start service with not working db
-func Test10Serv03Start(t *testing.T) {
-	logger := log.Writer()
-	r, w, _ := os.Pipe()
-	log.SetOutput(w)
-
+func Test10Serv03CheckHealthCheck(t *testing.T) {
 	conf := Config{
 		ListenHostPort: "localhost:8080",
 		ShortDomain:    "localhost:8080",
@@ -34,472 +29,346 @@ func Test10Serv03Start(t *testing.T) {
 		TokenLength:    6,
 	}
 
-	errDb, _ := testDBNewTokenDB(redis.UniversalOptions{})
-	testHandler := NewHandler(&conf, errDb, NewShortToken(5), servTestexit)
+	errDb := newMockDB()
+
+	testHandler := NewHandler(&conf, errDb, NewShortToken(5))
 
 	go func() {
-		log.Println(testHandler.start())
+		assert.Error(t, testHandler.start())
 	}()
 
-	select {
-	case <-servTestexit:
-		t.Error("servise starting error")
-	case <-time.After(time.Second * 3):
-		break
-	}
-
-	w.Close()
-	log.SetOutput(logger)
-	buf, err := io.ReadAll(r)
-	if err != nil {
-		t.Error(err)
-	}
-	if !bytes.Contains(buf, []byte("starting server at")) {
-		t.Errorf("received unexpected output: %s", buf)
-	}
-	log.Printf("%s", buf)
+	time.Sleep(time.Second)
 
 	resp, err := http.Get("http://localhost:8080/")
-	if err != nil {
-		t.Errorf("health-check request error: %v", err)
-	}
+	assert.NoError(t, err)
 	defer resp.Body.Close()
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
-	if resp.StatusCode != http.StatusInternalServerError {
-		t.Errorf("unexpected response status: %d", resp.StatusCode)
-	}
+	conf.Mode = disableExpire
+
+	resp, err = http.Get("http://localhost:8080/")
+	assert.NoError(t, err)
+	defer resp.Body.Close()
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+	conf.Mode = 0
+	errDb.expFunc = func(string, int) error { return errors.New("some error") }
+
+	resp, err = http.Get("http://localhost:8080/")
+	assert.NoError(t, err)
+	defer resp.Body.Close()
+	assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
+
+	conf.Mode = disableExpire
+
+	resp, err = http.Get("http://localhost:8080/")
+	assert.NoError(t, err)
+	defer resp.Body.Close()
+	assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
+
+	conf.Mode = disableShortener | disableRedirect
+	errDb.getFunc = func(s string) (string, error) { return "wrongURL", nil }
+
+	resp, err = http.Get("http://localhost:8080/")
+	assert.NoError(t, err)
+	defer resp.Body.Close()
+	assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
+
+	conf.Mode = 0
+	errDb.getFunc = func(string) (string, error) { return "", errors.New("some error") }
+
+	resp, err = http.Get("http://localhost:8080/")
+	assert.NoError(t, err)
+	defer resp.Body.Close()
+	assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
+
+	conf.Mode = disableRedirect
+
+	resp, err = http.Get("http://localhost:8080/")
+	assert.NoError(t, err)
+	defer resp.Body.Close()
+	assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
+
+	conf.Mode = 0
+	errDb.setFunc = func(string, string, int) (bool, error) { return false, nil }
+
+	resp, err = http.Get("http://localhost:8080/")
+	assert.NoError(t, err)
+	defer resp.Body.Close()
+	assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
 
 	conf.Mode = disableShortener
 
 	resp, err = http.Get("http://localhost:8080/")
-	if err != nil {
-		t.Errorf("health-check request error: %v", err)
-	}
+	assert.NoError(t, err)
 	defer resp.Body.Close()
+	assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
 
-	if resp.StatusCode != http.StatusInternalServerError {
-		t.Errorf("unexpected response status: %d", resp.StatusCode)
-	}
+	errDb.closeFunc = func() error { return errors.New("some error") }
 
-	go testHandler.stop()
-
-	<-servTestexit
+	testHandler.stop()
 
 }
 
 // try to start service
-func Test10Serv05Start(t *testing.T) {
-	var err error
+func Test10Serv05All(t *testing.T) {
+
+	godotenv.Load()
+
+	servTestConfig, err := readConfig()
+	assert.NoError(t, err)
+
+	// initialize database connection
+	servTestDB, err = NewTokenDB(servTestConfig.RedisAddrs, servTestConfig.RedisPassword)
+	assert.NoError(t, err)
+
+	// create service handler
+	servTestHandler = NewHandler(servTestConfig, servTestDB, NewShortToken(servTestConfig.TokenLength))
+
+	assert.NoError(t, err)
 	logger := log.Writer()
 	r, w, _ := os.Pipe()
 	log.SetOutput(w)
-
-	servTestConfig, err = readConfig("./cnfr.json")
-	if err != nil {
-		t.Fatalf("configuration read error: %v", err)
-	}
-
-	// initialize database connection
-	servTestDB, err = NewTokenDB(servTestConfig.ConnectOptions)
-	if err != nil {
-		t.Fatalf("error database interface creation: %v", err)
-	}
-
-	// create short token interface
-	sToken := NewShortToken(servTestConfig.TokenLength)
-
-	// create service handler
-	servTestHandler = NewHandler(servTestConfig, servTestDB, sToken, servTestexit)
-	if err != nil {
-		t.Errorf("servece creation error: %v", err)
-	}
 
 	go func() {
 		log.Println(servTestHandler.start())
 	}()
 
-	select {
-	case <-servTestexit:
-		t.Error("servise starting error")
-	case <-time.After(time.Second * 3):
-		break
-	}
-
+	time.Sleep(3 * time.Second)
 	w.Close()
 	log.SetOutput(logger)
 	buf, err := io.ReadAll(r)
-	if err != nil {
-		t.Error(err)
-	}
-	if !bytes.Contains(buf, []byte("starting server at")) {
-		t.Errorf("received unexpected output: %s", buf)
-	}
-	log.Printf("%s", buf)
-}
+	assert.NoError(t, err)
+	assert.Contains(t, string(buf), "starting server at")
 
-// test health check
-func Test10Serv10Home(t *testing.T) {
-	resp, err := http.Get("http://" + servTestConfig.ListenHostPort)
-	if err != nil {
-		t.Errorf("health check request error: %v", err)
-	}
-	defer resp.Body.Close()
+	t.Run("do health check", func(t *testing.T) {
+		resp, err := http.Get("http://" + servTestConfig.ListenHostPort)
+		assert.NoError(t, err)
+		defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		t.Errorf("unexpected response status: %d", resp.StatusCode)
-	}
+		assert.Equal(t, http.StatusOK, resp.StatusCode)
+		buf, err := io.ReadAll(resp.Body)
+		assert.NoError(t, err)
+		assert.Contains(t, string(buf), "Home page of URLshortener")
+	})
 
-	buf, err := io.ReadAll(resp.Body)
-	if err != nil && !errors.Is(err, io.EOF) {
-		t.Errorf("response body reading error: %v", err)
-	}
+	t.Run("bad method", func(t *testing.T) {
+		resp, err := http.Head("http://" + servTestConfig.ListenHostPort)
+		assert.NoError(t, err)
+		defer resp.Body.Close()
+		assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+	})
 
-	if !bytes.Contains(buf, []byte("Home page of URLshortener")) {
-		t.Errorf("wrong response on health check request: %s", buf)
-	}
+	t.Run("short URL query with empty request body", func(t *testing.T) {
+		resp, err := http.Post("http://"+servTestConfig.ListenHostPort+"/api/v1/token", "application/json",
+			strings.NewReader(``))
+		assert.NoError(t, err)
+		defer resp.Body.Close()
 
-	if bytes.Contains(buf, []byte("Service status: healthy, 0 attempts")) {
-		t.Errorf("zero attempts while success healtcheck: %s", buf)
-	}
-}
+		assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+	})
 
-// test bad method
-func Test10Serv13BadMethod(t *testing.T) {
-	resp, err := http.Head("http://" + servTestConfig.ListenHostPort)
-	if err != nil {
-		t.Errorf("request error: %v", err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusBadRequest {
-		t.Errorf("unexpected response status: %d while expected: %d", resp.StatusCode, http.StatusBadRequest)
-	}
-}
+	t.Run("short URL request with empty JSON", func(t *testing.T) {
+		resp, err := http.Post("http://"+servTestConfig.ListenHostPort+"/api/v1/token", "application/json",
+			strings.NewReader(`{}`))
+		assert.NoError(t, err)
+		defer resp.Body.Close()
 
-// test request for short URL with empty request body
-func Test10Serv15BadTokenRequest(t *testing.T) {
-	resp, err := http.Post("http://"+servTestConfig.ListenHostPort+"/api/v1/token", "application/json",
-		strings.NewReader(``))
-	if err != nil {
-		t.Errorf("token request error: %v", err)
-	}
-	defer resp.Body.Close()
+		assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+	})
 
-	if resp.StatusCode != http.StatusBadRequest {
-		t.Errorf("unexpected response status: %d while expected: %d", resp.StatusCode, http.StatusBadRequest)
-	}
-}
+	t.Run("short URL request without expiration", func(t *testing.T) {
+		resp, err := http.Post("http://"+servTestConfig.ListenHostPort+"/api/v1/token", "application/json",
+			strings.NewReader(`{"url": "http://`+servTestConfig.ShortDomain+`"}`))
+		assert.NoError(t, err)
+		defer resp.Body.Close()
+		assert.Equal(t, http.StatusOK, resp.StatusCode)
+	})
 
-// test request for short URL with empty JSON
-func Test10Serv20BadTokenRequest2(t *testing.T) {
-	resp, err := http.Post("http://"+servTestConfig.ListenHostPort+"/api/v1/token", "application/json",
-		strings.NewReader(`{}`))
-	if err != nil {
-		t.Errorf("token request error: %v", err)
-	}
-	defer resp.Body.Close()
+	t.Run("expire request without parameters", func(t *testing.T) {
+		resp, err := http.Post("http://"+servTestConfig.ListenHostPort+"/api/v1/expire", "application/json",
+			strings.NewReader(``))
+		assert.NoError(t, err)
+		defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusBadRequest {
-		t.Errorf("unexpected response status: %d", resp.StatusCode)
-	}
-}
+		assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+	})
 
-//test request for short URL without expiration in request
-func Test10Serv25GetTokenWOexp(t *testing.T) {
+	t.Run("expire request with empty JSON", func(t *testing.T) {
+		resp, err := http.Post("http://"+servTestConfig.ListenHostPort+"/api/v1/expire", "application/json",
+			strings.NewReader(`{}`))
+		assert.NoError(t, err)
+		defer resp.Body.Close()
 
-	resp, err := http.Post("http://"+servTestConfig.ListenHostPort+"/api/v1/token", "application/json",
-		strings.NewReader(`{"url": "http://`+servTestConfig.ShortDomain+`"}`))
-	if err != nil {
-		t.Errorf("token request error: %v", err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		t.Errorf("unexpected response status: %d", resp.StatusCode)
-	}
-}
+		assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+	})
 
-// request expire without parameters
-func Test10Serv30ExpireTokenWObody(t *testing.T) {
+	t.Run("expire request for not existing token", func(t *testing.T) {
+		resp, err := http.Post("http://"+servTestConfig.ListenHostPort+"/api/v1/expire", "application/json",
+			strings.NewReader(`{"token":"`+strings.Repeat("(", servTestConfig.TokenLength)+`"}`)) // use non Base64 symbols
+		assert.NoError(t, err)
+		defer resp.Body.Close()
 
-	resp, err := http.Post("http://"+servTestConfig.ListenHostPort+"/api/v1/expire", "application/json",
-		strings.NewReader(``))
-	if err != nil {
-		t.Errorf("expire request error: %v", err)
-	}
-	defer resp.Body.Close()
+		assert.Equal(t, http.StatusNotModified, resp.StatusCode)
+	})
 
-	if resp.StatusCode != http.StatusBadRequest {
-		t.Errorf("unexpected response status: %d", resp.StatusCode)
-	}
-}
+	t.Run("redirect request with wrong token (wrong length)", func(t *testing.T) {
+		resp, err := http.Get("http://" + servTestConfig.ListenHostPort + "/not+existing+token")
+		assert.NoError(t, err)
+		defer resp.Body.Close()
 
-// request expire with empty JSON
-func Test10Serv35ExpireTokenWOparams(t *testing.T) {
+		assert.Equal(t, http.StatusNotFound, resp.StatusCode)
+	})
 
-	resp, err := http.Post("http://"+servTestConfig.ListenHostPort+"/api/v1/expire", "application/json",
-		strings.NewReader(`{}`))
-	if err != nil {
-		t.Errorf("expire request error: %v", err)
-	}
-	defer resp.Body.Close()
+	t.Run("redirect request with wrong token (wrong symbols)", func(t *testing.T) {
+		resp, err := http.Get("http://" + servTestConfig.ListenHostPort + "/" + strings.Repeat("(", servTestConfig.TokenLength))
+		assert.NoError(t, err)
+		defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusBadRequest {
-		t.Errorf("unexpected response status: %d", resp.StatusCode)
-	}
+		assert.Equal(t, http.StatusNotFound, resp.StatusCode)
+	})
 
-}
+	t.Run("redirect request with wrong token (correct lenght&symbols)", func(t *testing.T) {
+		resp, err := http.Get("http://" + servTestConfig.ListenHostPort + "/" + strings.Repeat("A", servTestConfig.TokenLength))
+		assert.NoError(t, err)
+		defer resp.Body.Close()
 
-// request expire for not existing token
-func Test10Serv40ExpireNotExistingToken(t *testing.T) {
+		assert.Equal(t, http.StatusNotFound, resp.StatusCode)
+	})
 
-	resp, err := http.Post("http://"+servTestConfig.ListenHostPort+"/api/v1/expire", "application/json",
-		strings.NewReader(`{"token":"`+strings.Repeat("(", servTestConfig.TokenLength)+`"}`)) // use non Base64 symbols
-	if err != nil {
-		t.Errorf("expire request error: %v", err)
-	}
-	defer resp.Body.Close()
+	t.Run("unsupported request in mode = disableRedirect", func(t *testing.T) {
+		servTestConfig.Mode = disableRedirect
 
-	if resp.StatusCode != http.StatusNotModified {
-		t.Errorf("unexpected response status: %d", resp.StatusCode)
-	}
+		resp, err := http.Get("http://" + servTestConfig.ListenHostPort + "/" + strings.Repeat("_", servTestConfig.TokenLength))
+		assert.NoError(t, err)
+		defer resp.Body.Close()
 
-}
+		assert.Equal(t, http.StatusNotFound, resp.StatusCode)
+	})
 
-// test redirect with wrong token (wrong lenght and wrong symbols)
-func Test10Serv45RedirectTo404(t *testing.T) {
-	resp, err := http.Get("http://" + servTestConfig.ListenHostPort + "/not+existing+token")
-	if err != nil {
-		t.Errorf("not-existing token request error: %v", err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusNotFound {
-		t.Errorf("unexpected response status: %d", resp.StatusCode)
-	}
-}
+	t.Run("unsupported request in mode = disableShortener", func(t *testing.T) {
+		servTestConfig.Mode = disableShortener
 
-// test redirect with wrong token (correct lenght and wrong symbols)
-func Test10Serv50RedirectTo404(t *testing.T) {
-	resp, err := http.Get("http://" + servTestConfig.ListenHostPort + "/" + strings.Repeat("(", servTestConfig.TokenLength))
-	if err != nil {
-		t.Errorf("not-existing token request error: %v", err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusNotFound {
-		t.Errorf("unexpected response status: %d", resp.StatusCode)
-	}
-}
+		resp, err := http.Post("http://"+servTestConfig.ListenHostPort+"/api/v1/token", "application/json",
+			strings.NewReader(`{"url": "http://someother.url"}`))
+		assert.NoError(t, err)
+		defer resp.Body.Close()
 
-// test redirect with wrong token (correct lenght and correct symbols)
-func Test10Serv53RedirectTo404(t *testing.T) {
-	resp, err := http.Get("http://" + servTestConfig.ListenHostPort + "/" + strings.Repeat("A", servTestConfig.TokenLength))
-	if err != nil {
-		t.Errorf("not-existing token request error: %v", err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusNotFound {
-		t.Errorf("unexpected response status: %d", resp.StatusCode)
-	}
-}
+		assert.Equal(t, http.StatusNotFound, resp.StatusCode)
+	})
 
-// try unsupported request in mode = disableRedirect
-func Test10Serv55ServiceModeDisableRedirect(t *testing.T) {
+	t.Run("unsupported request in mode = disableExpire", func(t *testing.T) {
+		servTestConfig.Mode = disableExpire
 
-	servTestConfig.Mode = disableRedirect
+		resp, err := http.Post("http://"+servTestConfig.ListenHostPort+"/api/v1/expire", "application/json",
+			strings.NewReader(`{"token": "`+strings.Repeat("_", servTestConfig.TokenLength)+`","exp":-1}`))
+		assert.NoError(t, err)
+		defer resp.Body.Close()
 
-	resp, err := http.Get("http://" + servTestConfig.ListenHostPort + "/" + strings.Repeat("_", servTestConfig.TokenLength))
-	if err != nil {
-		t.Errorf("redirect request error: %v", err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusNotFound {
-		t.Errorf("unexpected response status: %d", resp.StatusCode)
-	}
-}
+		assert.Equal(t, http.StatusNotFound, resp.StatusCode)
+	})
 
-// try unsupported request in mode = disableShortener
-func Test10Serv60ServiceModeDisableShortener(t *testing.T) {
+	t.Run("health check in service mode disableRedirect", func(t *testing.T) {
+		servTestConfig.Mode = disableRedirect
 
-	servTestConfig.Mode = disableShortener
+		resp, err := http.Get("http://" + servTestConfig.ListenHostPort)
+		assert.NoError(t, err)
+		defer resp.Body.Close()
 
-	resp, err := http.Post("http://"+servTestConfig.ListenHostPort+"/api/v1/token", "application/json",
-		strings.NewReader(`{"url": "http://someother.url"}`))
-	if err != nil {
-		t.Errorf("token request error: %v", err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusNotFound {
-		t.Errorf("unexpected response status: %d", resp.StatusCode)
-	}
-}
+		assert.Equal(t, http.StatusOK, resp.StatusCode)
+		time.Sleep(time.Second)
+	})
 
-// try unsupported request in mode = disableExpire
-func Test10Serv65ServiceModeDisableExpire(t *testing.T) {
+	t.Run("health check in service mode disableShortener", func(t *testing.T) {
+		servTestConfig.Mode = disableShortener
 
-	servTestConfig.Mode = disableExpire
+		resp, err := http.Get("http://" + servTestConfig.ListenHostPort)
+		assert.NoError(t, err)
+		defer resp.Body.Close()
 
-	resp, err := http.Post("http://"+servTestConfig.ListenHostPort+"/api/v1/expire", "application/json",
-		strings.NewReader(`{"token": "`+strings.Repeat("_", servTestConfig.TokenLength)+`","exp":-1}`))
-	if err != nil {
-		t.Errorf("expire request error: %v", err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusNotFound {
-		t.Errorf("wrong status: %d", resp.StatusCode)
-	}
-}
+		assert.Equal(t, http.StatusOK, resp.StatusCode)
+		time.Sleep(time.Second)
+	})
 
-// try health check in service mode disableRedirect
-func Test10Serv70HealthCheckModeDisableRedirect(t *testing.T) {
+	t.Run("health check in service mode disableExpire", func(t *testing.T) {
+		servTestConfig.Mode = disableExpire
 
-	servTestConfig.Mode = disableRedirect
+		resp, err := http.Get("http://" + servTestConfig.ListenHostPort)
+		assert.NoError(t, err)
+		defer resp.Body.Close()
 
-	resp, err := http.Get("http://" + servTestConfig.ListenHostPort)
-	if err != nil {
-		t.Errorf("health check in disableRedirect mode request error: %v", err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		t.Errorf("unexpected response status: %d", resp.StatusCode)
-	}
-	time.Sleep(time.Second)
-}
+		assert.Equal(t, http.StatusOK, resp.StatusCode)
+		time.Sleep(time.Second)
+	})
 
-// try health check in service mode disableShortener
-func Test10Serv75HealthCheckModeDisableShortener(t *testing.T) {
+	t.Run("generate UI interface", func(t *testing.T) {
+		resp, err := http.Get("http://" + servTestConfig.ListenHostPort + "/ui/generate")
+		assert.NoError(t, err)
+		defer resp.Body.Close()
 
-	servTestConfig.Mode = disableShortener
+		assert.Equal(t, http.StatusOK, resp.StatusCode)
 
-	resp, err := http.Get("http://" + servTestConfig.ListenHostPort)
-	if err != nil {
-		t.Errorf("health check in disableShortener mode request error: %v", err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		t.Errorf("unexpected response status: %d", resp.StatusCode)
-	}
-	time.Sleep(time.Second)
-}
+		buf, err := io.ReadAll(resp.Body)
+		assert.NoError(t, err)
 
-// try health check in service mode disableExpire
-func Test10Serv77HealthCheckModeDisableExpire(t *testing.T) {
+		assert.Contains(t, string(buf), "URL to be shortened")
+	})
 
-	servTestConfig.Mode = disableExpire
+	t.Run("generate UI interface with QR", func(t *testing.T) {
+		resp, err := http.Get("http://" + servTestConfig.ListenHostPort + "/ui/generate?s=http:/some.url")
+		assert.NoError(t, err)
+		defer resp.Body.Close()
 
-	resp, err := http.Get("http://" + servTestConfig.ListenHostPort)
-	if err != nil {
-		t.Errorf("health check in disableExpire mode request error: %v", err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		t.Errorf("unexpected response status: %d", resp.StatusCode)
-	}
-	time.Sleep(time.Second)
-}
+		assert.Equal(t, http.StatusOK, resp.StatusCode)
 
-// test generate UI interface
-func Test10Serv80genUI(t *testing.T) {
-	resp, err := http.Get("http://" + servTestConfig.ListenHostPort + "/ui/generate")
-	if err != nil {
-		t.Errorf("UI request error: %v", err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		t.Errorf("unexpected response status: %d", resp.StatusCode)
-	}
+		buf, err := io.ReadAll(resp.Body)
+		assert.NoError(t, err)
+		assert.Contains(t, string(buf), "Short URL:")
+	})
 
-	buf, err := io.ReadAll(resp.Body)
-	if err != nil && !errors.Is(err, io.EOF) {
-		t.Errorf("response body reading error: %v", err)
-	}
-	if bytes.Contains(buf, []byte("Short URL:")) {
-		t.Error("generated url when no parameters")
-	}
-}
+	t.Run("generate UI interface disabled", func(t *testing.T) {
+		servTestConfig.Mode = disableUI
+		resp, err := http.Get("http://" + servTestConfig.ListenHostPort + "/ui/generate?s=http:/some.url")
+		assert.NoError(t, err)
+		defer resp.Body.Close()
 
-// test generate UI interface
-func Test10Serv83genUIwp(t *testing.T) {
-	resp, err := http.Get("http://" + servTestConfig.ListenHostPort + "/ui/generate?s=http:/some.url")
-	if err != nil {
-		t.Errorf("UI request error: %v", err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		t.Errorf("unexpected response status: %d", resp.StatusCode)
-	}
+		assert.Equal(t, http.StatusNotFound, resp.StatusCode)
+	})
 
-	buf, err := io.ReadAll(resp.Body)
-	if err != nil && !errors.Is(err, io.EOF) {
-		t.Errorf("response body reading error: %v", err)
-	}
-	if !bytes.Contains(buf, []byte("Short URL:")) {
-		t.Error("short URL is not generated fog given URL")
-	}
-}
+	t.Run("stop service", func(t *testing.T) {
+		logger := log.Writer()
+		r, w, _ := os.Pipe()
+		log.SetOutput(w)
 
-func Test10Serv85genUIdisabled(t *testing.T) {
-	servTestConfig.Mode = disableUI
-	resp, err := http.Get("http://" + servTestConfig.ListenHostPort + "/ui/generate?s=http:/some.url")
-	if err != nil {
-		t.Errorf("UI request error: %v", err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusNotFound {
-		t.Errorf("unexpected response status: %d", resp.StatusCode)
-	}
-}
+		servTestHandler.stop()
+		time.Sleep(time.Second)
 
-// try to stop service
-func Test10Serv89InteruptService(t *testing.T) {
-	logger := log.Writer()
-	r, w, _ := os.Pipe()
-	log.SetOutput(w)
+		w.Close()
+		log.SetOutput(logger)
+		buf, err := io.ReadAll(r)
+		assert.NoError(t, err)
 
-	go servTestHandler.stop()
-	t.Log("exit requested")
-
-	select {
-	case <-time.After(time.Second * 2):
-		t.Error("no exit reported in 2 seconds")
-	case <-servTestexit:
-		t.Log("exit reported")
-	}
-	time.Sleep(time.Millisecond)
-
-	w.Close()
-	log.SetOutput(logger)
-	buf, err := io.ReadAll(r)
-	if err != nil {
-		t.Error(err)
-	}
-	if !bytes.Contains(buf, []byte("http: Server closed")) {
-		t.Errorf("received unexpected output: %s", buf)
-	}
-	log.Printf("%s", buf)
+		assert.Contains(t, string(buf), "http: Server closed")
+	})
 }
 
 // try tokens' duplicate
 func Test10Serv90Duble(t *testing.T) {
+	godotenv.Load()
 
-	servTestConfig, err := readConfig("./cnfr.json")
-	if err != nil {
-		t.Fatalf("configuration read error: %v", err)
-	}
+	servTestConfig, err := readConfig()
+	assert.NoError(t, err)
 
-	servTestDB, err := NewTokenDB(servTestConfig.ConnectOptions)
-	if err != nil {
-		t.Fatalf("error database interface creation: %v", err)
-	}
+	servTestDB, err := NewTokenDB(servTestConfig.RedisAddrs, servTestConfig.RedisPassword)
+	assert.NoError(t, err)
 
 	// create short token interface
-	sToken := NewShortTokenD(servTestConfig.TokenLength)
-
-	// make exit chanel
-	servTestexit = make(chan bool)
+	sToken := mockShortToken(servTestConfig.TokenLength)
 
 	// create service handler
-	servTestHandler = NewHandler(servTestConfig, servTestDB, sToken, servTestexit)
+	servTestHandler = NewHandler(servTestConfig, servTestDB, sToken)
 
-	token, _ := sToken.Get()
-	servTestDB.Delete(token)
+	servTestDB.Delete(sToken.Get())
 
 	go func() {
 		log.Println(servTestHandler.start())
@@ -509,110 +378,37 @@ func Test10Serv90Duble(t *testing.T) {
 
 	resp, err := http.Post("http://"+servTestConfig.ListenHostPort+"/api/v1/token", "application/json",
 		strings.NewReader(`{"url": "http://`+servTestConfig.ShortDomain+`"}`))
-	if err != nil {
-		t.Errorf("token request error: %v", err)
-	}
-	if resp.StatusCode != http.StatusOK {
-		t.Errorf("unexpected response status: %d", resp.StatusCode)
-	}
+	assert.NoError(t, err)
 	resp.Body.Close()
+
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	// second request
 
 	resp2, err := http.Post("http://"+servTestConfig.ListenHostPort+"/api/v1/token", "application/json",
 		strings.NewReader(`{"url": "http://`+servTestConfig.ShortDomain+`"}`))
-	if err != nil {
-		t.Errorf("token request error: %v", err)
-	}
-	if resp2.StatusCode != http.StatusRequestTimeout {
-		t.Errorf("unexpected response status: %d", resp.StatusCode)
-	}
+	assert.NoError(t, err)
 	resp.Body.Close()
+	assert.Equal(t, http.StatusRequestTimeout, resp2.StatusCode)
 
-	token, _ = sToken.Get()
-	servTestDB.Delete(token)
+	servTestDB.Delete(sToken.Get())
 
-	go servTestHandler.stop()
-
-	<-servTestexit
-}
-
-func Test10Serv91BadToken(t *testing.T) {
-
-	servTestConfig, err := readConfig("./cnfr.json")
-	if err != nil {
-		t.Fatalf("configuration read error: %v", err)
-	}
-
-	servTestDB, err := NewTokenDB(servTestConfig.ConnectOptions)
-	if err != nil {
-		t.Fatalf("error database interface creation: %v", err)
-	}
-
-	// create short token interface
-	sToken := NewShortTokenE(servTestConfig.TokenLength)
-
-	// make exit chanel
-	servTestexit = make(chan bool)
-
-	// create service handler
-	servTestHandler = NewHandler(servTestConfig, servTestDB, sToken, servTestexit)
-	if err != nil {
-		t.Errorf("servece creation error: %v", err)
-	}
-
-	go func() {
-		log.Println(servTestHandler.start())
-	}()
-
-	time.Sleep(time.Second * 2)
-
-	resp, err := http.Post("http://"+servTestConfig.ListenHostPort+"/api/v1/token", "application/json",
-		strings.NewReader(`{"url": "http://`+servTestConfig.ShortDomain+`"}`))
-	if err != nil {
-		t.Errorf("token request error: %v", err)
-	}
-
-	if resp.StatusCode != http.StatusInternalServerError {
-		t.Errorf("unexpected response status: %d", resp.StatusCode)
-	}
-	resp.Body.Close()
-
-	// test UI interface also
-
-	resp, err = http.Get("http://" + servTestConfig.ListenHostPort + "/ui/generate?s=http:/some.url")
-	if err != nil {
-		t.Errorf("token request error: %v", err)
-	}
-
-	if resp.StatusCode != http.StatusInternalServerError {
-		t.Errorf("unexpected response status: %d", resp.StatusCode)
-	}
-
-	go servTestHandler.stop()
-
-	<-servTestexit
+	servTestHandler.stop()
 }
 
 func Test10Serv92BadDB(t *testing.T) {
 
-	servTestConfig, err := readConfig("./cnfr.json")
-	if err != nil {
-		t.Fatalf("configuration read error: %v", err)
-	}
+	godotenv.Load()
+	servTestConfig, err := readConfig()
+	assert.NoError(t, err)
 
-	servTestDB, err := testDBNewTokenDB(redis.UniversalOptions{})
-	if err != nil {
-		t.Fatalf("error database interface creation: %v", err)
-	}
+	servTestDB := newMockDB()
+	servTestDB.setFunc = func(string, string, int) (bool, error) { return false, errors.New("some error") }
 
 	// create short token interface
 	sToken := NewShortToken(5)
 
-	// make exit chanel
-	servTestexit = make(chan bool)
-
 	// create service handler
-	servTestHandler = NewHandler(servTestConfig, servTestDB, sToken, servTestexit)
+	servTestHandler = NewHandler(servTestConfig, servTestDB, sToken)
 
 	go func() {
 		log.Println(servTestHandler.start())
@@ -622,16 +418,9 @@ func Test10Serv92BadDB(t *testing.T) {
 
 	resp, err := http.Post("http://"+servTestConfig.ListenHostPort+"/api/v1/token", "application/json",
 		strings.NewReader(`{"url": "http://`+servTestConfig.ShortDomain+`"}`))
-	if err != nil {
-		t.Errorf("token request error: %v", err)
-	}
-
-	if resp.StatusCode != http.StatusInternalServerError {
-		t.Errorf("unexpected response status: %d", resp.StatusCode)
-	}
+	assert.NoError(t, err)
 	resp.Body.Close()
 
-	go servTestHandler.stop()
-
-	<-servTestexit
+	assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
+	servTestHandler.stop()
 }
