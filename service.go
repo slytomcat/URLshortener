@@ -91,12 +91,11 @@ type serviceHandler struct {
 	tokenDB    TokenDB      // Database interface
 	shortToken ShortToken   // Short token generator
 	config     *Config      // service configuration
-	exit       chan bool    // exit report
 	server     *http.Server // service server
 	attempts   int32        // calculated number of attempts during time-out
 }
 
-// ServeHTTP selects the handler function according to request URL
+// ServeHTTP implement simpme mux that selects the handler function according to request URL
 func (s *serviceHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	log.Println("access from:", r.RemoteAddr, r.Method, r.RequestURI, r.Header)
 
@@ -112,34 +111,28 @@ func (s *serviceHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case "GET/":
 		// request for health-check
 		s.home(w, r)
-		return
 	case "POST/api/v1/token":
 		// request for new short url/token
 		s.new(w, r, body)
-		return
 	case "POST/api/v1/expire":
 		// request for new short url/token
 		s.expire(w, r, body)
-		return
 	case "GET/ui/generate":
 		// UI short URL generation page
 		s.generate(w, r)
-		return
 	case "GET/favicon.ico":
 		// WEB-browsers make such requests together with the main request in order to show the site icon on tab header
 		// In this code it is used for health check (as point to redirect from short url)
 		w.Write(favicon)
-		return
 	default:
 		// all the rest GET requests are requests for redirect (probably)
 		if r.Method == "GET" {
 			s.redirect(w, r)
-			return
+		} else {
+			log.Printf("bad method/path: %s %s", r.Method, r.URL.Path)
+			w.WriteHeader(http.StatusBadRequest)
 		}
 	}
-	log.Printf("bad method/path: %s %s", r.Method, r.URL.Path)
-	w.WriteHeader(http.StatusBadRequest)
-
 }
 
 // generate is UI short URL|QR generator
@@ -487,14 +480,9 @@ func (s *serviceHandler) generateToken(url string, exp int) (string, error) {
 			return "", fmt.Errorf("token creation error: %v, ok: %v", err, ok)
 		default:
 			// get short token
-			sToken, err = s.shortToken.Get()
-			if err != nil {
-				return "", fmt.Errorf("random token generation error: %v", err)
-			}
-
+			sToken = s.shortToken.Get()
 			// count attempts
 			attempt++
-
 			// store token in DB
 			ok, err = s.tokenDB.Set(sToken, url, exp)
 			if err != nil {
@@ -557,35 +545,28 @@ func (s *serviceHandler) start() error {
 
 	log.Println("starting server at", s.config.ListenHostPort)
 
-	err := s.server.ListenAndServe()
-	if err == http.ErrServerClosed {
-		log.Println(err)
-		return nil
-	}
-	return err
+	return s.server.ListenAndServe()
 }
 
 // Stop performs graceful shutdown of server and database interfaces
 // It reports success shutdown via serviceHandler.exit chanel
 func (s *serviceHandler) stop() {
-	// gracefully shut down the HTTP server
-	err := s.server.Shutdown(context.Background())
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	err := s.server.Shutdown(ctx)
 	if err != nil {
 		log.Printf("HTTP server shutdown error: %v", err)
 	}
-	// report shutdown
-	s.exit <- true
 }
 
 // NewHandler returns new service handler
-func NewHandler(config *Config, tokenDB TokenDB, shortToken ShortToken, exit chan bool) ServiceHandler {
+func NewHandler(config *Config, tokenDB TokenDB, shortToken ShortToken) ServiceHandler {
 
 	// make handler
 	handler := &serviceHandler{
 		tokenDB:    tokenDB,
 		shortToken: shortToken,
 		config:     config,
-		exit:       exit,
 		server:     nil,
 		attempts:   0,
 	}

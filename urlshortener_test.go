@@ -1,17 +1,15 @@
 package main
 
 import (
-	"bytes"
 	"flag"
 	"io"
 	"log"
 	"os"
-	"strings"
 	"syscall"
 	"testing"
 	"time"
 
-	"github.com/go-redis/redis/v7"
+	"github.com/stretchr/testify/assert"
 )
 
 // try to start with wrong path to configuration file
@@ -20,14 +18,10 @@ func Test20Main00WrongConfig(t *testing.T) {
 	defer saveEnv()()
 	os.Unsetenv("URLSHORTENER_ConnectOptions")
 
-	err := doMain("/bad/path/to/config/file", make(chan bool, 1))
+	err := doMain("/bad/path/to/config/file")
 
-	if err == nil {
-		t.Error("no error when expected")
-	}
-	if !strings.HasPrefix(err.Error(), "configuration read error") {
-		t.Errorf("wrong error: %v", err)
-	}
+	assert.Error(t, err)
+	assert.Equal(t, "configuration read error: mandatory configuration value ConnectOptions is not set", err.Error())
 }
 
 // try to pass wrong path to config
@@ -41,16 +35,15 @@ func Test20Main05WrongDB(t *testing.T) {
 	defer func() { configFile = SaveConfigFile }()
 	// defer the panic recovery and error handling
 	defer func() {
-		err := recover()
-		if err == nil {
-			t.Error("no error when expected")
-		}
-		if !strings.HasPrefix(err.(error).Error(), "database interface creation error") {
-			t.Errorf("wrong error received: %v", err)
+		if err := recover(); err != nil {
+			err := err.(error)
+			assert.Error(t, err)
+			assert.Equal(t, "database interface creation error: dial tcp: lookup wrong.host: no such host", err.Error())
 		}
 	}()
 	// run service
 	main()
+	t.Error("No panic when expected")
 	// we shouldn't get here as main() have to panic with wrong DB connection address
 	// handle this in defer function
 }
@@ -62,16 +55,10 @@ func Test20Main07WrongDB2(t *testing.T) {
 		Timeout:        500,
 		TokenLength:    6,
 	}
-	errDb, _ := testDBNewTokenDB(redis.UniversalOptions{})
-	exit := make(chan bool, 1)
-	go stratService(&conf, errDb, exit)
-
-	select {
-	case <-time.After(time.Second * 2):
-		t.Error("no exit for 2 secs")
-	case <-exit:
-		break
-	}
+	errDb := newMockDB()
+	err := stratService(&conf, errDb)
+	assert.Error(t, err)
+	assert.Equal(t, "http: Server closed", err.Error())
 }
 
 // try to get usage message
@@ -85,50 +72,32 @@ func Test20Main10Usage(t *testing.T) {
 	w.Close()
 	os.Stderr = logger
 	buf, err := io.ReadAll(r)
-	if err != nil {
-		t.Error(err)
-	}
-
-	if !bytes.Contains(buf, []byte("[-config=<Path/to/config>]")) {
-		t.Errorf("received unexpected output: %s", buf)
-	}
+	assert.NoError(t, err)
+	assert.Contains(t, string(buf), "[-config=<Path/to/config>]")
 }
 
 // try to start service correctly
-func Test20Main20Success(t *testing.T) {
+func Test20Main20SuccessAndKill(t *testing.T) {
 	logger := log.Writer()
 	r, w, _ := os.Pipe()
 	log.SetOutput(w)
 
-	defer func() {
-		if err := recover(); err != nil {
-			t.Errorf("server starting error:%v", err)
-		}
-	}()
+	defer assert.Nil(t, recover())
 	// run service
 	go main()
 
-	time.Sleep(time.Second * 3)
+	time.Sleep(time.Second * 2)
 
 	w.Close()
 	log.SetOutput(logger)
 	buf, err := io.ReadAll(r)
-	if err != nil {
-		t.Error(err)
-	}
-	if !bytes.Contains(buf, []byte("starting server at")) {
-		t.Errorf("received unexpected output: %s", buf)
-	}
-	if !bytes.Contains(buf, []byte("URLshortener "+version)) {
-		t.Errorf("no version shown on start: %s", buf)
-	}
-	log.Printf("%s", buf)
-}
+	assert.NoError(t, err)
 
-func Test20Main25Kill(t *testing.T) {
+	assert.Contains(t, string(buf), "starting server at")
+	assert.Contains(t, string(buf), "URLshortener "+version)
 
-	logger := log.Writer()
-	r, w, _ := os.Pipe()
+	logger = log.Writer()
+	r, w, _ = os.Pipe()
 	log.SetOutput(w)
 
 	syscall.Kill(syscall.Getpid(), syscall.SIGINT)
@@ -137,12 +106,8 @@ func Test20Main25Kill(t *testing.T) {
 
 	w.Close()
 	log.SetOutput(logger)
-	buf, err := io.ReadAll(r)
-	if err != nil {
-		t.Error(err)
-	}
-	if !bytes.Contains(buf, []byte("http: Server closed")) {
-		t.Errorf("received unexpected output: %s", buf)
-	}
-	log.Printf("%s", buf)
+	buf, err = io.ReadAll(r)
+	assert.NoError(t, err)
+
+	assert.Contains(t, string(buf), "http: Server closed")
 }

@@ -20,32 +20,68 @@ var (
 	testDBToken  string = "AAAA"
 )
 
-type testDBErr struct {
+type mockDB struct {
+	setFunc   func(string, string, int) (bool, error)
+	getFunc   func(string) (string, error)
+	expFunc   func(string, int) error
+	delfunc   func(string) error
+	closeFunc func() error
 }
 
-func (t testDBErr) Set(sToken, longURL string, expiration int) (bool, error) {
+func (m *mockDB) Set(sToken, longURL string, expiration int) (bool, error) {
+	return m.setFunc(sToken, longURL, expiration)
+}
+
+func (m *mockDB) Get(sToken string) (string, error) {
+	return m.getFunc(sToken)
+}
+
+func (m *mockDB) Expire(sToken string, expiration int) error {
+	return m.expFunc(sToken, expiration)
+}
+
+func (m *mockDB) Delete(sToken string) error {
+	return m.delfunc(sToken)
+}
+
+func (m *mockDB) Close() error {
+	return m.closeFunc()
+}
+
+func testSet(sToken, longURL string, expiration int) (bool, error) {
 	if longURL == "http://localhost:8080/favicon.ico" {
 		return true, nil
 	}
 	return false, errors.New("test Set() error")
 }
-func (t testDBErr) Get(sToken string) (string, error) {
+
+func testGet(sToken string) (string, error) {
 	if sToken == "Debug.Token" {
 		return "http://localhost:8080/favicon.ico", nil
 	}
 	return "", errors.New("test Get() error")
 }
-func (t testDBErr) Expire(sToken string, expiration int) error {
+
+func testExpire(sToken string, expiration int) error {
 	return errors.New("test Expire() error")
 }
-func (t testDBErr) Delete(sToken string) error {
+
+func testDelete(sToken string) error {
 	return errors.New("test Delete() error")
 }
-func (t testDBErr) Close() error {
+
+func testClose() error {
 	return errors.New("test Close() error")
 }
-func testDBNewTokenDB(_ redis.UniversalOptions) (TokenDB, error) {
-	return &testDBErr{}, nil
+
+func newMockDB() TokenDB {
+	return &mockDB{
+		setFunc:   testSet,
+		getFunc:   testGet,
+		expFunc:   testExpire,
+		delfunc:   testDelete,
+		closeFunc: testClose,
+	}
 }
 
 // test new TokenDB creation errors
