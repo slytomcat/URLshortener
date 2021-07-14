@@ -2,7 +2,6 @@ package main
 
 import (
 	"errors"
-	"flag"
 	"io"
 	"log"
 	"os"
@@ -20,7 +19,7 @@ func Test20Main00WrongConfig(t *testing.T) {
 	defer saveEnv()()
 	os.Unsetenv("URLSHORTENER_REDISADDRS")
 
-	err := doMain("/bad/path/to/config/file")
+	err := doMain()
 
 	assert.Error(t, err)
 	assert.Equal(t, "configuration read error: config error: required key URLSHORTENER_REDISADDRS missing value", err.Error())
@@ -58,21 +57,6 @@ func Test20Main07WrongDB2(t *testing.T) {
 	err := stratService(&conf, errDb)
 	assert.Error(t, err)
 	assert.Equal(t, "http: Server closed", err.Error())
-}
-
-// try to get usage message
-func Test20Main10Usage(t *testing.T) {
-	logger := os.Stderr
-	r, w, _ := os.Pipe()
-	os.Stderr = w
-
-	flag.Usage()
-
-	w.Close()
-	os.Stderr = logger
-	buf, err := io.ReadAll(r)
-	assert.NoError(t, err)
-	assert.Contains(t, string(buf), "[-config=<Path/to/config>]")
 }
 
 // try to start service correctly

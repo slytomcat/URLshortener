@@ -400,7 +400,7 @@ func (s *serviceHandler) new(w http.ResponseWriter, r *http.Request, body []byte
 	}
 
 	// make response body
-	resp, err := json.Marshal(
+	resp, _ := json.Marshal(
 		struct {
 			Token string `json:"token"` // token
 			URL   string `json:"url"`   // short URL
@@ -408,11 +408,6 @@ func (s *serviceHandler) new(w http.ResponseWriter, r *http.Request, body []byte
 			Token: sToken,
 			URL:   s.config.ShortDomain + "/" + sToken,
 		})
-	if err != nil {
-		log.Printf("%s: response body marshaling error: %v\n", rMess, err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
 
 	// log new token request information
 	log.Printf("%s: URL saved, token: %s , exp: %d\n", rMess, sToken, params.Exp)
