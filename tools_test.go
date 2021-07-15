@@ -13,7 +13,7 @@ import (
 // function that restores orininal values
 func saveEnv() func() {
 	vars := []string{
-		"URLSHORTENER_REDISOPTIONS",
+		"URLSHORTENER_REDISPASSWORD",
 		"URLSHORTENER_REDISADDRS",
 		"URLSHORTENER_TOKENLENGTH",
 		"URLSHORTENER_TIMEOUT",
@@ -26,6 +26,7 @@ func saveEnv() func() {
 	for _, name := range vars {
 		if val, ok := os.LookupEnv(name); ok {
 			save[name] = val
+			os.Unsetenv(name)
 		}
 	}
 	// returned func restores enviroment to original
@@ -67,9 +68,16 @@ func Test01Tools01WrongMode(t *testing.T) {
 }
 
 func Test01Tools02Success(t *testing.T) {
-
 	defer saveEnv()()
 	godotenv.Load(".env_sample")
-	_, err := readConfig()
+	c, err := readConfig()
 	assert.NoError(t, err)
+	assert.Equal(t, []string{"<RedisHost>:6379", "<BackupRedisHost>:6379"}, c.RedisAddrs)
+	assert.Equal(t, "Some long password that is configured for Redis authorization", c.RedisPassword)
+	assert.Equal(t, 5, c.TokenLength)
+	assert.Equal(t, "0.0.0.0:80", c.ListenHostPort)
+	assert.Equal(t, 777, c.Timeout)
+	assert.Equal(t, 2, c.DefaultExp)
+	assert.Equal(t, "<short.Domain>", c.ShortDomain)
+	assert.Equal(t, uint(4), c.Mode)
 }

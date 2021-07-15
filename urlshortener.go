@@ -8,38 +8,25 @@ package main
 // This file contains the main routine
 
 import (
-	"flag"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
-	"path/filepath"
 	"syscall"
 	"time"
 )
 
 var (
-	// ConfigFile - is the path to the configuration file
-	configFile string
-	version    string = "unknown version"
+	version string = "unknown version"
 )
-
-func init() {
-	// prepare command line parameter and usage
-	flag.StringVar(&configFile, "config", "./cnfr.json", "`path` to the configuration file")
-	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "\nUsage:\n\n\t\t"+filepath.Base(os.Args[0])+" [-config=<Path/to/config>]\n\n")
-		flag.PrintDefaults()
-	}
-}
 
 func main() {
 	// set logging format
 	log.SetFlags(log.Ldate | log.Ltime | log.Lmicroseconds | log.Lshortfile)
 
 	// get exiting error
-	err := doMain(configFile)
+	err := doMain()
 	if err != http.ErrServerClosed {
 		panic(err)
 	} else {
@@ -48,13 +35,10 @@ func main() {
 }
 
 // doMain performs all preparation and starts server
-func doMain(configPath string) error {
+func doMain() error {
 
 	// log the version
 	log.Printf("URLshortener %s", version)
-
-	// parse command line parameters
-	flag.Parse()
 
 	// get the configuratin variables
 	config, err := readConfig()
