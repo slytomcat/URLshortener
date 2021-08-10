@@ -110,7 +110,7 @@ func raceNewToken(db TokenDB, url string, t *testing.T) {
 		go racer(i)
 	}
 	//t.Logf("%v Ready?\n", time.Now())
-	time.Sleep(time.Second * 2)
+	time.Sleep(time.Millisecond * 20)
 	start.Unlock()
 	//t.Logf("%v Go!!!\n", time.Now())
 	wg.Wait()
