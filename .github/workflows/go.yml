@@ -80,11 +80,11 @@ jobs:
       - name: Version
         run: cat VERSION
       - name: Log into github registry
-        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login docker.pkg.github.com -u
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login https://ghcr.io -u
           ${{ github.actor }} --password-stdin
       - name: Build and Push image for github
         run: |
-          IMAGE_ID=docker.pkg.github.com/${{ github.repository }}/$IMAGE_NAME
+          IMAGE_ID=https://ghcr.io/${{ github.repository }}/$IMAGE_NAME
 
           # Change all uppercase to lowercase
           IMAGE_ID=$(echo $IMAGE_ID | tr '[A-Z]' '[a-z]')
