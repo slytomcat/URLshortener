@@ -84,7 +84,7 @@ jobs:
           ${{ github.actor }} --password-stdin
       - name: Build and Push image for github
         run: |
-          IMAGE_ID=https://ghcr.io/${{ github.repository }}/$IMAGE_NAME
+          IMAGE_ID=ghcr.io/${{ github.repository_owner }}/$IMAGE_NAME
 
           # Change all uppercase to lowercase
           IMAGE_ID=$(echo $IMAGE_ID | tr '[A-Z]' '[a-z]')
