@@ -33,17 +33,20 @@ const (
 	disableUI                         // = 8 disable UI generation page
 )
 
-// readConfig reads configuration file and also tries to get data from environment variables
+// readConfig reads configuration from environment variables
 func readConfig() (*Config, error) {
 
-	config := Config{}
-	err := envconfig.Process("URLSHORTENER", &config)
+	config := &Config{}
+	err := envconfig.Process("URLSHORTENER", config)
 	if err != nil {
 		return nil, fmt.Errorf("config error: %w", err)
 	}
 
+	if len(config.RedisAddrs) == 0 {
+		return nil, fmt.Errorf("config error: required key URLSHORTENER_REDISADDRS missing value")
+	}
 	if config.Mode > disableUI {
 		return nil, fmt.Errorf("config error: wrong mode value: %x", config.Mode)
 	}
-	return &config, nil
+	return config, nil
 }

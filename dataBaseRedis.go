@@ -17,9 +17,9 @@ import (
 
 // TokenDB is the interface to token database
 type TokenDB interface {
-	Set(sToken, longURL string, expiration int) (bool, error) // store token and long URL and set the expiration
+	Set(sToken, longURL string, expiration int) (bool, error) // store token and long URL and set the expiration in days
 	Get(sToken string) (string, error)                        // find the long URL for given token
-	Expire(sToken string, expiration int) error               // change the given token expiration
+	Expire(sToken string, expiration int) error               // change the given token expiration in days
 	Delete(sToken string) error                               // delete given token - for tests only
 	Close() error                                             // close the database connection
 }
@@ -48,7 +48,9 @@ func NewTokenDB(addrs []string, password string) (TokenDB, error) {
 
 // New creates new token for given long URL
 func (t *tokenDBR) Set(sToken, longURL string, expiration int) (bool, error) {
-
+	if expiration < 0 {
+		expiration = 0
+	}
 	// try to store token
 	return t.db.SetNX(sToken, longURL, time.Hour*24*time.Duration(expiration)).Result()
 }
@@ -62,7 +64,9 @@ func (t *tokenDBR) Get(sToken string) (string, error) {
 
 // Expire sets new expire datetime for given token
 func (t *tokenDBR) Expire(sToken string, expiration int) error {
-
+	if expiration < 0 {
+		expiration = 0
+	}
 	// try to change the token expiration
 	ok, err := t.db.Expire(sToken, time.Hour*24*time.Duration(expiration)).Result()
 	// check the result status

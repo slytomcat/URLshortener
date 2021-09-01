@@ -11,55 +11,67 @@ import (
 
 // saveEnv stores configuration environment variables and returns
 // function that restores orininal values
-func saveEnv() func() {
-	vars := []string{
-		"URLSHORTENER_REDISPASSWORD",
-		"URLSHORTENER_REDISADDRS",
-		"URLSHORTENER_TOKENLENGTH",
-		"URLSHORTENER_TIMEOUT",
-		"URLSHORTENER_LISTENHOSTPORT",
-		"URLSHORTENER_DEFAULTEXP",
-		"URLSHORTENER_SHORTDOMAIN",
-		"URLSHORTENER_MODE",
-	}
-	save := make(map[string]string, len(vars))
-	for _, name := range vars {
-		if val, ok := os.LookupEnv(name); ok {
-			save[name] = val
-			os.Unsetenv(name)
-		}
-	}
-	// returned func restores enviroment to original
-	return func() {
-		for _, name := range vars {
-			if value, ok := save[name]; ok {
-				os.Setenv(name, value)
-			} else {
-				os.Unsetenv(name)
-			}
-		}
+// func saveEnv() func() {
+// 	vars := []string{
+// 		"URLSHORTENER_REDISPASSWORD",
+// 		"URLSHORTENER_REDISADDRS",
+// 		"URLSHORTENER_TOKENLENGTH",
+// 		"URLSHORTENER_TIMEOUT",
+// 		"URLSHORTENER_LISTENHOSTPORT",
+// 		"URLSHORTENER_DEFAULTEXP",
+// 		"URLSHORTENER_SHORTDOMAIN",
+// 		"URLSHORTENER_MODE",
+// 	}
+// 	save := make(map[string]string, len(vars))
+// 	for _, name := range vars {
+// 		if val, ok := os.LookupEnv(name); ok {
+// 			save[name] = val
+// 			os.Unsetenv(name)
+// 		}
+// 	}
+// 	// returned func restores enviroment to original
+// 	return func() {
+// 		for _, name := range vars {
+// 			if value, ok := save[name]; ok {
+// 				os.Setenv(name, value)
+// 			} else {
+// 				os.Unsetenv(name)
+// 			}
+// 		}
+// 	}
+// }
+
+func envSet(t testing.TB, files ...string) {
+	envs, _ := godotenv.Read(files...)
+	for k, v := range envs {
+		t.Setenv(k, v)
 	}
 }
 
 // test config reading with empty URLSHORTENER_CONNECTOPTIONS
 func Test01Tools00NoRequiredField(t *testing.T) {
 
-	defer saveEnv()()
-
-	os.Unsetenv("URLSHORTENER_REDISADDRS")
+	t.Setenv("URLSHORTENER_REDISADDRS", "")
 
 	_, err := readConfig()
 
 	assert.Error(t, err)
 	assert.Equal(t, "config error: required key URLSHORTENER_REDISADDRS missing value", err.Error())
+
+	os.Unsetenv("URLSHORTENER_REDISADDRS")
+	_, err = readConfig()
+
+	assert.Error(t, err)
+	assert.Equal(t, "config error: required key URLSHORTENER_REDISADDRS missing value", err.Error())
+
 }
 
 func Test01Tools01WrongMode(t *testing.T) {
 
-	defer saveEnv()()
+	//	defer saveEnv()()
 
-	os.Setenv("URLSHORTENER_REDISADDRS", `"localhost:1234"`)
-	os.Setenv("URLSHORTENER_MODE", fmt.Sprint(disableUI<<1))
+	t.Setenv("URLSHORTENER_REDISADDRS", `"localhost:1234"`)
+	t.Setenv("URLSHORTENER_MODE", fmt.Sprint(disableUI<<1))
 
 	_, err := readConfig()
 
@@ -68,8 +80,8 @@ func Test01Tools01WrongMode(t *testing.T) {
 }
 
 func Test01Tools02Success(t *testing.T) {
-	defer saveEnv()()
-	godotenv.Load(".env_sample")
+	envSet(t, ".env_sample")
+
 	c, err := readConfig()
 	assert.NoError(t, err)
 	assert.Equal(t, []string{"<RedisHost>:6379", "<BackupRedisHost>:6379"}, c.RedisAddrs)

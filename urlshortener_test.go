@@ -9,40 +9,22 @@ import (
 	"testing"
 	"time"
 
-	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
 )
 
 // try to start with wrong path to configuration file
 func Test20Main00WrongConfig(t *testing.T) {
-	// use saveEnv from tools_test
-	defer saveEnv()()
-	os.Unsetenv("URLSHORTENER_REDISADDRS")
-
+	t.Setenv("URLSHORTENER_REDISADDRS", "")
 	err := doMain()
 
 	assert.Error(t, err)
 	assert.Equal(t, "configuration read error: config error: required key URLSHORTENER_REDISADDRS missing value", err.Error())
 }
 
-// try to pass wrong path to config
+// try to pass wrong addr of redis server
 func Test20Main05WrongDB(t *testing.T) {
-	// use saveEnv from tools_test to save/restore the environment
-	defer saveEnv()()
-	os.Setenv("URLSHORTENER_REDISADDRS", "wrong.host:1234")
-	// defer the panic recovery and error handling
-	defer func() {
-		if err := recover(); err != nil {
-			err := err.(error)
-			assert.Error(t, err)
-			assert.Equal(t, "database interface creation error: dial tcp: lookup wrong.host: no such host", err.Error())
-		}
-	}()
-	// run service
-	main()
-	t.Error("No panic when expected")
-	// we shouldn't get here as main() have to panic with wrong DB connection address
-	// handle this in defer function
+	t.Setenv("URLSHORTENER_REDISADDRS", "wrong.host:1234")
+	assert.PanicsWithError(t, "database interface creation error: dial tcp: lookup wrong.host: no such host", main)
 }
 
 func Test20Main07WrongDB2(t *testing.T) {
@@ -65,7 +47,8 @@ func Test20Main20SuccessAndKill(t *testing.T) {
 	r, w, _ := os.Pipe()
 	log.SetOutput(w)
 
-	godotenv.Load()
+	envSet(t)
+
 	// run service
 	go main()
 
