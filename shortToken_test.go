@@ -2,7 +2,10 @@ package main
 
 import (
 	"strings"
+	"sync"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 // shortTokenD - debugging ShortToken interface realization
@@ -24,48 +27,65 @@ func (s shortTokenD) Check(_ string) error {
 }
 
 // try to create new token from debugging source
-func Test00ST05NewShortTokenFake(t *testing.T) {
+func TestMockShortToken(t *testing.T) {
 	st := mockShortToken(6)
-
-	DEBUGToken := strings.Repeat("_", 6)
-	tc := st.Get()
-	if tc != DEBUGToken {
-		t.Errorf("wrong token BASE64 representation: expected: '%s', received '%s'", DEBUGToken, tc)
-	}
+	assert.Equal(t, strings.Repeat("_", 6), st.Get())
 }
 
 // try to make two tokens from random source and compare them
-func Test00ST07NewShortTokenReal(t *testing.T) {
+func TestNewShortTokenReal6(t *testing.T) {
 	st := NewShortToken(6)
 
 	tc := st.Get()
 
 	tc1 := st.Get()
 
-	if len(tc) != len(tc1) || len(tc) != 6 {
-		t.Error("wrong token length")
-	}
-
-	if tc == tc1 {
-		t.Errorf("2 sequential token are equal: '%s' == '%s'", tc, tc1)
-	}
+	assert.Equal(t, 6, len(tc))
+	assert.Equal(t, 6, len(tc1))
+	assert.NotEqual(t, tc, tc1)
+	t.Log(tc, tc1)
 }
 
 // try to make two very short tokens from random source and compare them
-func Test00ST07NewShortTokenReal2(t *testing.T) {
+func TestNewShortTokenReal2(t *testing.T) {
 	st := NewShortToken(2)
 
 	tc := st.Get()
 
 	tc1 := st.Get()
 
-	if len(tc) != len(tc1) || len(tc) != 2 {
-		t.Error("wrong token length")
+	assert.Equal(t, 2, len(tc))
+	assert.Equal(t, 2, len(tc1))
+	assert.NotEqual(t, tc, tc1)
+	t.Log(tc, tc1)
+}
+
+func TestAsyncGet(t *testing.T) {
+	st := NewShortToken(6)
+	cnt := 500
+	resBuf := make([]string, cnt)
+	wg := sync.WaitGroup{}
+	wg.Add(cnt)
+	for i := 0; i < cnt; i++ {
+		go func(i int) {
+			defer wg.Done()
+			resBuf[i] = st.Get()
+		}(i)
 	}
 
-	if tc == tc1 {
-		t.Errorf("2 sequential token are equal: '%s' == '%s'", tc, tc1)
+	wg.Wait()
+	// Check that all token are different
+	for i := 0; i < cnt; i++ {
+		//wg.Add(1)
+		//go func(i int) {
+		//	defer wg.Done()
+		for j := i + 1; j < cnt; j++ {
+			assert.NotEqual(t, resBuf[i], resBuf[j])
+			// t.Log(resBuf[i], resBuf[j])
+		}
+		//}(i)
 	}
+	//wg.Wait()
 }
 
 // test Check with correct token
@@ -74,10 +94,7 @@ func Test00ST10CheckOk(t *testing.T) {
 
 	sToken := st.Get()
 
-	err := st.Check(sToken)
-	if err != nil {
-		t.Errorf("token check error: %v", err)
-	}
+	assert.NoError(t, st.Check(sToken))
 }
 
 // test Check with wrong token length
@@ -86,20 +103,14 @@ func Test00ST15CheckNoOk(t *testing.T) {
 
 	sToken := st.Get()
 
-	err := st.Check(sToken + "wrong")
-	if err == nil {
-		t.Error("no error when expected")
-	}
+	assert.Error(t, st.Check(sToken+"wrong"))
 }
 
 // test Check with wrong token alphabet
 func Test00ST15CheckNoOk2(t *testing.T) {
 	st := NewShortToken(2)
 
-	err := st.Check("#$") // check nonBase64 symbols
-	if err == nil {
-		t.Error("no error when expected")
-	}
+	assert.Error(t, st.Check("#$")) // check nonBase64 symbols
 }
 
 // Benchmark for the 2 symbols token

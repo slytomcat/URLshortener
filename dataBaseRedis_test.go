@@ -10,16 +10,10 @@ import (
 	"time"
 
 	"github.com/go-redis/redis/v7"
-	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
 )
 
-var (
-	testDBConfig *Config
-	testDB       TokenDB
-	testDBerr    TokenDB
-	testDBToken  string = "AAAA"
-)
+var testDBToken string = "AAAA"
 
 type mockDB struct {
 	setFunc   func(string, string, int) (bool, error)
@@ -122,13 +116,12 @@ func raceNewToken(db TokenDB, url string, t *testing.T) {
 
 // test new TokenDBR creation
 func Test05DBR10All(t *testing.T) {
-
-	godotenv.Load()
+	envSet(t)
 
 	testDBConfig, err := readConfig()
 	assert.NoError(t, err)
 
-	testDB, err = NewTokenDB(testDBConfig.RedisAddrs, testDBConfig.RedisPassword)
+	testDB, err := NewTokenDB(testDBConfig.RedisAddrs, testDBConfig.RedisPassword)
 	assert.NoError(t, err)
 
 	testDB.Delete(testDBToken)
@@ -188,36 +181,28 @@ func Test05DBR10All(t *testing.T) {
 }
 
 func Benchmark05DBR10set(b *testing.B) {
-	var err error
-	testDBConfig, err = readConfig()
-	if err != nil {
-		b.Error(err)
-	}
+	envSet(b)
 
-	testDB, err = NewTokenDB(testDBConfig.RedisAddrs, testDBConfig.RedisPassword)
-	if err != nil {
-		b.Error(err)
-	}
+	testDBConfig, err := readConfig()
+	assert.NoError(b, err)
+
+	testDB, err := NewTokenDB(testDBConfig.RedisAddrs, testDBConfig.RedisPassword)
+	assert.NoError(b, err)
 
 	for i := 0; i < b.N; i++ {
 		_, err := testDB.Set(strconv.Itoa(i), "test", 0)
-		if err != nil {
-			b.Error(err)
-		}
+		assert.NoError(b, err)
 	}
 }
 
 func Benchmark05DBR00del(b *testing.B) {
-	var err error
-	testDBConfig, err = readConfig()
-	if err != nil {
-		b.Error(err)
-	}
+	envSet(b)
 
-	testDB, err = NewTokenDB(testDBConfig.RedisAddrs, testDBConfig.RedisPassword)
-	if err != nil {
-		b.Error(err)
-	}
+	testDBConfig, err := readConfig()
+	assert.NoError(b, err)
+
+	testDB, err := NewTokenDB(testDBConfig.RedisAddrs, testDBConfig.RedisPassword)
+	assert.NoError(b, err)
 
 	for i := 0; i < b.N; i++ {
 		err := testDB.Delete(strconv.Itoa(i))

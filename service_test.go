@@ -10,7 +10,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -112,8 +111,7 @@ func Test10Serv03CheckHealthCheck(t *testing.T) {
 
 // try to start service
 func Test10Serv05All(t *testing.T) {
-
-	godotenv.Load()
+	envSet(t)
 
 	servTestConfig, err := readConfig()
 	assert.NoError(t, err)
@@ -354,7 +352,7 @@ func Test10Serv05All(t *testing.T) {
 
 // try tokens' duplicate
 func Test10Serv90Duble(t *testing.T) {
-	godotenv.Load()
+	envSet(t)
 
 	servTestConfig, err := readConfig()
 	assert.NoError(t, err)
@@ -396,8 +394,8 @@ func Test10Serv90Duble(t *testing.T) {
 }
 
 func Test10Serv92BadDB(t *testing.T) {
+	envSet(t)
 
-	godotenv.Load()
 	servTestConfig, err := readConfig()
 	assert.NoError(t, err)
 
