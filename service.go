@@ -543,7 +543,6 @@ func (s *serviceHandler) start() error {
 }
 
 // Stop performs graceful shutdown of server and database interfaces
-// It reports success shutdown via serviceHandler.exit chanel
 func (s *serviceHandler) stop() {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
