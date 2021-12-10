@@ -9,7 +9,6 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"sync"
 )
 
 // ShortToken - interface for short token creation
@@ -17,32 +16,28 @@ type ShortToken interface {
 	Get() string        // returns new random short token
 	Check(string) error // check the token length and alphabet
 }
+type shortToken struct {
+	length  int // token length
+	bufSize int // bytes bufer size
+}
 
 // NewShortToken returns new ShortToken instance
 func NewShortToken(length int) ShortToken {
-	pool := sync.Pool{}
-	pool.New = func() interface{} {
-		return make([]byte, length*6/8+1)
-	}
 	return &shortToken{
 		length:  length,
-		bufPool: pool,
+		bufSize: length*6/8 + 1,
 	}
-}
-
-type shortToken struct {
-	length  int       // token length
-	bufPool sync.Pool // buffer pool for random bytes
 }
 
 // Get creates the token from random or debugging source
 func (s *shortToken) Get() string {
-	// get secure random bytes
-	buf := s.bufPool.Get().([]byte)
-	defer s.bufPool.Put(buf)
 
+	// prepare bytes bufer
+	buf := make([]byte, s.bufSize)
+
+	// get secure random bytes
 	n, err := rand.Read(buf)
-	if err != nil || n != len(buf) {
+	if err != nil || n != s.bufSize {
 		panic(fmt.Errorf("error while retriving random data: %d %v", n, err.Error()))
 	}
 	// return shortened to tokenLenS BASE64 representation

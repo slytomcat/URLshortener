@@ -1,6 +1,5 @@
 # URLshortener
-[![CircleCI](https://circleci.com/gh/slytomcat/URLshortener.svg?style=svg)](https://circleci.com/gh/slytomcat/URLshortener)
-[![DeepSource](https://img.shields.io/badge/Deepsource-Passed-brightgreen)](https://deepsource.io/gh/slytomcat/URLshortener)
+[![tests&bild&container](https://github.com/slytomcat/URLshortener/actions/workflows/go.yml/badge.svg)](https://github.com/slytomcat/URLshortener/actions/workflows/go.yml)
 [![Platform: linux-64](https://img.shields.io/badge/Platform-linux--64-blue)]()
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 [![Docker image](https://img.shields.io/badge/Docker-image-blue)](https://hub.docker.com/r/slytomcat/urlshortener)

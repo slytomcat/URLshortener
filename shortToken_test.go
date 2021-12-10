@@ -1,6 +1,9 @@
 package main
 
 import (
+	"crypto/rand"
+	"encoding/base64"
+	"fmt"
 	"strings"
 	"sync"
 	"testing"
@@ -132,6 +135,66 @@ func Benchmark00ST00Create6(b *testing.B) {
 // Benchmark for the 8 symbols token
 func Benchmark00ST00Create8(b *testing.B) {
 	st := NewShortToken(8)
+	for i := 0; i < b.N; i++ {
+		_ = st.Get()
+	}
+}
+
+// experimental token generator that uses sync.Pool for random buffer
+// unfortunately it is slower and requeres more memory than original simple version.
+func NewBShortToken(length int) ShortToken {
+	pool := &sync.Pool{}
+	pool.New = func() interface{} {
+		return make([]byte, length*6/8+1)
+	}
+	return &shortBToken{
+		length:  length,
+		bufPool: pool,
+	}
+}
+
+type shortBToken struct {
+	length  int        // token length
+	bufPool *sync.Pool // buffer pool for random bytes
+}
+
+// Get creates the token from random or debugging source
+func (s *shortBToken) Get() string {
+	// get secure random bytes
+	buf := s.bufPool.Get().([]byte)
+	defer s.bufPool.Put(buf)
+
+	n, err := rand.Read(buf)
+	if err != nil || n != len(buf) {
+		panic(fmt.Errorf("error while retriving random data: %d %v", n, err.Error()))
+	}
+	// return shortened to tokenLenS BASE64 representation
+	return base64.URLEncoding.EncodeToString(buf)[:s.length]
+}
+
+func (s *shortBToken) Check(sToken string) error {
+	return nil
+}
+
+// Benchmark for the 2 symbols token
+func Benchmark00ST00Create2B(b *testing.B) {
+	st := NewBShortToken(2)
+	for i := 0; i < b.N; i++ {
+		_ = st.Get()
+	}
+}
+
+// Benchmark for the 6 symbols token
+func Benchmark00ST00Create6B(b *testing.B) {
+	st := NewBShortToken(6)
+	for i := 0; i < b.N; i++ {
+		_ = st.Get()
+	}
+}
+
+// Benchmark for the 8 symbols token
+func Benchmark00ST00Create8B(b *testing.B) {
+	st := NewBShortToken(8)
 	for i := 0; i < b.N; i++ {
 		_ = st.Get()
 	}
