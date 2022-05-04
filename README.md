@@ -2,7 +2,7 @@
 [![tests&bild&container](https://github.com/slytomcat/URLshortener/actions/workflows/go.yml/badge.svg)](https://github.com/slytomcat/URLshortener/actions/workflows/go.yml)
 [![Platform: linux-64](https://img.shields.io/badge/Platform-linux--64-blue)]()
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
-[![Docker image](https://img.shields.io/badge/Docker-image-blue)](https://hub.docker.com/r/slytomcat/urlshortener)
+[![Docker image](https://github.com/slytomcat/URLshortener/pkgs/container/urlshortener)
 
 `URLshortener` is a micro-service to shorten long URLs and to handle the redirection by generated short URLs.
 
