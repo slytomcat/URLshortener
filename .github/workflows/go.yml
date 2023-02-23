@@ -21,7 +21,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v2
         with:
-          go-version: 1.17
+          go-version: 1.19
       - name: Cache
         uses: actions/cache@v2.1.6
         with:
@@ -46,7 +46,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v2
         with:
-          go-version: 1.17
+          go-version: 1.19
       - name: Cache
         uses: actions/cache@v2.1.6
         with:
@@ -55,8 +55,7 @@ jobs:
             /home/runner/go/pkg/mod/
           key: GO_MOD_CACHE
       - name: Build
-        run: CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -v -ldflags "-X
-          main.version=$(cat VERSION)" ./...
+        run: ./build.sh
       - name: Upload a Build Artifacts
         uses: actions/upload-artifact@v2.2.2
         with:
