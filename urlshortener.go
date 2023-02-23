@@ -18,10 +18,16 @@ import (
 )
 
 var (
-	version string = "unknown version"
+	version string = "v.local_build"
 )
 
 func main() {
+	if len(os.Args) == 2 && os.Args[1] == "-v" {
+		fmt.Printf("URLshortener %s\n", version)
+		os.Exit(0)
+	}
+	// log the version
+	log.Printf("URLshortener %s", version)
 	// set logging format
 	log.SetFlags(log.Ldate | log.Ltime | log.Lmicroseconds | log.Lshortfile)
 
@@ -36,10 +42,6 @@ func main() {
 
 // doMain performs all preparation and starts server
 func doMain() error {
-
-	// log the version
-	log.Printf("URLshortener %s", version)
-
 	// get the configuratin variables
 	config, err := readConfig()
 	if err != nil {
