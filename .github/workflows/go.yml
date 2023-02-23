@@ -80,6 +80,8 @@ jobs:
           # Change all uppercase to lowercase
           IMAGE_ID=$(echo $IMAGE_ID | tr '[A-Z]' '[a-z]')
           # Get version
+          ls -l
+          chmod a+x URLshortener
           VERSION=$(./URLshortener -v | awk '{print $2}')
           echo "Building image $IMAGE_ID:$VERSION"
           docker build . --file dockerfile --tag $IMAGE_ID:$VERSION
