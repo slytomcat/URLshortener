@@ -1,6 +1,6 @@
 module github.com/slytomcat/URLshortener
 
-go 1.18
+go 1.19
 
 require (
 	github.com/go-redis/redis/v7 v7.4.0
