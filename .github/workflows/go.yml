@@ -17,13 +17,13 @@ jobs:
         ports:
           - 6379:6379
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Set up Go
-        uses: actions/setup-go@v2
+        uses: actions/setup-go@3
         with:
           go-version: 1.19
       - name: Cache
-        uses: actions/cache@v2.1.6
+        uses: actions/cache@v3
         with:
           path: |
             /home/runner/.cache/go-build/
@@ -38,17 +38,17 @@ jobs:
     needs: test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           fetch-depth: 0
       - name: Get version
         run: git describe --tag >> VERSION
       - name: Set up Go
-        uses: actions/setup-go@v2
+        uses: actions/setup-go@v3
         with:
           go-version: 1.19
       - name: Cache
-        uses: actions/cache@v2.1.6
+        uses: actions/cache@v3
         with:
           path: |
             /home/runner/.cache/go-build/
@@ -57,7 +57,7 @@ jobs:
       - name: Build
         run: ./build.sh
       - name: Upload a Build Artifacts
-        uses: actions/upload-artifact@v2.2.2
+        uses: actions/upload-artifact@v3
         with:
           name: build_artifacts
           path: |
@@ -70,9 +70,9 @@ jobs:
     env:
       IMAGE_NAME: urlshortener
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Download Artifacts
-        uses: actions/download-artifact@v2.0.8
+        uses: actions/download-artifact@v3
         with:
           name: build_artifacts
       - name: Version
