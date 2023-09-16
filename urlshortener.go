@@ -18,7 +18,7 @@ import (
 )
 
 var (
-	version string = "v.local_build"
+	version string = "local_build"
 )
 
 func main() {
