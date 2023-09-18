@@ -256,7 +256,7 @@ func (s *serviceHandler) healthCheck() error {
 	}
 
 	// self-test part 2: check redirect
-	rURL := "" // vaiable to store redirect URL
+	rURL := "" // variable to store redirect URL
 	if s.config.Mode&disableRedirect != 0 {
 		// use tokenDB interface as web-interface is locked in this service mode
 		rURL, err = s.tokenDB.Get(repl.Token)
@@ -357,7 +357,7 @@ curl -v POST -H "Content-Type: application/json" -d '{"url":"<long url>","exp":1
 
 // new handle the new token creation for passed url and sets expiration for it
 func (s *serviceHandler) new(w http.ResponseWriter, r *http.Request, body []byte) {
-	// TODO: check some authorisation ???
+	// TODO: check some authorization ???
 
 	rMess := fmt.Sprintf("token request from %s (%s)", r.RemoteAddr, r.Referer())
 
@@ -369,7 +369,7 @@ func (s *serviceHandler) new(w http.ResponseWriter, r *http.Request, body []byte
 		return
 	}
 
-	// the requst parameters structure
+	// the request parameters structure
 	var params struct {
 		URL string `json:"url"`           // long URL
 		Exp int    `json:"exp,omitempty"` // Expiration
@@ -505,7 +505,7 @@ func (s *serviceHandler) expire(w http.ResponseWriter, r *http.Request, body []b
 		return
 	}
 
-	// make the requst parameters structure
+	// make the request parameters structure
 	var params struct {
 		Token string `json:"token"`         // Token of short URL token
 		Exp   int    `json:"exp,omitempty"` // Expiration

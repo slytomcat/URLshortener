@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // shortTokenD - debugging ShortToken interface realization
@@ -32,7 +33,7 @@ func (s shortTokenD) Check(_ string) error {
 // try to create new token from debugging source
 func TestMockShortToken(t *testing.T) {
 	st := mockShortToken(6)
-	assert.Equal(t, strings.Repeat("_", 6), st.Get())
+	require.Equal(t, strings.Repeat("_", 6), st.Get())
 }
 
 // try to make two tokens from random source and compare them
@@ -43,9 +44,9 @@ func TestNewShortTokenReal6(t *testing.T) {
 
 	tc1 := st.Get()
 
-	assert.Equal(t, 6, len(tc))
-	assert.Equal(t, 6, len(tc1))
-	assert.NotEqual(t, tc, tc1)
+	require.Equal(t, 6, len(tc))
+	require.Equal(t, 6, len(tc1))
+	require.NotEqual(t, tc, tc1)
 	t.Log(tc, tc1)
 }
 
@@ -57,9 +58,9 @@ func TestNewShortTokenReal2(t *testing.T) {
 
 	tc1 := st.Get()
 
-	assert.Equal(t, 2, len(tc))
-	assert.Equal(t, 2, len(tc1))
-	assert.NotEqual(t, tc, tc1)
+	require.Equal(t, 2, len(tc))
+	require.Equal(t, 2, len(tc1))
+	require.NotEqual(t, tc, tc1)
 	t.Log(tc, tc1)
 }
 
@@ -77,18 +78,11 @@ func TestAsyncGet(t *testing.T) {
 	}
 
 	wg.Wait()
-	// Check that all token are different
 	for i := 0; i < cnt; i++ {
-		//wg.Add(1)
-		//go func(i int) {
-		//	defer wg.Done()
 		for j := i + 1; j < cnt; j++ {
 			assert.NotEqual(t, resBuf[i], resBuf[j])
-			// t.Log(resBuf[i], resBuf[j])
 		}
-		//}(i)
 	}
-	//wg.Wait()
 }
 
 // test Check with correct token
@@ -141,7 +135,7 @@ func Benchmark00ST00Create8(b *testing.B) {
 }
 
 // experimental token generator that uses sync.Pool for random buffer
-// unfortunately it is slower and requeres more memory than original simple version.
+// unfortunately it is slower and requires more memory than original simple version.
 func NewBShortToken(length int) ShortToken {
 	pool := &sync.Pool{}
 	pool.New = func() interface{} {
@@ -166,7 +160,7 @@ func (s *shortBToken) Get() string {
 
 	n, err := rand.Read(buf)
 	if err != nil || n != len(buf) {
-		panic(fmt.Errorf("error while retriving random data: %d %v", n, err.Error()))
+		panic(fmt.Errorf("error while retrieving random data: %d %v", n, err.Error()))
 	}
 	// return shortened to tokenLenS BASE64 representation
 	return base64.URLEncoding.EncodeToString(buf)[:s.length]

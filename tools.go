@@ -15,7 +15,7 @@ import (
 
 // Config - configuration structure
 type Config struct {
-	RedisAddrs     []string `required:"true"`          // Redis connection adresses
+	RedisAddrs     []string `required:"true"`          // Redis connection addresses
 	RedisPassword  string   `default:""`               // Redis connection password
 	TokenLength    int      `default:"6"`              // token length
 	Timeout        int      `default:"500"`            // New token creation timeout in ms

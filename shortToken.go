@@ -47,7 +47,7 @@ func (s *shortToken) Get() string {
 // Check checks the lenght of token and its alphabet
 func (s *shortToken) Check(sToken string) error {
 
-	// check lenght
+	// check length
 	if len(sToken) != s.length {
 		return errors.New("wrong token length")
 	}

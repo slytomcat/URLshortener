@@ -42,7 +42,7 @@ func main() {
 
 // doMain performs all preparation and starts server
 func doMain() error {
-	// get the configuratin variables
+	// get the configuration variables
 	config, err := readConfig()
 	if err != nil {
 		return fmt.Errorf("configuration read error: %w", err)

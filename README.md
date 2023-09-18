@@ -8,7 +8,7 @@
 
 The service requires Redis database connection. See example how to run Redis in Docker in [redisDockerRun.sh](https://github.com/slytomcat/URLshortener/blob/master/redisDockerRun.sh)
 
-When `URLshortener` starts it also performs a self-healthcheck. If `URLshortener` misconfigured or initial healthcheck failed then it returns non zero exit code.
+`URLshortener` performs a self-health-check on start. If `URLshortener` misconfigured or initial health-check failed then it returns non zero exit code.
 
 `URLshortener -v` outputs version info end exits with zero exit code.
 
@@ -46,7 +46,7 @@ Request example using `curl` and `s-t-c.tk` (micro-service demo):
 
 `curl -v POST -H "Content-Type: application/json" -d '{"url":"<long url>","exp":10}' http://s-t-c.tk/api/v1/token`
 
-Note: Token is created as random and the saving it to DB may cause duplicate error. In order to avoid such error the service makes several attempts to store random token. The number of attempts is limited by the `Timeout` configuration value by time, not by amount. When time-out expired and no one attempt was not successful then service returns response code `408 Request Timeout`. This response mean that the request can be repeated.
+Note: Token is created as random and the saving it to DB may cause duplicate error. In order to avoid such error the service makes several attempts to store random token. The number of attempts is limited by the `Timeout` configuration value by time, not by amount. When time-out expired and no one attempt was successful then service returns response code `408 Request Timeout`. This response mean that the request can be repeated.
 
 The maximum number of possible attempts to store token during time-out is calculated every time a new token stored. The last measured value is displayed on the homepage.
 

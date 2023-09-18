@@ -11,6 +11,7 @@ import (
 
 	"github.com/go-redis/redis/v7"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var testDBToken string = "AAAA"
@@ -19,7 +20,7 @@ type mockDB struct {
 	setFunc   func(string, string, int) (bool, error)
 	getFunc   func(string) (string, error)
 	expFunc   func(string, int) error
-	delfunc   func(string) error
+	delFunc   func(string) error
 	closeFunc func() error
 }
 
@@ -36,7 +37,7 @@ func (m *mockDB) Expire(sToken string, expiration int) error {
 }
 
 func (m *mockDB) Delete(sToken string) error {
-	return m.delfunc(sToken)
+	return m.delFunc(sToken)
 }
 
 func (m *mockDB) Close() error {
@@ -48,7 +49,7 @@ func newMockDB() *mockDB {
 		setFunc:   func(_, _ string, _ int) (bool, error) { return true, nil },
 		getFunc:   func(_ string) (string, error) { return "http://localhost:8080/favicon.ico", nil },
 		expFunc:   func(_ string, _ int) error { return nil },
-		delfunc:   func(_ string) error { return nil },
+		delFunc:   func(_ string) error { return nil },
 		closeFunc: func() error { return nil },
 	}
 }
@@ -60,57 +61,50 @@ func Test05DBR01NewTokenDBError(t *testing.T) {
 	json.Unmarshal([]byte(`{"Addrs":["Wrong.Host:6379"]}`), &connect)
 
 	_, err := NewTokenDB([]string{"Wrong.Host:6379"}, "")
-	assert.Error(t, err)
+	require.Error(t, err)
 }
 
 // concurrent goroutines tries to make new short URL in the same time with the same token (debugging)
 func raceNewToken(db TokenDB, url string, t *testing.T) {
 
 	var wg sync.WaitGroup
-	var succes, fail, cnt, i int64
+	var success, fail, cnt, i int64
 	cnt = 5
 	var start sync.RWMutex
 
 	start.Lock()
-	rand.Seed(time.Now().UnixNano())
 
 	racer := func(i int64) {
 		defer wg.Done()
 
 		time.Sleep(time.Duration(rand.Intn(42)) * time.Microsecond * 100)
-		//t.Logf("%v Racer %d: Ready!\n", time.Now(), i)
 		start.RLock()
 
 		ok, err := db.Set(testDBToken, url, 1)
 
 		if err != nil {
-			//t.Logf("%v Racer %d: %v \n", time.Now(), i, err)
 			atomic.AddInt64(&fail, 1)
 			return
 		}
 
 		if !ok {
-			//t.Logf("%v Racer %d: %v \n", time.Now(), i, "dubicate detected")
 			atomic.AddInt64(&fail, 1)
 			return
 		}
 
-		//t.Logf("%v Racer %d: Token for %s: %v\n", time.Now(), i, url, testDBToken)
-		atomic.AddInt64(&succes, 1)
+		atomic.AddInt64(&success, 1)
 	}
 
 	for i = 0; i < cnt; i++ {
 		wg.Add(1)
 		go racer(i)
 	}
-	//t.Logf("%v Ready?\n", time.Now())
 	time.Sleep(time.Millisecond * 20)
 	start.Unlock()
-	//t.Logf("%v Go!!!\n", time.Now())
 	wg.Wait()
 
-	if succes != 1 || fail != cnt-1 {
-		t.Errorf("Concurent update error: success=%d, fail=%d, total=%d", succes, fail, cnt)
+	if success != 1 || fail != cnt-1 {
+		t.Errorf("Concurrent update error: success=%d, fail=%d, total=%d", success, fail, cnt)
 	}
 }
 
@@ -119,10 +113,10 @@ func Test05DBR10All(t *testing.T) {
 	envSet(t)
 
 	testDBConfig, err := readConfig()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	testDB, err := NewTokenDB(testDBConfig.RedisAddrs, testDBConfig.RedisPassword)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	testDB.Delete(testDBToken)
 	defer testDB.Delete(testDBToken)
@@ -131,19 +125,19 @@ func Test05DBR10All(t *testing.T) {
 
 		url := "https://golang.org/pkg/time/"
 		ok, err := testDB.Set(testDBToken, url, 1)
-		assert.NoError(t, err)
-		assert.True(t, ok)
+		require.NoError(t, err)
+		require.True(t, ok)
 
 		ok, err = testDB.Set(testDBToken, url, 1)
-		assert.NoError(t, err)
-		assert.False(t, ok)
+		require.NoError(t, err)
+		require.False(t, ok)
 		// clear
 		testDB.Delete(testDBToken)
 	})
 
 	t.Run("detect race on token store: success", func(t *testing.T) {
 		raceNewToken(testDB, "https://golang.org", t)
-		assert.NoError(t, testDB.Expire(testDBToken, -1))
+		require.NoError(t, testDB.Expire(testDBToken, -1))
 	})
 
 	t.Run("one more time: success", func(t *testing.T) {
@@ -153,30 +147,30 @@ func Test05DBR10All(t *testing.T) {
 	t.Run("get: success", func(t *testing.T) {
 
 		lURL, err := testDB.Get(testDBToken)
-		assert.NoError(t, err)
-		assert.NotEmpty(t, lURL)
+		require.NoError(t, err)
+		require.NotEmpty(t, lURL)
 	})
 	t.Run("del: success", func(t *testing.T) {
 
-		assert.NoError(t, testDB.Delete(testDBToken))
+		require.NoError(t, testDB.Delete(testDBToken))
 
 		_, err := testDB.Get(testDBToken)
-		assert.Error(t, err)
+		require.Error(t, err)
 	})
 
 	t.Run("expire non existing token", func(t *testing.T) {
-		assert.Error(t, testDB.Expire(testDBToken+"$", -1))
+		require.Error(t, testDB.Expire(testDBToken+"$", -1))
 	})
 	t.Run("delete non existing token", func(t *testing.T) {
-		assert.Error(t, testDB.Delete(testDBToken+"$"))
+		require.Error(t, testDB.Delete(testDBToken+"$"))
 	})
 	t.Run("get non existing token", func(t *testing.T) {
 		_, err := testDB.Get(testDBToken + "$")
-		assert.Error(t, err)
+		require.Error(t, err)
 	})
 
 	t.Run("close db: success", func(t *testing.T) {
-		assert.NoError(t, testDB.Close())
+		require.NoError(t, testDB.Close())
 	})
 }
 
@@ -184,10 +178,10 @@ func Benchmark05DBR10set(b *testing.B) {
 	envSet(b)
 
 	testDBConfig, err := readConfig()
-	assert.NoError(b, err)
+	require.NoError(b, err)
 
 	testDB, err := NewTokenDB(testDBConfig.RedisAddrs, testDBConfig.RedisPassword)
-	assert.NoError(b, err)
+	require.NoError(b, err)
 
 	for i := 0; i < b.N; i++ {
 		_, err := testDB.Set(strconv.Itoa(i), "test", 0)
@@ -199,10 +193,10 @@ func Benchmark05DBR00del(b *testing.B) {
 	envSet(b)
 
 	testDBConfig, err := readConfig()
-	assert.NoError(b, err)
+	require.NoError(b, err)
 
 	testDB, err := NewTokenDB(testDBConfig.RedisAddrs, testDBConfig.RedisPassword)
-	assert.NoError(b, err)
+	require.NoError(b, err)
 
 	for i := 0; i < b.N; i++ {
 		err := testDB.Delete(strconv.Itoa(i))
