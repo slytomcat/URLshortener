@@ -91,7 +91,7 @@ func Test00ST10CheckOk(t *testing.T) {
 
 	sToken := st.Get()
 
-	assert.NoError(t, st.Check(sToken))
+	require.NoError(t, st.Check(sToken))
 }
 
 // test Check with wrong token length
@@ -100,14 +100,14 @@ func Test00ST15CheckNoOk(t *testing.T) {
 
 	sToken := st.Get()
 
-	assert.Error(t, st.Check(sToken+"wrong"))
+	require.Error(t, st.Check(sToken+"wrong"))
 }
 
 // test Check with wrong token alphabet
 func Test00ST15CheckNoOk2(t *testing.T) {
 	st := NewShortToken(2)
 
-	assert.Error(t, st.Check("#$")) // check nonBase64 symbols
+	require.Error(t, st.Check("#$")) // check nonBase64 symbols
 }
 
 // Benchmark for the 2 symbols token
