@@ -70,15 +70,14 @@ func TestAsyncGet(t *testing.T) {
 	resBuf := make([]string, cnt)
 	wg := sync.WaitGroup{}
 	wg.Add(cnt)
-	for i := 0; i < cnt; i++ {
+	for i := range cnt {
 		go func(i int) {
 			defer wg.Done()
 			resBuf[i] = st.Get()
 		}(i)
 	}
-
 	wg.Wait()
-	for i := 0; i < cnt; i++ {
+	for i := range cnt {
 		for j := i + 1; j < cnt; j++ {
 			assert.NotEqual(t, resBuf[i], resBuf[j])
 		}
@@ -113,7 +112,7 @@ func Test00ST15CheckNoOk2(t *testing.T) {
 // Benchmark for the 2 symbols token
 func Benchmark00ST00Create2(b *testing.B) {
 	st := NewShortToken(2)
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		_ = st.Get()
 	}
 }
@@ -121,7 +120,7 @@ func Benchmark00ST00Create2(b *testing.B) {
 // Benchmark for the 6 symbols token
 func Benchmark00ST00Create6(b *testing.B) {
 	st := NewShortToken(6)
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		_ = st.Get()
 	}
 }
@@ -129,7 +128,7 @@ func Benchmark00ST00Create6(b *testing.B) {
 // Benchmark for the 8 symbols token
 func Benchmark00ST00Create8(b *testing.B) {
 	st := NewShortToken(8)
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		_ = st.Get()
 	}
 }
@@ -173,7 +172,7 @@ func (s *shortBToken) Check(sToken string) error {
 // Benchmark for the 2 symbols token
 func Benchmark00ST00Create2B(b *testing.B) {
 	st := NewBShortToken(2)
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		_ = st.Get()
 	}
 }
@@ -181,7 +180,7 @@ func Benchmark00ST00Create2B(b *testing.B) {
 // Benchmark for the 6 symbols token
 func Benchmark00ST00Create6B(b *testing.B) {
 	st := NewBShortToken(6)
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		_ = st.Get()
 	}
 }
@@ -189,7 +188,7 @@ func Benchmark00ST00Create6B(b *testing.B) {
 // Benchmark for the 8 symbols token
 func Benchmark00ST00Create8B(b *testing.B) {
 	st := NewBShortToken(8)
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		_ = st.Get()
 	}
 }

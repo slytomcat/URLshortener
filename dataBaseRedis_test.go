@@ -68,13 +68,13 @@ func Test05DBR01NewTokenDBError(t *testing.T) {
 func raceNewToken(db TokenDB, url string, t *testing.T) {
 
 	var wg sync.WaitGroup
-	var success, fail, cnt, i int64
+	var success, fail, cnt int64
 	cnt = 5
 	var start sync.RWMutex
 
 	start.Lock()
 
-	racer := func(i int64) {
+	racer := func() {
 		defer wg.Done()
 
 		time.Sleep(time.Duration(rand.Intn(42)) * time.Microsecond * 100)
@@ -94,10 +94,9 @@ func raceNewToken(db TokenDB, url string, t *testing.T) {
 
 		atomic.AddInt64(&success, 1)
 	}
-
-	for i = 0; i < cnt; i++ {
-		wg.Add(1)
-		go racer(i)
+	wg.Add(int(cnt))
+	for range cnt {
+		go racer()
 	}
 	time.Sleep(time.Millisecond * 20)
 	start.Unlock()
@@ -183,7 +182,7 @@ func Benchmark05DBR10set(b *testing.B) {
 	testDB, err := NewTokenDB(testDBConfig.RedisAddrs, testDBConfig.RedisPassword)
 	require.NoError(b, err)
 
-	for i := 0; i < b.N; i++ {
+	for i := range b.N {
 		_, err := testDB.Set(strconv.Itoa(i), "test", 0)
 		assert.NoError(b, err)
 	}
@@ -198,7 +197,7 @@ func Benchmark05DBR00del(b *testing.B) {
 	testDB, err := NewTokenDB(testDBConfig.RedisAddrs, testDBConfig.RedisPassword)
 	require.NoError(b, err)
 
-	for i := 0; i < b.N; i++ {
+	for i := range b.N {
 		err := testDB.Delete(strconv.Itoa(i))
 		if err != nil {
 			b.Logf("i=%v err=%v", i, err)
