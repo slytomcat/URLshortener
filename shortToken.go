@@ -18,7 +18,7 @@ type ShortToken interface {
 }
 type shortToken struct {
 	length  int // token length
-	bufSize int // bytes bufer size
+	bufSize int // bytes buffer size
 }
 
 // NewShortToken returns new ShortToken instance
@@ -32,19 +32,19 @@ func NewShortToken(length int) ShortToken {
 // Get creates the token from random or debugging source
 func (s *shortToken) Get() string {
 
-	// prepare bytes bufer
+	// prepare bytes buffer
 	buf := make([]byte, s.bufSize)
 
 	// get secure random bytes
 	n, err := rand.Read(buf)
 	if err != nil || n != s.bufSize {
-		panic(fmt.Errorf("error while retriving random data: %d %v", n, err.Error()))
+		panic(fmt.Errorf("error while retrieving random data: %d %v", n, err.Error()))
 	}
 	// return shortened to tokenLenS BASE64 representation
 	return base64.URLEncoding.EncodeToString(buf)[:s.length]
 }
 
-// Check checks the lenght of token and its alphabet
+// Check checks the length of token and its alphabet
 func (s *shortToken) Check(sToken string) error {
 
 	// check length

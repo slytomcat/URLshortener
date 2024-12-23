@@ -42,7 +42,7 @@ const (
 	</body>
 </html>`
 	// generatePage - is a template for short URL generation
-	generatePage = `	 
+	generatePage = `
 <html>
 	<head>
 	<title>Short URL generator</title>
@@ -54,7 +54,7 @@ const (
 	   <form action="/ui/generate" name=f method="GET">
 		   <input maxLength=1024 size=70 name=s value="" title="URL to be shortened">
 		   <input type=submit value="get short URL">
-	   </form>   
+	   </form>
 	</body>
 </html>`
 	generatorPagePart = `
@@ -63,7 +63,7 @@ Short URL: %s
 <br><br>
 QR code for short URL:
 <br>
-<img src="http://chart.apis.google.com/chart?chs=300x300&cht=qr&choe=UTF-8&chl=%s" />
+<img src="http://quickchart.io/chart?chs=300x300&cht=qr&choe=UTF-8&chl=%s" />
 <br>
 <br>
 Short URL lifetime: %d days
@@ -85,7 +85,7 @@ type ServiceHandler interface {
 	stop()                                        // Service stop method
 }
 
-// serviceHandler is an istance of ServiceHandler interface
+// serviceHandler is an instance of ServiceHandler interface
 type serviceHandler struct {
 	tokenDB    TokenDB      // Database interface
 	shortToken ShortToken   // Short token generator
@@ -94,7 +94,7 @@ type serviceHandler struct {
 	attempts   int32        // calculated number of attempts during time-out
 }
 
-// ServeHTTP implement simpme mux that selects the handler function according to request URL
+// ServeHTTP implement simple mux that selects the handler function according to request URL
 func (s *serviceHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	log.Println("access from:", r.RemoteAddr, r.Method, r.RequestURI, r.Header)
 
@@ -164,7 +164,7 @@ func (s *serviceHandler) generate(w http.ResponseWriter, r *http.Request) {
 
 	// display results
 	w.Write([]byte(fmt.Sprintf(generatePage, part)))
-	log.Printf("%s: ui interface displaed", rMess)
+	log.Printf("%s: ui interface displayed", rMess)
 
 }
 
@@ -172,7 +172,7 @@ func (s *serviceHandler) generate(w http.ResponseWriter, r *http.Request) {
 curl -i -v http://localhost:8080/
 */
 
-// Home shows simple home page if self-check succesfuly passed
+// Home shows simple home page if self-check successfully passed
 func (s *serviceHandler) home(w http.ResponseWriter, r *http.Request) {
 	rMess := fmt.Sprintf("health-check request from %s (%s)", r.RemoteAddr, r.Referer())
 	// Perform self-test
@@ -217,7 +217,7 @@ func (s *serviceHandler) healthCheck() error {
 		sToken := "Debug.Token"
 		_ = s.tokenDB.Delete(sToken)
 
-		// use tokenDB inteface as web-interface is locked in this service mode
+		// use tokenDB interface as web-interface is locked in this service mode
 		if ok, err := s.tokenDB.Set(sToken, "http://"+url, 1); err != nil || !ok {
 			return fmt.Errorf("new token creation error: %w, ok: %v", err, ok)
 		}
@@ -235,7 +235,7 @@ func (s *serviceHandler) healthCheck() error {
 
 		// check response status code
 		if resp.StatusCode != http.StatusOK {
-			return fmt.Errorf("new token request: unexpected responce status: %v", resp.StatusCode)
+			return fmt.Errorf("new token request: unexpected response status: %v", resp.StatusCode)
 		}
 
 		// read response body
@@ -249,7 +249,7 @@ func (s *serviceHandler) healthCheck() error {
 			return fmt.Errorf("new token response body parsing error: %w", err)
 		}
 
-		// check receved token
+		// check received token
 		if repl.Token == "" {
 			return errors.New("empty token returned")
 		}
@@ -274,7 +274,7 @@ func (s *serviceHandler) healthCheck() error {
 
 		// check redirect response status
 		if resp2.StatusCode != http.StatusOK {
-			return fmt.Errorf("redirect request: unexpected responce status: %v", resp2.StatusCode)
+			return fmt.Errorf("redirect request: unexpected response status: %v", resp2.StatusCode)
 		}
 
 		// get redirection URL
@@ -282,7 +282,7 @@ func (s *serviceHandler) healthCheck() error {
 	}
 	// check redirection URL
 	if rURL != "http://"+url {
-		return fmt.Errorf("wrong redirection URL: expected %s, receved %v", url, rURL)
+		return fmt.Errorf("wrong redirection URL: expected %s, received %v", url, rURL)
 	}
 
 	// self-test part 3: make received token as expired
@@ -428,7 +428,7 @@ func (s *serviceHandler) generateToken(url string, exp int) (string, error) {
 	var startTime time.Time
 	var err error
 
-	// add referenece type if it is missing
+	// add reference type if it is missing
 	if !strings.HasPrefix(strings.ToLower(url), "http") {
 		url = "http://" + url
 	}

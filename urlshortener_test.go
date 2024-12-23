@@ -36,7 +36,7 @@ func Test20Main07WrongDB2(t *testing.T) {
 	}
 	errDb := newMockDB()
 	errDb.setFunc = func(string, string, int) (bool, error) { return false, errors.New("some error") }
-	err := stratService(&conf, errDb)
+	err := startService(&conf, errDb)
 	require.Error(t, err)
 	require.Equal(t, "http: Server closed", err.Error())
 }
