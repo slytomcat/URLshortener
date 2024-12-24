@@ -30,7 +30,7 @@ const (
 		<title>URL shortener</title>
 	</head>
 	<body>
-		<h1>Home page of URLshortener</h1>
+		<h1>%s</h1>
 		<br>
 		URLshortener %s
 		<br><br>
@@ -193,6 +193,7 @@ func (s *serviceHandler) home(w http.ResponseWriter, r *http.Request) {
 	// show the home page
 	w.Write([]byte(fmt.Sprintf(
 		homePage,
+		"Home page of URLshortener",
 		version,
 		atomic.LoadInt32(&s.attempts),
 		s.config.Timeout)))
@@ -216,6 +217,7 @@ func (s *serviceHandler) healthcheck(w http.ResponseWriter, r *http.Request) {
 		// show the home page if self-test was successfully passed
 		w.Write([]byte(fmt.Sprintf(
 			homePage,
+			"Health check page",
 			version,
 			atomic.LoadInt32(&s.attempts),
 			s.config.Timeout)))

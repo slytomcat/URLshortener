@@ -154,7 +154,7 @@ func Test10Service05All(t *testing.T) {
 		require.Equal(t, http.StatusOK, resp.StatusCode)
 		buf, err := io.ReadAll(resp.Body)
 		require.NoError(t, err)
-		require.Contains(t, string(buf), "Home page of URLshortener")
+		require.Contains(t, string(buf), "Health check page")
 	})
 
 	t.Run("bad method", func(t *testing.T) {
