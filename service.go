@@ -97,24 +97,30 @@ type serviceHandler struct {
 // ServeHTTP implement simple mux that selects the handler function according to request URL
 func (s *serviceHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	log.Println("access from:", r.RemoteAddr, r.Method, r.RequestURI, r.Header)
-
-	// read the request body
-	body, err := io.ReadAll(r.Body)
-	if err != nil {
-		log.Printf("request body reading error: %v", err)
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
 	switch r.Method + r.URL.Path {
 	case "GET/":
 		// request for health-check
 		s.home(w, r)
+	case "GET/healthcheck":
+		// request for health-check
+		s.healthcheck(w, r)
 	case "POST/api/v1/token":
 		// request for new short url/token
+		body, err := readBody(r)
+		if err != nil {
+			log.Print(err)
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
 		s.new(w, r, body)
 	case "POST/api/v1/expire":
 		// request for new short url/token
+		body, err := readBody(r)
+		if err != nil {
+			log.Print(err)
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
 		s.expire(w, r, body)
 	case "GET/ui/generate":
 		// UI short URL generation page
@@ -132,6 +138,15 @@ func (s *serviceHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusBadRequest)
 		}
 	}
+}
+
+// readBody reads request body and format error
+func readBody(r *http.Request) ([]byte, error) {
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		return nil, fmt.Errorf("request body reading error: %v", err)
+	}
+	return body, nil
 }
 
 // generate is UI short URL|QR generator
@@ -172,8 +187,23 @@ func (s *serviceHandler) generate(w http.ResponseWriter, r *http.Request) {
 curl -i -v http://localhost:8080/
 */
 
-// Home shows simple home page if self-check successfully passed
+// Home shows home page
 func (s *serviceHandler) home(w http.ResponseWriter, r *http.Request) {
+	log.Printf("home page request from %s (%s)", r.RemoteAddr, r.Referer())
+	// show the home page
+	w.Write([]byte(fmt.Sprintf(
+		homePage,
+		version,
+		atomic.LoadInt32(&s.attempts),
+		s.config.Timeout)))
+}
+
+/* test for test env:
+curl -i -v http://localhost:8080/healthcheck
+*/
+
+// healthcheck also shows home page if self-check successfully passed
+func (s *serviceHandler) healthcheck(w http.ResponseWriter, r *http.Request) {
 	rMess := fmt.Sprintf("health-check request from %s (%s)", r.RemoteAddr, r.Referer())
 	// Perform self-test
 	if err := s.healthCheck(); err != nil {

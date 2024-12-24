@@ -94,7 +94,7 @@ Via browser:
 
 
 ### Health-check:
-URL: `<host>[:<port>]/`
+URL: `<host>[:<port>]/healthcheck`
 
 Method: `GET`
 
@@ -102,7 +102,19 @@ Response: simple home page and `HTTP 200 OK` in case of successful self-health-c
 
 Request example using `curl` and `s-t-c.tk` (micro-service demo):
 
-`curl -i -v http://s-t-c.tk/`
+`curl -i -v http://s-t-c.tk/healthcheck`
+
+
+### Home page
+URL: `<host>[:<port>]/`
+
+Method: `GET`
+
+Response: simple home page and `HTTP 200 OK`
+
+Request example using `curl` and `s-t-c.tk` (micro-service demo):
+
+`curl -i -v http://s-t-c.tk`
 
 
 ### Service configuration

@@ -35,17 +35,11 @@ func Test10Service03CheckHealthCheck(t *testing.T) {
 	go func() {
 		require.Error(t, testHandler.start())
 	}()
-
-	time.Sleep(time.Second)
-
-	resp, err := http.Get("http://localhost:8080/")
-	require.NoError(t, err)
-	defer resp.Body.Close()
-	require.Equal(t, http.StatusOK, resp.StatusCode)
+	require.Eventually(t, checkStart("http://localhost:8080/"), time.Second, 10*time.Millisecond)
 
 	conf.Mode = disableExpire
 
-	resp, err = http.Get("http://localhost:8080/")
+	resp, err := http.Get("http://localhost:8080/healthcheck")
 	require.NoError(t, err)
 	defer resp.Body.Close()
 	require.Equal(t, http.StatusOK, resp.StatusCode)
@@ -53,14 +47,14 @@ func Test10Service03CheckHealthCheck(t *testing.T) {
 	conf.Mode = 0
 	errDb.expFunc = func(string, int) error { return errors.New("some error") }
 
-	resp, err = http.Get("http://localhost:8080/")
+	resp, err = http.Get("http://localhost:8080/healthcheck")
 	require.NoError(t, err)
 	defer resp.Body.Close()
 	require.Equal(t, http.StatusInternalServerError, resp.StatusCode)
 
 	conf.Mode = disableExpire
 
-	resp, err = http.Get("http://localhost:8080/")
+	resp, err = http.Get("http://localhost:8080/healthcheck")
 	require.NoError(t, err)
 	defer resp.Body.Close()
 	require.Equal(t, http.StatusInternalServerError, resp.StatusCode)
@@ -68,7 +62,7 @@ func Test10Service03CheckHealthCheck(t *testing.T) {
 	conf.Mode = disableShortener | disableRedirect
 	errDb.getFunc = func(s string) (string, error) { return "wrongURL", nil }
 
-	resp, err = http.Get("http://localhost:8080/")
+	resp, err = http.Get("http://localhost:8080/healthcheck")
 	require.NoError(t, err)
 	defer resp.Body.Close()
 	require.Equal(t, http.StatusInternalServerError, resp.StatusCode)
@@ -76,14 +70,14 @@ func Test10Service03CheckHealthCheck(t *testing.T) {
 	conf.Mode = 0
 	errDb.getFunc = func(string) (string, error) { return "", errors.New("some error") }
 
-	resp, err = http.Get("http://localhost:8080/")
+	resp, err = http.Get("http://localhost:8080/healthcheck")
 	require.NoError(t, err)
 	defer resp.Body.Close()
 	require.Equal(t, http.StatusInternalServerError, resp.StatusCode)
 
 	conf.Mode = disableRedirect
 
-	resp, err = http.Get("http://localhost:8080/")
+	resp, err = http.Get("http://localhost:8080/healthcheck")
 	require.NoError(t, err)
 	defer resp.Body.Close()
 	require.Equal(t, http.StatusInternalServerError, resp.StatusCode)
@@ -91,14 +85,14 @@ func Test10Service03CheckHealthCheck(t *testing.T) {
 	conf.Mode = 0
 	errDb.setFunc = func(string, string, int) (bool, error) { return false, nil }
 
-	resp, err = http.Get("http://localhost:8080/")
+	resp, err = http.Get("http://localhost:8080/healthcheck")
 	require.NoError(t, err)
 	defer resp.Body.Close()
 	require.Equal(t, http.StatusInternalServerError, resp.StatusCode)
 
 	conf.Mode = disableShortener
 
-	resp, err = http.Get("http://localhost:8080/")
+	resp, err = http.Get("http://localhost:8080/healthcheck")
 	require.NoError(t, err)
 	defer resp.Body.Close()
 	require.Equal(t, http.StatusInternalServerError, resp.StatusCode)
@@ -107,6 +101,19 @@ func Test10Service03CheckHealthCheck(t *testing.T) {
 
 	testHandler.stop()
 
+}
+
+func checkStart(url string) func() bool {
+	return func() bool {
+		resp, err := http.Get(url)
+		if err == nil {
+			defer resp.Body.Close()
+		}
+		if err != nil || resp.StatusCode != http.StatusOK {
+			return false
+		}
+		return true
+	}
 }
 
 // try to start service
@@ -132,7 +139,7 @@ func Test10Service05All(t *testing.T) {
 		log.Println(serviceTestHandler.start())
 	}()
 
-	time.Sleep(3 * time.Second)
+	require.Eventually(t, checkStart("http://"+testConfig.ListenHostPort), time.Second, 10*time.Millisecond)
 	w.Close()
 	log.SetOutput(logger)
 	buf, err := io.ReadAll(r)
@@ -140,7 +147,7 @@ func Test10Service05All(t *testing.T) {
 	require.Contains(t, string(buf), "starting server at")
 
 	t.Run("do health check", func(t *testing.T) {
-		resp, err := http.Get("http://" + testConfig.ListenHostPort)
+		resp, err := http.Get("http://" + testConfig.ListenHostPort + "/healthcheck")
 		require.NoError(t, err)
 		defer resp.Body.Close()
 
@@ -269,7 +276,7 @@ func Test10Service05All(t *testing.T) {
 	t.Run("health check in service mode disableRedirect", func(t *testing.T) {
 		testConfig.Mode = disableRedirect
 
-		resp, err := http.Get("http://" + testConfig.ListenHostPort)
+		resp, err := http.Get("http://" + testConfig.ListenHostPort + "/healthcheck")
 		require.NoError(t, err)
 		defer resp.Body.Close()
 
@@ -280,7 +287,7 @@ func Test10Service05All(t *testing.T) {
 	t.Run("health check in service mode disableShortener", func(t *testing.T) {
 		testConfig.Mode = disableShortener
 
-		resp, err := http.Get("http://" + testConfig.ListenHostPort)
+		resp, err := http.Get("http://" + testConfig.ListenHostPort + "/healthcheck")
 		require.NoError(t, err)
 		defer resp.Body.Close()
 
@@ -291,7 +298,7 @@ func Test10Service05All(t *testing.T) {
 	t.Run("health check in service mode disableExpire", func(t *testing.T) {
 		testConfig.Mode = disableExpire
 
-		resp, err := http.Get("http://" + testConfig.ListenHostPort)
+		resp, err := http.Get("http://" + testConfig.ListenHostPort + "/healthcheck")
 		require.NoError(t, err)
 		defer resp.Body.Close()
 
@@ -372,7 +379,7 @@ func Test10Service90Double(t *testing.T) {
 		log.Println(serviceTestHandler.start())
 	}()
 
-	time.Sleep(time.Second * 2)
+	require.Eventually(t, checkStart("http://"+servTestConfig.ListenHostPort), time.Second, 10*time.Millisecond)
 
 	resp, err := http.Post("http://"+servTestConfig.ListenHostPort+"/api/v1/token", "application/json",
 		strings.NewReader(`{"url": "http://`+servTestConfig.ShortDomain+`"}`))
@@ -412,7 +419,7 @@ func Test10Service92BadDB(t *testing.T) {
 		log.Println(serviceTestHandler.start())
 	}()
 
-	time.Sleep(time.Second * 2)
+	require.Eventually(t, checkStart("http://"+servTestConfig.ListenHostPort), time.Second, 10*time.Millisecond)
 
 	resp, err := http.Post("http://"+servTestConfig.ListenHostPort+"/api/v1/token", "application/json",
 		strings.NewReader(`{"url": "http://`+servTestConfig.ShortDomain+`"}`))
