@@ -7,6 +7,3 @@ services:
     image: slytomcat/urlshortener:latest
     restart: always
     network_mode: host
-    volumes:
-      - ./cnfr.json:/opt/URLshortener/cnfr.json
-

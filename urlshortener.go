@@ -61,10 +61,10 @@ func doMain() error {
 		}
 	}()
 
-	return stratService(config, tokenDB)
+	return startService(config, tokenDB)
 }
 
-func stratService(config *Config, tokenDB TokenDB) error {
+func startService(config *Config, tokenDB TokenDB) error {
 
 	// make service handler
 	handler := NewHandler(config, tokenDB, NewShortToken(config.TokenLength))
@@ -79,7 +79,7 @@ func stratService(config *Config, tokenDB TokenDB) error {
 	if err := handler.healthCheck(); err != nil {
 		fmt.Printf("initial health-check failed: %v\nexiting...\n", err)
 	} else {
-		log.Println("initial health-check successfuly passed")
+		log.Println("initial health-check successfully passed")
 		c := make(chan os.Signal, 1)
 		signal.Notify(c, syscall.SIGINT, syscall.SIGTERM)
 		// sleep until a signal is received.

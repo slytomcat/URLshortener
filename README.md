@@ -1,5 +1,5 @@
 # URLshortener
-[![tests&bild&container](https://github.com/slytomcat/URLshortener/actions/workflows/go.yml/badge.svg)](https://github.com/slytomcat/URLshortener/actions/workflows/go.yml)
+[![tests&build&container](https://github.com/slytomcat/URLshortener/actions/workflows/go.yml/badge.svg)](https://github.com/slytomcat/URLshortener/actions/workflows/go.yml)
 [![Platform: linux-64](https://img.shields.io/badge/Platform-linux--64-blue)]()
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 [![Docker image](https://img.shields.io/badge/Docker-image-blue)](https://github.com/slytomcat/URLshortener/pkgs/container/urlshortener)
@@ -46,13 +46,13 @@ Request example using `curl` and `s-t-c.tk` (micro-service demo):
 
 `curl -v POST -H "Content-Type: application/json" -d '{"url":"<long url>","exp":10}' http://s-t-c.tk/api/v1/token`
 
-Note: Token is created as random and the saving it to DB may cause duplicate error. In order to avoid such error the service makes several attempts to store random token. The number of attempts is limited by the `Timeout` configuration value by time, not by amount. When time-out expired and no one attempt was successful then service returns response code `408 Request Timeout`. This response mean that the request can be repeated.
+Note: Token is created as random and the saving it to DB may cause duplicate error. In order to avoid such error the service makes several attempts to store random token. The number of attempts is limited by the `URLSHORTENER_TIMEOUT` configuration value by time, not by count of attempts. When time-out expired and no one attempt was successful then service returns response code `408 Request Timeout`. This response mean that the request can be repeated.
 
 The maximum number of possible attempts to store token during time-out is calculated every time a new token stored. The last measured value is displayed on the homepage.
 
-If measured number of attempts is too small (1-5) then log can contain warnings like: `Warning: Too low number of attempts: 5 per timeout (500 ms)`. In such a case consider increasing of `Timeout` configuration value. Number of attempts above 200 is more then enough, you may consider to decrease `Timeout` configuration value. 30-40 attempts allows to fulfill the space of tokens up to 70-80% before timeout errors (during request for short token) occasionally appears.
+If measured number of attempts is too small (1-5) then log can contain warnings like: `Warning: Too low number of attempts: 5 per timeout (500 ms)`. In such a case consider increasing of `URLSHORTENER_TIMEOUT` configuration value. Number of attempts above 200 is more then enough, you may consider to decrease `URLSHORTENER_TIMEOUT` configuration value. 30-40 attempts allows to fulfill the space of tokens up to 70-80% before timeout errors (during request for short token) occasionally appears.
 
-When the service time-out errors appears often and log contains many errors like `can't store a new token for 75 attempts` then it most probably means that active (not expired) token amount is near to maximum possible tokens amount (for configured token length). Consider increasing of token length (`TokenLength` configuration value) or decrease token expiration (`DefaultExp` configuration value and/or `exp` parameter in the request for new short URL).
+When the service time-out errors appears often and log contains many errors like `can't store a new token for 75 attempts` then it most probably means that active (not expired) token amount is near to maximum possible tokens amount (for configured token length). Consider increasing of token length (`TokenLength` configuration value) or decrease token expiration (`DefaultExp` configuration value and/or `exp` parameter in the request for new short URL). You can also delete some tokens from redis DB.
 
 Note also the log warnings such as `Warning: Measured 45 attempts for 423621 ns. Calculated 62 max attempts per 500 ms`. Such warnings also can be a signal that token space is filled near to maximum capacity.
 
@@ -66,7 +66,7 @@ Method: `POST`
 Request body: JSON with following parameter:
 
 - `token`: string, token for short URL, mandatory.
-- `exp`: int, new expiration in days from now, optional. Default: 0 - value that marks token as expired.
+- `exp`: int, new expiration in days from now, optional. Default: 0 - value that marks token as expired immediately.
 
 Success response: `HTTP 200 OK` with empty body
 
@@ -107,48 +107,24 @@ Request example using `curl` and `s-t-c.tk` (micro-service demo):
 
 ### Service configuration
 
-Path to configuration file can be provided via optional `-config` command line option (default path is `./cnfr.json`). The file content must be the following correct JSON value:
+Service configuration is made via environment variables.
 
-    {
-    "ConnectOptions": {
-        "Addrs": [ "<RedisHost>:6379" ],
-        "Password": "Long long password that is configured for Redis authorization",
-        "DB": 7
-    },
-    "TokenLength":5,
-    "Timeout":777,
-    "ListenHostPort":"0.0.0.0:80",
-    "DefaultExp":30,
-    "ShortDomain":"<shortDomain>",
-    "Mode":0
-    }
+The following variables are read on start:
+ - URLSHORTENER_REDISADDRS: comma separated list of redis cluster/sentinel nodes (address:port,address:port...) or a single address:port value for single node redis. The value is mandatory.
+ - URLSHORTENER_REDISPASSWORD: password for Redis authorization. The value is optional (empty by default). But it is strongly recommended DO NOT USE THE REDIS WITHOUT AUTHORISATION!
+ - URLSHORTENER_TOKENLENGTH: length of short token, default: 6
+ - URLSHORTENER_LISTENHOSTPORT: service listening host:port, default: localhost:8080
+ - URLSHORTENER_TIMEOUT: A new token creation timeout in milliseconds, default: 500
+ - URLSHORTENER_DEFAULTEXP: Default token expiration time in days, default: 1
+ - URLSHORTENER_SHORTDOMAIN: the short domain to use in short URL, default: localhost:8080
+ - URLSHORTENER_MODE: The service mode: the value combined as summary of options (see below), default: 0
 
-Where:
-
-- `ConnectOptions` - Redis connection options (mandatory):
-    - `Addrs` - array of strings: Redis single node address or list of addresses of cluster/sentinel nodes (mandatory)
-    - `Password` - string, password for Redis authorization (mandatory for connections to remote Redis node/cluster)
-    - `DB` - int, database to be selected after connecting to Redis DB (optional, applicable only for connection to single node and fail-over nodes, default: 0)
-    - ... all possible connection options can be found [here](https://godoc.org/github.com/go-redis/redis#UniversalOptions)
-- `TokenLength` - int, number of BASE64 symbols in token
-- `Timeout` - int, new token creation time-out in milliseconds (optional, default: 500)
-- `ListenHostPort` - string: host and port to listen on (optional, default: "localhost:8080")
-- `DefaultExp` - int, default token expiration period in days (optional, default: 1)
-- `ShortDomain` - string, short domain name for short URL creation (optional, default: "localhost:8080")
-- `Mode` - int, service mode (optional, default: 0). Possible values:
-    - 0 - service handles all requests
-    - 1 - request for redirect is disabled
-    - 2 - request for short URL is disabled
-    - 4 - request for set new expiration of token is disabled
-    - 8 - WEB UI is disabled
-
-Value of `Mode` can be a sum of several modes, for example `"Mode":6` disables two requests: request for short URL and request to set new expiration of token.
-
-Configuration data can be also provided via environment variables URLSHORTENER_ConnectOptions (JSON string with Redis connection options), URLSHORTENER_Timeout, URLSHORTENER_ListenHostPort, URLSHORTENER_DefaultExp, URLSHORTENER_ShortDomain and URLSHORTENER_Mode.
-
-When some configuration value is set in both configuration file and environment variable then value from environment is used.
-
+The service mode options are:
+    1 - disable redirects
+    2 - disable request for new short URL creation
+    4 - disable expire request
+    8 - disable UI page for short URL creation
 
 ### Logs
 
-Log is written to output. It contains access log, request results and some warnings about the the measurements of attempts per time-out. 
+Log is written to output. It contains access log, request results and some warnings about the the measurements of attempts per time-out.
