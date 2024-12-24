@@ -24,13 +24,12 @@ var (
 func main() {
 	if len(os.Args) == 2 && os.Args[1] == "-v" {
 		fmt.Printf("URLshortener %s\n", version)
-		os.Exit(0)
+		return
 	}
-	// log the version
-	log.Printf("URLshortener %s", version)
 	// set logging format
 	log.SetFlags(log.Ldate | log.Ltime | log.Lmicroseconds | log.Lshortfile)
-
+	// log the version
+	log.Printf("URLshortener %s", version)
 	// get exiting error
 	err := doMain()
 	if err != http.ErrServerClosed {
