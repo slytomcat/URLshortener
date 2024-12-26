@@ -94,7 +94,7 @@ Via browser:
 
 
 ### Health-check:
-URL: `<host>[:<port>]/healthcheck`
+URL: `<host>[:<port>]/api/v1/healthcheck`
 
 Method: `GET`
 
@@ -102,7 +102,7 @@ Response: simple home page and `HTTP 200 OK` in case of successful self-health-c
 
 Request example using `curl` and `s-t-c.tk` (micro-service demo):
 
-`curl -i -v http://s-t-c.tk/healthcheck`
+`curl -i -v http://s-t-c.tk/api/v1/healthcheck`
 
 
 ### Home page
@@ -132,10 +132,11 @@ The following variables are read on start:
  - URLSHORTENER_MODE: The service mode: the value combined as summary of options (see below), default: 0
 
 The service mode options are:
-    1 - disable redirects
-    2 - disable request for new short URL creation
-    4 - disable expire request
-    8 - disable UI page for short URL creation
+ - 1 : disable redirects
+ - 2 : disable request for new short URL creation
+ - 4 : disable expire request
+ - 8 : disable UI page for short URL creation
+ - 16 : disable token length check (during redirect)
 
 ### Logs
 

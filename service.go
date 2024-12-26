@@ -23,7 +23,7 @@ import (
 )
 
 const (
-	// homePage is a simple home page template to display on health check request
+	// homePage is a simple home page template to display on health check and home requests
 	homePage = `
 <html>
 	<head>
@@ -99,9 +99,9 @@ func (s *serviceHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	log.Println("access from:", r.RemoteAddr, r.Method, r.RequestURI, r.Header)
 	switch r.Method + r.URL.Path {
 	case "GET/":
-		// request for health-check
+		// request for home page
 		s.home(w, r)
-	case "GET/healthcheck":
+	case "GET/api/v1/healthcheck":
 		// request for health-check
 		s.healthcheck(w, r)
 	case "POST/api/v1/token":
@@ -245,13 +245,10 @@ func (s *serviceHandler) healthCheck() error {
 
 	// self-test part 1: get short URL
 	if s.config.Mode&disableShortener != 0 {
-		// short token for this scenario
-		sToken := "Debug.Token"
-		_ = s.tokenDB.Delete(sToken)
-
 		// use tokenDB interface as web-interface is locked in this service mode
-		if ok, err := s.tokenDB.Set(sToken, "http://"+url, 1); err != nil || !ok {
-			return fmt.Errorf("new token creation error: %w, ok: %v", err, ok)
+		sToken, err := s.generateToken(url, 1)
+		if err != nil {
+			return fmt.Errorf("new token creation error: %w", err)
 		}
 		// store results
 		repl.Token = sToken
@@ -359,13 +356,12 @@ func (s *serviceHandler) redirect(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// // check the token
-	// err := s.shortToken.Check(sToken)
-	// if err != nil {
-	// 	log.Printf("%s: token check failed: %v\n", rMess, err)
-	// 	http.NotFound(w, r)
-	// 	return
-	// }
+	// check the token length
+	if s.config.Mode&disableLengthCheck == 0 && len(sToken) != s.config.TokenLength {
+		log.Printf("%s: incorrect token length\n", rMess)
+		http.NotFound(w, r)
+		return
+	}
 
 	// get the long URL
 	longURL, err := s.tokenDB.Get(sToken)
@@ -526,6 +522,7 @@ curl -v POST -H "Content-Type: application/json" -d '{"token":"<token>","exp":<e
 
 // expire makes token-longURL record as expired
 func (s *serviceHandler) expire(w http.ResponseWriter, r *http.Request, body []byte) {
+	// TODO: check some authorization ???
 
 	rMess := fmt.Sprintf("expire request from %s (%s)", r.RemoteAddr, r.Referer())
 

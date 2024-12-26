@@ -3,6 +3,7 @@ package main
 import (
 	"crypto/rand"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -191,4 +192,49 @@ func Benchmark00ST00Create8B(b *testing.B) {
 	for range b.N {
 		_ = st.Get()
 	}
+}
+
+var (
+	tokens = []string{"ABCDEFGH", "ABCDEFG&", "ABCDEF&G", "ABCDE&FG", "ABCD&EFG", "&ABCDEFG", "ABCDEFGH"}
+)
+
+func TestCheck(t *testing.T) {
+	st := NewShortToken(8)
+	require.NoError(t, st.Check(tokens[0]))
+	require.NoError(t, check1(tokens[0], 8))
+	require.EqualError(t, st.Check(tokens[1]), "wrong token alphabet")
+	require.EqualError(t, check1(tokens[1], 8), "incorrect symbol: '&'")
+
+}
+
+func BenchmarkTokenCheck(b *testing.B) {
+	st := NewShortToken(8)
+	for range b.N {
+		for _, t := range tokens {
+			st.Check(t)
+		}
+	}
+}
+
+func BenchmarkTokenCheck1(b *testing.B) {
+	_ = NewShortToken(8)
+	for range b.N {
+		for _, t := range tokens {
+			check1(t, 8)
+		}
+	}
+}
+
+func check1(token string, l int) error {
+	// check length
+	if len(token) != l {
+		return errors.New("wrong token length")
+	}
+
+	for _, s := range token {
+		if !((s >= 'A' && s <= 'Z') || (s >= 'a' && s <= 'z') || (s <= '0' && s >= '9') || s == '_' || s == '-') {
+			return fmt.Errorf("incorrect symbol: '%c'", s)
+		}
+	}
+	return nil
 }

@@ -36,12 +36,12 @@ func Test01Tools00NoRequiredField(t *testing.T) {
 
 func Test01Tools01WrongMode(t *testing.T) {
 	t.Setenv("URLSHORTENER_REDISADDRS", `"localhost:1234"`)
-	t.Setenv("URLSHORTENER_MODE", fmt.Sprint(disableUI<<1))
+	t.Setenv("URLSHORTENER_MODE", fmt.Sprint(incorrectOption))
 
 	_, err := readConfig()
 
 	require.Error(t, err)
-	require.Equal(t, "config error: wrong mode value: 10", err.Error())
+	require.Equal(t, "config error: wrong mode value: 20H (32)", err.Error())
 }
 
 func Test01Tools02Success(t *testing.T) {
