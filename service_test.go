@@ -21,16 +21,17 @@ var (
 
 // try to start service with not working db
 func Test10Service03CheckHealthCheck(t *testing.T) {
+	tokenLength := 6
 	conf := Config{
 		ListenHostPort: "localhost:8080",
 		ShortDomain:    "localhost:8080",
 		Timeout:        500,
-		TokenLength:    6,
+		TokenLength:    tokenLength,
 	}
 
 	errDb := newMockDB()
 
-	testHandler := NewHandler(&conf, errDb, NewShortToken(5))
+	testHandler := NewHandler(&conf, errDb, NewShortToken(tokenLength))
 
 	go func() {
 		require.Error(t, testHandler.start())
@@ -39,7 +40,7 @@ func Test10Service03CheckHealthCheck(t *testing.T) {
 
 	conf.Mode = disableExpire
 
-	resp, err := http.Get("http://localhost:8080/healthcheck")
+	resp, err := http.Get("http://localhost:8080/api/v1/healthcheck")
 	require.NoError(t, err)
 	defer resp.Body.Close()
 	require.Equal(t, http.StatusOK, resp.StatusCode)
@@ -47,14 +48,14 @@ func Test10Service03CheckHealthCheck(t *testing.T) {
 	conf.Mode = 0
 	errDb.expFunc = func(string, int) error { return errors.New("some error") }
 
-	resp, err = http.Get("http://localhost:8080/healthcheck")
+	resp, err = http.Get("http://localhost:8080/api/v1/healthcheck")
 	require.NoError(t, err)
 	defer resp.Body.Close()
 	require.Equal(t, http.StatusInternalServerError, resp.StatusCode)
 
 	conf.Mode = disableExpire
 
-	resp, err = http.Get("http://localhost:8080/healthcheck")
+	resp, err = http.Get("http://localhost:8080/api/v1/healthcheck")
 	require.NoError(t, err)
 	defer resp.Body.Close()
 	require.Equal(t, http.StatusInternalServerError, resp.StatusCode)
@@ -62,7 +63,7 @@ func Test10Service03CheckHealthCheck(t *testing.T) {
 	conf.Mode = disableShortener | disableRedirect
 	errDb.getFunc = func(s string) (string, error) { return "wrongURL", nil }
 
-	resp, err = http.Get("http://localhost:8080/healthcheck")
+	resp, err = http.Get("http://localhost:8080/api/v1/healthcheck")
 	require.NoError(t, err)
 	defer resp.Body.Close()
 	require.Equal(t, http.StatusInternalServerError, resp.StatusCode)
@@ -70,14 +71,14 @@ func Test10Service03CheckHealthCheck(t *testing.T) {
 	conf.Mode = 0
 	errDb.getFunc = func(string) (string, error) { return "", errors.New("some error") }
 
-	resp, err = http.Get("http://localhost:8080/healthcheck")
+	resp, err = http.Get("http://localhost:8080/api/v1/healthcheck")
 	require.NoError(t, err)
 	defer resp.Body.Close()
 	require.Equal(t, http.StatusInternalServerError, resp.StatusCode)
 
 	conf.Mode = disableRedirect
 
-	resp, err = http.Get("http://localhost:8080/healthcheck")
+	resp, err = http.Get("http://localhost:8080/api/v1/healthcheck")
 	require.NoError(t, err)
 	defer resp.Body.Close()
 	require.Equal(t, http.StatusInternalServerError, resp.StatusCode)
@@ -85,14 +86,14 @@ func Test10Service03CheckHealthCheck(t *testing.T) {
 	conf.Mode = 0
 	errDb.setFunc = func(string, string, int) (bool, error) { return false, nil }
 
-	resp, err = http.Get("http://localhost:8080/healthcheck")
+	resp, err = http.Get("http://localhost:8080/api/v1/healthcheck")
 	require.NoError(t, err)
 	defer resp.Body.Close()
 	require.Equal(t, http.StatusInternalServerError, resp.StatusCode)
 
 	conf.Mode = disableShortener
 
-	resp, err = http.Get("http://localhost:8080/healthcheck")
+	resp, err = http.Get("http://localhost:8080/api/v1/healthcheck")
 	require.NoError(t, err)
 	defer resp.Body.Close()
 	require.Equal(t, http.StatusInternalServerError, resp.StatusCode)
@@ -147,7 +148,7 @@ func Test10Service05All(t *testing.T) {
 	require.Contains(t, string(buf), "starting server at")
 
 	t.Run("do health check", func(t *testing.T) {
-		resp, err := http.Get("http://" + testConfig.ListenHostPort + "/healthcheck")
+		resp, err := http.Get("http://" + testConfig.ListenHostPort + "/api/v1/healthcheck")
 		require.NoError(t, err)
 		defer resp.Body.Close()
 
@@ -210,7 +211,7 @@ func Test10Service05All(t *testing.T) {
 
 	t.Run("expire request for not existing token", func(t *testing.T) {
 		resp, err := http.Post("http://"+testConfig.ListenHostPort+"/api/v1/expire", "application/json",
-			strings.NewReader(`{"token":"`+strings.Repeat("(", testConfig.TokenLength)+`"}`)) // use non Base64 symbols
+			strings.NewReader(`{"token":"`+strings.Repeat("(", testConfig.TokenLength-2)+`"}`)) // use non Base64 symbols
 		require.NoError(t, err)
 		defer resp.Body.Close()
 
@@ -218,7 +219,7 @@ func Test10Service05All(t *testing.T) {
 	})
 
 	t.Run("redirect request with wrong token (wrong length)", func(t *testing.T) {
-		resp, err := http.Get("http://" + testConfig.ListenHostPort + "/not+existing+token")
+		resp, err := http.Get("http://" + testConfig.ListenHostPort + "/token+with+incorrect+length")
 		require.NoError(t, err)
 		defer resp.Body.Close()
 
@@ -276,7 +277,7 @@ func Test10Service05All(t *testing.T) {
 	t.Run("health check in service mode disableRedirect", func(t *testing.T) {
 		testConfig.Mode = disableRedirect
 
-		resp, err := http.Get("http://" + testConfig.ListenHostPort + "/healthcheck")
+		resp, err := http.Get("http://" + testConfig.ListenHostPort + "/api/v1/healthcheck")
 		require.NoError(t, err)
 		defer resp.Body.Close()
 
@@ -287,7 +288,7 @@ func Test10Service05All(t *testing.T) {
 	t.Run("health check in service mode disableShortener", func(t *testing.T) {
 		testConfig.Mode = disableShortener
 
-		resp, err := http.Get("http://" + testConfig.ListenHostPort + "/healthcheck")
+		resp, err := http.Get("http://" + testConfig.ListenHostPort + "/api/v1/healthcheck")
 		require.NoError(t, err)
 		defer resp.Body.Close()
 
@@ -298,7 +299,7 @@ func Test10Service05All(t *testing.T) {
 	t.Run("health check in service mode disableExpire", func(t *testing.T) {
 		testConfig.Mode = disableExpire
 
-		resp, err := http.Get("http://" + testConfig.ListenHostPort + "/healthcheck")
+		resp, err := http.Get("http://" + testConfig.ListenHostPort + "/api/v1/healthcheck")
 		require.NoError(t, err)
 		defer resp.Body.Close()
 

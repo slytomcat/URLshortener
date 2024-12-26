@@ -27,10 +27,12 @@ type Config struct {
 
 const (
 	// Service modes
-	disableRedirect  uint = 1 << iota // = 1 disable redirect request
-	disableShortener                  // = 2 disable request for short URL
-	disableExpire                     // = 4 disable expire request
-	disableUI                         // = 8 disable UI generation page
+	disableRedirect    uint = 1 << iota // = 1 disable redirect request
+	disableShortener                    // = 2 disable request for short URL
+	disableExpire                       // = 4 disable expire request
+	disableUI                           // = 8 disable UI generation page
+	disableLengthCheck                  // = 16 disable token length check (during redirect)
+	incorrectOption
 )
 
 // readConfig reads configuration from environment variables
@@ -45,8 +47,8 @@ func readConfig() (*Config, error) {
 	if len(config.RedisAddrs) == 0 {
 		return nil, fmt.Errorf("config error: required key URLSHORTENER_REDISADDRS missing value")
 	}
-	if config.Mode > disableUI {
-		return nil, fmt.Errorf("config error: wrong mode value: %x", config.Mode)
+	if config.Mode >= incorrectOption {
+		return nil, fmt.Errorf("config error: wrong mode value: %xH (%d)", config.Mode, config.Mode)
 	}
 	return config, nil
 }
