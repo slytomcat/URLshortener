@@ -1,12 +1,11 @@
 module github.com/slytomcat/URLshortener
 
-go 1.23.4
+go 1.24.0
 
 require (
 	github.com/go-redis/redis/v7 v7.4.1
 	github.com/joho/godotenv v1.5.1
-	github.com/kelseyhightower/envconfig v1.4.0
-	github.com/stretchr/testify v1.8.4
+	github.com/stretchr/testify v1.10.0
 )
 
 require (

@@ -71,7 +71,6 @@ Short URL lifetime: %d days
 )
 
 var (
-
 	// favicon is binary image (PNG) that is a response on /favicon.ico request
 	//go:embed favicon.png
 	favicon []byte
@@ -178,7 +177,7 @@ func (s *serviceHandler) generate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// display results
-	w.Write([]byte(fmt.Sprintf(generatePage, part)))
+	w.Write(fmt.Appendf(nil, generatePage, part))
 	log.Printf("%s: ui interface displayed", rMess)
 
 }
@@ -191,12 +190,12 @@ curl -i -v http://localhost:8080/
 func (s *serviceHandler) home(w http.ResponseWriter, r *http.Request) {
 	log.Printf("home page request from %s (%s)", r.RemoteAddr, r.Referer())
 	// show the home page
-	w.Write([]byte(fmt.Sprintf(
+	w.Write(fmt.Appendf(nil,
 		homePage,
 		"Home page of URLshortener",
 		version,
 		atomic.LoadInt32(&s.attempts),
-		s.config.Timeout)))
+		s.config.Timeout))
 }
 
 /* test for test env:
@@ -215,12 +214,12 @@ func (s *serviceHandler) healthcheck(w http.ResponseWriter, r *http.Request) {
 		// log self-test results
 		log.Printf("%s: success\n", rMess)
 		// show the home page if self-test was successfully passed
-		w.Write([]byte(fmt.Sprintf(
+		w.Write(fmt.Appendf(nil,
 			homePage,
 			"Health check page",
 			version,
 			atomic.LoadInt32(&s.attempts),
-			s.config.Timeout)))
+			s.config.Timeout))
 	}
 }
 
@@ -334,7 +333,6 @@ func (s *serviceHandler) healthCheck() error {
 			return fmt.Errorf("expire request: unexpected response status: %v", resp3.StatusCode)
 		}
 	}
-
 	return nil
 }
 
@@ -356,9 +354,9 @@ func (s *serviceHandler) redirect(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// check the token length
-	if s.config.Mode&disableLengthCheck == 0 && len(sToken) != s.config.TokenLength {
-		log.Printf("%s: incorrect token length\n", rMess)
+	// check the token
+	if err := s.validateToken(sToken); err != nil {
+		log.Printf("%s: incorrect token: %v\n", rMess, err)
 		http.NotFound(w, r)
 		return
 	}
@@ -377,6 +375,16 @@ func (s *serviceHandler) redirect(w http.ResponseWriter, r *http.Request) {
 
 	// respond by redirect
 	http.Redirect(w, r, longURL, http.StatusFound)
+}
+
+func (s *serviceHandler) validateToken(t string) error {
+	// check the token length
+	if s.config.Mode&disableLengthCheck == 0 {
+		if err := s.shortToken.CheckLength(t); err != nil {
+			return err
+		}
+	}
+	return s.shortToken.CheckAlphabet(t)
 }
 
 /* test for test env:
@@ -545,6 +553,12 @@ func (s *serviceHandler) expire(w http.ResponseWriter, r *http.Request, body []b
 	if err != nil || params.Token == "" {
 		log.Printf("%s: bad request parameters:%s", rMess, body)
 		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	if err := s.validateToken(params.Token); err != nil {
+		log.Printf("%s: incorrect token: %v\n", rMess, err)
+		http.NotFound(w, r)
 		return
 	}
 

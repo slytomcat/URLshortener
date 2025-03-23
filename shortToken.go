@@ -13,13 +13,18 @@ import (
 
 // ShortToken - interface for short token creation
 type ShortToken interface {
-	Get() string        // returns new random short token
-	Check(string) error // check the token length and alphabet
+	Get() string                // returns new random short token
+	CheckLength(string) error   // true when the token length is correct
+	CheckAlphabet(string) error // check the token alphabet
 }
 type shortToken struct {
 	length  int // token length
 	bufSize int // bytes buffer size
 }
+
+var (
+	lengthError = errors.New("wrong token length")
+)
 
 // NewShortToken returns new ShortToken instance
 func NewShortToken(length int) ShortToken {
@@ -29,7 +34,7 @@ func NewShortToken(length int) ShortToken {
 	}
 }
 
-// Get creates the token from random or debugging source
+// Get creates the token from random source
 func (s *shortToken) Get() string {
 
 	// prepare bytes buffer
@@ -44,17 +49,21 @@ func (s *shortToken) Get() string {
 	return base64.URLEncoding.EncodeToString(buf)[:s.length]
 }
 
-// Check checks the length of token and its alphabet
-func (s *shortToken) Check(sToken string) error {
-
-	// check length
-	if len(sToken) != s.length {
-		return errors.New("wrong token length")
+// Check checks the length of token
+func (s *shortToken) CheckLength(sToken string) error {
+	if len(sToken) == s.length {
+		return nil
 	}
+	return lengthError
+}
 
-	// check base64 alphabet
-	if _, err := base64.URLEncoding.DecodeString(sToken + "AAAA"[:4-s.length%4]); err != nil {
-		return errors.New("wrong token alphabet")
+// Check checks the token alphabet
+func (s *shortToken) CheckAlphabet(sToken string) error {
+	// check base64 URL safe alphabet
+	for i, s := range sToken {
+		if !((s >= 'A' && s <= 'Z') || (s >= 'a' && s <= 'z') || (s >= '0' && s <= '9') || s == '_' || s == '-') {
+			return base64.CorruptInputError(i)
+		}
 	}
 	return nil
 }

@@ -16,9 +16,8 @@ import (
 func Test20Main00WrongConfig(t *testing.T) {
 	t.Setenv("URLSHORTENER_REDISADDRS", "")
 	err := doMain()
-
 	require.Error(t, err)
-	require.Equal(t, "configuration read error: config error: required key URLSHORTENER_REDISADDRS missing value", err.Error())
+	require.Equal(t, "configuration read error: config error: wrong or missed value of URLSHORTENER_REDISADDRS", err.Error())
 }
 
 // try to pass wrong addr of redis server
@@ -41,12 +40,39 @@ func Test20Main07WrongDB2(t *testing.T) {
 	require.Equal(t, "http: Server closed", err.Error())
 }
 
-// try to start service correctly
-func Test20Main20SuccessAndKill(t *testing.T) {
-	logger := log.Writer()
+func catchOutput() func() string {
+	out := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+	return func() string {
+		w.Close()
+		os.Stdout = out
+		buf, err := io.ReadAll(r)
+		if err != nil {
+			panic(err)
+		}
+		return string(buf)
+	}
+}
+
+func catchLog() func() string {
+	out := log.Writer()
 	r, w, _ := os.Pipe()
 	log.SetOutput(w)
+	return func() string {
+		w.Close()
+		log.SetOutput(out)
+		buf, err := io.ReadAll(r)
+		if err != nil {
+			panic(err)
+		}
+		return string(buf)
+	}
+}
 
+// try to start service correctly
+func Test20Main20SuccessAndKill(t *testing.T) {
+	outF := catchLog()
 	envSet(t)
 
 	// run service
@@ -54,26 +80,26 @@ func Test20Main20SuccessAndKill(t *testing.T) {
 
 	time.Sleep(time.Second * 2)
 
-	w.Close()
-	log.SetOutput(logger)
-	buf, err := io.ReadAll(r)
-	require.NoError(t, err)
+	out := outF()
+	require.Contains(t, out, "starting server at")
+	require.Contains(t, out, "URLshortener "+version)
 
-	require.Contains(t, string(buf), "starting server at")
-	require.Contains(t, string(buf), "URLshortener "+version)
-
-	logger = log.Writer()
-	r, w, _ = os.Pipe()
-	log.SetOutput(w)
-
+	outF = catchLog()
 	syscall.Kill(syscall.Getpid(), syscall.SIGINT)
 
 	time.Sleep(time.Second * 2)
 
-	w.Close()
-	log.SetOutput(logger)
-	buf, err = io.ReadAll(r)
-	require.NoError(t, err)
+	require.Contains(t, outF(), "http: Server closed")
+}
 
-	require.Contains(t, string(buf), "http: Server closed")
+func TestMainVersion(t *testing.T) {
+	args := os.Args
+	os.Args = []string{"app", "-v"}
+	defer func() {
+		os.Args = args
+	}()
+	outF := catchOutput()
+	main()
+	require.Contains(t, outF(), version)
+
 }
