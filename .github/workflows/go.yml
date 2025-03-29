@@ -27,7 +27,6 @@ jobs:
           URLSHORTENER_REDISADDRS: localhost:6379
           URLSHORTENER_REDISPASSWORD: ""
   build:
-    needs: test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -46,7 +45,9 @@ jobs:
           path: |
             URLshortener
   push:
-    needs: build
+    needs:
+      - test
+      - build
     if: github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
     env:
