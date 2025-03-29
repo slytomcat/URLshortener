@@ -36,10 +36,8 @@ func NewShortToken(length int) ShortToken {
 
 // Get creates the token from random source
 func (s *shortToken) Get() string {
-
 	// prepare bytes buffer
 	buf := make([]byte, s.bufSize)
-
 	// get secure random bytes
 	n, err := rand.Read(buf)
 	if err != nil || n != s.bufSize {

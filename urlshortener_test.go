@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -74,21 +75,15 @@ func catchLog() func() string {
 func Test20Main20SuccessAndKill(t *testing.T) {
 	outF := catchLog()
 	envSet(t)
-
 	// run service
 	go main()
-
 	time.Sleep(time.Second * 2)
-
 	out := outF()
-	require.Contains(t, out, "starting server at")
-	require.Contains(t, out, "URLshortener "+version)
-
+	assert.Contains(t, out, "starting server at")
+	assert.Contains(t, out, "URLshortener "+version)
 	outF = catchLog()
 	syscall.Kill(syscall.Getpid(), syscall.SIGINT)
-
 	time.Sleep(time.Second * 2)
-
 	require.Contains(t, outF(), "http: Server closed")
 }
 
@@ -101,5 +96,4 @@ func TestMainVersion(t *testing.T) {
 	outF := catchOutput()
 	main()
 	require.Contains(t, outF(), version)
-
 }

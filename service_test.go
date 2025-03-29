@@ -124,17 +124,13 @@ func checkStart(url string) func() bool {
 // try to start service
 func Test10Service05All(t *testing.T) {
 	envSet(t)
-
 	testConfig, err := readConfig()
 	require.NoError(t, err)
-
 	// initialize database connection
 	serviceTestDB, err = NewTokenDB(testConfig.RedisAddrs, testConfig.RedisPassword)
 	require.NoError(t, err)
-
 	// create service handler
 	serviceTestHandler = NewHandler(testConfig, serviceTestDB, NewShortToken(testConfig.TokenLength))
-
 	outF := catchLog()
 	go func() {
 		log.Println(serviceTestHandler.start())
@@ -144,46 +140,37 @@ func Test10Service05All(t *testing.T) {
 	defer func() {
 		serviceTestHandler.stop()
 	}()
-
 	require.Eventually(t, checkStart("http://"+testConfig.ListenHostPort), time.Second, 100*time.Millisecond)
 	require.Contains(t, out, "starting server at")
-
 	t.Run("do health check", func(t *testing.T) {
 		resp, err := http.Get("http://" + testConfig.ListenHostPort + "/api/v1/healthcheck")
 		require.NoError(t, err)
 		defer resp.Body.Close()
-
 		require.Equal(t, http.StatusOK, resp.StatusCode)
 		buf, err := io.ReadAll(resp.Body)
 		require.NoError(t, err)
 		require.Contains(t, string(buf), "Health check page")
 	})
-
 	t.Run("bad method", func(t *testing.T) {
 		resp, err := http.Head("http://" + testConfig.ListenHostPort)
 		require.NoError(t, err)
 		defer resp.Body.Close()
 		require.Equal(t, http.StatusBadRequest, resp.StatusCode)
 	})
-
 	t.Run("short URL query with empty request body", func(t *testing.T) {
 		resp, err := http.Post("http://"+testConfig.ListenHostPort+"/api/v1/token", "application/json",
 			strings.NewReader(``))
 		require.NoError(t, err)
 		defer resp.Body.Close()
-
 		require.Equal(t, http.StatusBadRequest, resp.StatusCode)
 	})
-
 	t.Run("short URL request with empty JSON", func(t *testing.T) {
 		resp, err := http.Post("http://"+testConfig.ListenHostPort+"/api/v1/token", "application/json",
 			strings.NewReader(`{}`))
 		require.NoError(t, err)
 		defer resp.Body.Close()
-
 		require.Equal(t, http.StatusBadRequest, resp.StatusCode)
 	})
-
 	t.Run("short URL request without expiration", func(t *testing.T) {
 		resp, err := http.Post("http://"+testConfig.ListenHostPort+"/api/v1/token", "application/json",
 			strings.NewReader(`{"url": "http://`+testConfig.ShortDomain+`"}`))
@@ -191,170 +178,127 @@ func Test10Service05All(t *testing.T) {
 		defer resp.Body.Close()
 		require.Equal(t, http.StatusOK, resp.StatusCode)
 	})
-
 	t.Run("expire request without parameters", func(t *testing.T) {
 		resp, err := http.Post("http://"+testConfig.ListenHostPort+"/api/v1/expire", "application/json",
 			strings.NewReader(``))
 		require.NoError(t, err)
 		defer resp.Body.Close()
-
 		require.Equal(t, http.StatusBadRequest, resp.StatusCode)
 	})
-
 	t.Run("expire request with empty JSON", func(t *testing.T) {
 		resp, err := http.Post("http://"+testConfig.ListenHostPort+"/api/v1/expire", "application/json",
 			strings.NewReader(`{}`))
 		require.NoError(t, err)
 		defer resp.Body.Close()
-
 		require.Equal(t, http.StatusBadRequest, resp.StatusCode)
 	})
-
 	t.Run("expire request for not existing token", func(t *testing.T) {
 		resp, err := http.Post("http://"+testConfig.ListenHostPort+"/api/v1/expire", "application/json",
 			strings.NewReader(`{"token":"`+strings.Repeat("(", testConfig.TokenLength-2)+`"}`)) // use non Base64 symbols
 		require.NoError(t, err)
 		defer resp.Body.Close()
-
 		require.Equal(t, http.StatusNotFound, resp.StatusCode)
 	})
-
 	t.Run("redirect request with wrong token (wrong length)", func(t *testing.T) {
 		resp, err := http.Get("http://" + testConfig.ListenHostPort + "/token+with+incorrect+length")
 		require.NoError(t, err)
 		defer resp.Body.Close()
-
 		require.Equal(t, http.StatusNotFound, resp.StatusCode)
 	})
-
 	t.Run("redirect request with wrong token (wrong symbols)", func(t *testing.T) {
 		resp, err := http.Get("http://" + testConfig.ListenHostPort + "/" + strings.Repeat("(", testConfig.TokenLength))
 		require.NoError(t, err)
 		defer resp.Body.Close()
-
 		require.Equal(t, http.StatusNotFound, resp.StatusCode)
 	})
-
 	t.Run("redirect request with wrong token (correct length&symbols)", func(t *testing.T) {
 		resp, err := http.Get("http://" + testConfig.ListenHostPort + "/" + strings.Repeat("A", testConfig.TokenLength))
 		require.NoError(t, err)
 		defer resp.Body.Close()
-
 		require.Equal(t, http.StatusNotFound, resp.StatusCode)
 	})
-
 	t.Run("unsupported request in mode = disableRedirect", func(t *testing.T) {
 		testConfig.Mode = disableRedirect
-
 		resp, err := http.Get("http://" + testConfig.ListenHostPort + "/" + strings.Repeat("_", testConfig.TokenLength))
 		require.NoError(t, err)
 		defer resp.Body.Close()
-
 		require.Equal(t, http.StatusNotFound, resp.StatusCode)
 	})
-
 	t.Run("unsupported request in mode = disableShortener", func(t *testing.T) {
 		testConfig.Mode = disableShortener
-
 		resp, err := http.Post("http://"+testConfig.ListenHostPort+"/api/v1/token", "application/json",
 			strings.NewReader(`{"url": "http://someother.url"}`))
 		require.NoError(t, err)
 		defer resp.Body.Close()
-
 		require.Equal(t, http.StatusNotFound, resp.StatusCode)
 	})
-
 	t.Run("unsupported request in mode = disableExpire", func(t *testing.T) {
 		testConfig.Mode = disableExpire
-
 		resp, err := http.Post("http://"+testConfig.ListenHostPort+"/api/v1/expire", "application/json",
 			strings.NewReader(`{"token": "`+strings.Repeat("_", testConfig.TokenLength)+`","exp":-1}`))
 		require.NoError(t, err)
 		defer resp.Body.Close()
-
 		require.Equal(t, http.StatusNotFound, resp.StatusCode)
 	})
-
 	t.Run("health check in service mode disableRedirect", func(t *testing.T) {
 		testConfig.Mode = disableRedirect
-
 		resp, err := http.Get("http://" + testConfig.ListenHostPort + "/api/v1/healthcheck")
 		require.NoError(t, err)
 		defer resp.Body.Close()
-
 		require.Equal(t, http.StatusOK, resp.StatusCode)
 		time.Sleep(time.Second)
 	})
-
 	t.Run("health check in service mode disableShortener", func(t *testing.T) {
 		testConfig.Mode = disableShortener
-
 		resp, err := http.Get("http://" + testConfig.ListenHostPort + "/api/v1/healthcheck")
 		require.NoError(t, err)
 		defer resp.Body.Close()
-
 		require.Equal(t, http.StatusOK, resp.StatusCode)
 		time.Sleep(time.Second)
 	})
-
 	t.Run("health check in service mode disableExpire", func(t *testing.T) {
 		testConfig.Mode = disableExpire
-
 		resp, err := http.Get("http://" + testConfig.ListenHostPort + "/api/v1/healthcheck")
 		require.NoError(t, err)
 		defer resp.Body.Close()
-
 		require.Equal(t, http.StatusOK, resp.StatusCode)
 		time.Sleep(time.Second)
 	})
-
 	t.Run("generate UI interface", func(t *testing.T) {
 		resp, err := http.Get("http://" + testConfig.ListenHostPort + "/ui/generate")
 		require.NoError(t, err)
 		defer resp.Body.Close()
-
 		require.Equal(t, http.StatusOK, resp.StatusCode)
-
 		buf, err := io.ReadAll(resp.Body)
 		require.NoError(t, err)
-
 		require.Contains(t, string(buf), "URL to be shortened")
 	})
-
 	t.Run("generate UI interface with QR", func(t *testing.T) {
 		resp, err := http.Get("http://" + testConfig.ListenHostPort + "/ui/generate?s=http:/some.url")
 		require.NoError(t, err)
 		defer resp.Body.Close()
-
 		require.Equal(t, http.StatusOK, resp.StatusCode)
-
 		buf, err := io.ReadAll(resp.Body)
 		require.NoError(t, err)
 		require.Contains(t, string(buf), "Short URL:")
 	})
-
 	t.Run("generate UI interface disabled", func(t *testing.T) {
 		testConfig.Mode = disableUI
 		resp, err := http.Get("http://" + testConfig.ListenHostPort + "/ui/generate?s=http:/some.url")
 		require.NoError(t, err)
 		defer resp.Body.Close()
-
 		require.Equal(t, http.StatusNotFound, resp.StatusCode)
 	})
-
 	t.Run("stop service", func(t *testing.T) {
 		logger := log.Writer()
 		r, w, _ := os.Pipe()
 		log.SetOutput(w)
-
 		serviceTestHandler.stop()
 		time.Sleep(time.Second)
-
 		w.Close()
 		log.SetOutput(logger)
 		buf, err := io.ReadAll(r)
 		require.NoError(t, err)
-
 		require.Contains(t, string(buf), "http: Server closed")
 	})
 }
@@ -362,79 +306,58 @@ func Test10Service05All(t *testing.T) {
 // try tokens' duplicate
 func Test10Service90Double(t *testing.T) {
 	envSet(t)
-
 	servTestConfig, err := readConfig()
 	require.NoError(t, err)
-
 	servTestDB, err := NewTokenDB(servTestConfig.RedisAddrs, servTestConfig.RedisPassword)
 	require.NoError(t, err)
-
 	// create short token interface
 	sToken := mockShortToken(servTestConfig.TokenLength)
-
 	// create service handler
 	serviceTestHandler = NewHandler(servTestConfig, servTestDB, sToken)
-
 	servTestDB.Delete(sToken.Get())
-
 	go func() {
 		log.Println(serviceTestHandler.start())
 	}()
 	defer func() {
 		serviceTestHandler.stop()
 	}()
-
 	require.Eventually(t, checkStart("http://"+servTestConfig.ListenHostPort), time.Second, 100*time.Millisecond)
-
 	resp, err := http.Post("http://"+servTestConfig.ListenHostPort+"/api/v1/token", "application/json",
 		strings.NewReader(`{"url": "http://`+servTestConfig.ShortDomain+`"}`))
 	require.NoError(t, err)
 	resp.Body.Close()
-
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 	// second request
-
 	resp2, err := http.Post("http://"+servTestConfig.ListenHostPort+"/api/v1/token", "application/json",
 		strings.NewReader(`{"url": "http://`+servTestConfig.ShortDomain+`"}`))
 	require.NoError(t, err)
 	resp.Body.Close()
 	require.Equal(t, http.StatusRequestTimeout, resp2.StatusCode)
-
 	servTestDB.Delete(sToken.Get())
-
 	serviceTestHandler.stop()
 }
 
 func Test10Service92BadDB(t *testing.T) {
 	envSet(t)
-
 	servTestConfig, err := readConfig()
 	require.NoError(t, err)
-
 	servTestDB := newMockDB()
 	servTestDB.setFunc = func(string, string, int) (bool, error) { return false, errors.New("some error") }
-
 	// create short token interface
 	sToken := NewShortToken(5)
-
 	// create service handler
 	serviceTestHandler = NewHandler(servTestConfig, servTestDB, sToken)
-
 	go func() {
 		log.Println(serviceTestHandler.start())
 	}()
-
 	defer func() {
 		serviceTestHandler.stop()
 	}()
-
 	require.Eventually(t, checkStart("http://"+servTestConfig.ListenHostPort), time.Second, 100*time.Millisecond)
-
 	resp, err := http.Post("http://"+servTestConfig.ListenHostPort+"/api/v1/token", "application/json",
 		strings.NewReader(`{"url": "http://`+servTestConfig.ShortDomain+`"}`))
 	require.NoError(t, err)
 	resp.Body.Close()
-
 	require.Equal(t, http.StatusInternalServerError, resp.StatusCode)
 	serviceTestHandler.stop()
 }

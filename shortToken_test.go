@@ -131,9 +131,7 @@ func Benchmark00ST00Create8(b *testing.B) {
 // unfortunately it is slower and requires more memory than original simple version.
 func NewBShortToken(length int) ShortToken {
 	pool := &sync.Pool{}
-	pool.New = func() any {
-		return make([]byte, length*6/8+1)
-	}
+	pool.New = func() any { return make([]byte, length*6/8+1) }
 	return &shortBToken{
 		length:  length,
 		bufPool: pool,
@@ -150,7 +148,6 @@ func (s *shortBToken) Get() string {
 	// get secure random bytes
 	buf := s.bufPool.Get().([]byte)
 	defer s.bufPool.Put(buf)
-
 	n, err := rand.Read(buf)
 	if err != nil || n != len(buf) {
 		panic(fmt.Errorf("error while retrieving random data: %d %v", n, err.Error()))

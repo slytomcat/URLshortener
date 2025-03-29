@@ -20,22 +20,15 @@ func envSet(t testing.TB, files ...string) {
 
 // test config reading with empty URLSHORTENER_CONNECTOPTIONS
 func Test01Tools00NoRequiredField(t *testing.T) {
-
 	t.Setenv("URLSHORTENER_REDISADDRS", "")
-
 	c, err := readConfig()
-
 	require.Nil(t, c)
-
 	require.Error(t, err)
 	require.Equal(t, "config error: wrong or missed value of URLSHORTENER_REDISADDRS", err.Error())
-
 	os.Unsetenv("URLSHORTENER_REDISADDRS")
 	_, err = readConfig()
-
 	require.Error(t, err)
 	require.Equal(t, "config error: wrong or missed value of URLSHORTENER_REDISADDRS", err.Error())
-
 }
 func Test01Tools01WrongTimeout(t *testing.T) {
 	t.Setenv("URLSHORTENER_REDISADDRS", `"localhost:1234"`)
@@ -76,15 +69,11 @@ func Test01Tools02WrongExp(t *testing.T) {
 func Test01Tools04WrongMode(t *testing.T) {
 	t.Setenv("URLSHORTENER_REDISADDRS", `"localhost:1234"`)
 	t.Setenv("URLSHORTENER_MODE", "z")
-
 	_, err := readConfig()
-
 	require.Error(t, err)
 	require.Equal(t, "config error: wrong value of URLSHORTENER_MODE: strconv.ParseUint: parsing \"z\": invalid syntax", err.Error())
 	t.Setenv("URLSHORTENER_MODE", fmt.Sprint(incorrectOption))
-
 	_, err = readConfig()
-
 	require.Error(t, err)
 	require.Equal(t, "config error: wrong value of URLSHORTENER_MODE: 20H (32)", err.Error())
 }

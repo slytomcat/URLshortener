@@ -46,7 +46,6 @@ func doMain() error {
 	if err != nil {
 		return fmt.Errorf("configuration read error: %w", err)
 	}
-
 	// initialize database connection
 	tokenDB, err := NewTokenDB(config.RedisAddrs, config.RedisPassword)
 	if err != nil {
@@ -54,17 +53,14 @@ func doMain() error {
 	}
 	defer func() {
 		// close DB connection
-		err = tokenDB.Close()
-		if err != nil {
+		if err = tokenDB.Close(); err != nil {
 			log.Printf("DB connection close error: %v", err)
 		}
 	}()
-
 	return startService(config, tokenDB)
 }
 
 func startService(config *Config, tokenDB TokenDB) error {
-
 	// make service handler
 	handler := NewHandler(config, tokenDB, NewShortToken(config.TokenLength))
 	handlerErr := make(chan error, 1)
@@ -72,7 +68,6 @@ func startService(config *Config, tokenDB TokenDB) error {
 	go func() {
 		handlerErr <- handler.start()
 	}()
-
 	// wait for server start
 	time.Sleep(300 * time.Millisecond)
 	if err := handler.healthCheck(); err != nil {
@@ -86,6 +81,5 @@ func startService(config *Config, tokenDB TokenDB) error {
 	}
 	// Close service
 	handler.stop()
-
 	return <-handlerErr
 }
