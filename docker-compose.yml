@@ -5,5 +5,5 @@ services:
   urlshortener:
     container_name: urlshortener
     image: slytomcat/urlshortener:latest
-    restart: always
+    restart: unless-stopped
     network_mode: host

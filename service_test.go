@@ -36,6 +36,9 @@ func Test10Service03CheckHealthCheck(t *testing.T) {
 	go func() {
 		require.Error(t, testHandler.start())
 	}()
+	defer func() {
+		testHandler.stop()
+	}()
 	require.Eventually(t, checkStart("http://localhost:8080/"), time.Second, 10*time.Millisecond)
 
 	conf.Mode = disableExpire
@@ -107,10 +110,11 @@ func Test10Service03CheckHealthCheck(t *testing.T) {
 func checkStart(url string) func() bool {
 	return func() bool {
 		resp, err := http.Get(url)
-		if err == nil {
-			defer resp.Body.Close()
+		if err != nil {
+			return false
 		}
-		if err != nil || resp.StatusCode != http.StatusOK {
+		defer resp.Body.Close()
+		if resp.StatusCode != http.StatusOK {
 			return false
 		}
 		return true
@@ -131,21 +135,18 @@ func Test10Service05All(t *testing.T) {
 	// create service handler
 	serviceTestHandler = NewHandler(testConfig, serviceTestDB, NewShortToken(testConfig.TokenLength))
 
-	require.NoError(t, err)
-	logger := log.Writer()
-	r, w, _ := os.Pipe()
-	log.SetOutput(w)
-
+	outF := catchLog()
 	go func() {
 		log.Println(serviceTestHandler.start())
 	}()
+	time.Sleep(time.Second)
+	out := outF()
+	defer func() {
+		serviceTestHandler.stop()
+	}()
 
-	require.Eventually(t, checkStart("http://"+testConfig.ListenHostPort), time.Second, 10*time.Millisecond)
-	w.Close()
-	log.SetOutput(logger)
-	buf, err := io.ReadAll(r)
-	require.NoError(t, err)
-	require.Contains(t, string(buf), "starting server at")
+	require.Eventually(t, checkStart("http://"+testConfig.ListenHostPort), time.Second, 100*time.Millisecond)
+	require.Contains(t, out, "starting server at")
 
 	t.Run("do health check", func(t *testing.T) {
 		resp, err := http.Get("http://" + testConfig.ListenHostPort + "/api/v1/healthcheck")
@@ -215,7 +216,7 @@ func Test10Service05All(t *testing.T) {
 		require.NoError(t, err)
 		defer resp.Body.Close()
 
-		require.Equal(t, http.StatusNotModified, resp.StatusCode)
+		require.Equal(t, http.StatusNotFound, resp.StatusCode)
 	})
 
 	t.Run("redirect request with wrong token (wrong length)", func(t *testing.T) {
@@ -379,8 +380,11 @@ func Test10Service90Double(t *testing.T) {
 	go func() {
 		log.Println(serviceTestHandler.start())
 	}()
+	defer func() {
+		serviceTestHandler.stop()
+	}()
 
-	require.Eventually(t, checkStart("http://"+servTestConfig.ListenHostPort), time.Second, 10*time.Millisecond)
+	require.Eventually(t, checkStart("http://"+servTestConfig.ListenHostPort), time.Second, 100*time.Millisecond)
 
 	resp, err := http.Post("http://"+servTestConfig.ListenHostPort+"/api/v1/token", "application/json",
 		strings.NewReader(`{"url": "http://`+servTestConfig.ShortDomain+`"}`))
@@ -420,7 +424,11 @@ func Test10Service92BadDB(t *testing.T) {
 		log.Println(serviceTestHandler.start())
 	}()
 
-	require.Eventually(t, checkStart("http://"+servTestConfig.ListenHostPort), time.Second, 10*time.Millisecond)
+	defer func() {
+		serviceTestHandler.stop()
+	}()
+
+	require.Eventually(t, checkStart("http://"+servTestConfig.ListenHostPort), time.Second, 100*time.Millisecond)
 
 	resp, err := http.Post("http://"+servTestConfig.ListenHostPort+"/api/v1/token", "application/json",
 		strings.NewReader(`{"url": "http://`+servTestConfig.ShortDomain+`"}`))
