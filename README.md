@@ -22,7 +22,7 @@ Shows the simple user interface for short URL generation. It also generated QR c
 
 Note that the lifetime of generated short URL is via `DefaultExp` value in the configuration file.
 
-Request example using `[stc.qd.je](stc.qd.je)` (micro-service demo):
+Request example using `stc.qd.je` (micro-service demo):
 
 Open in browser: `http://stc.qd.je/ui/generate`
 
