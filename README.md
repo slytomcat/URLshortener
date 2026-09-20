@@ -22,9 +22,9 @@ Shows the simple user interface for short URL generation. It also generated QR c
 
 Note that the lifetime of generated short URL is via `DefaultExp` value in the configuration file.
 
-Request example using `s-t-c.tk` (micro-service demo):
+Request example using `[stc.qd.je](stc.qd.je)` (micro-service demo):
 
-Open in browser: `http://s-t-c.tk/ui/generate`
+Open in browser: `http://stc.qd.je/ui/generate`
 
 ### Request for short URL:
 
@@ -42,9 +42,9 @@ Success response: `HTTP 200 OK` with body containing JSON with following paramet
 - `token`: string, token for short URL
 - `url`: string, short URL
 
-Request example using `curl` and `s-t-c.tk` (micro-service demo):
+Request example using `curl` and `stc.qd.je` (micro-service demo):
 
-`curl -v POST -H "Content-Type: application/json" -d '{"url":"<long url>","exp":10}' http://s-t-c.tk/api/v1/token`
+`curl -v POST -H "Content-Type: application/json" -d '{"url":"<long url>","exp":10}' http://stc.qd.je/api/v1/token`
 
 Note: Token is created as random and the saving it to DB may cause duplicate error. In order to avoid such error the service makes several attempts to store random token. The number of attempts is limited by the `URLSHORTENER_TIMEOUT` configuration value by time, not by count of attempts. When time-out expired and no one attempt was successful then service returns response code `408 Request Timeout`. This response mean that the request can be repeated.
 
@@ -70,9 +70,9 @@ Request body: JSON with following parameter:
 
 Success response: `HTTP 200 OK` with empty body
 
-Request example using `curl` and `s-t-c.tk` (micro-service demo):
+Request example using `curl` and `stc.qd.je` (micro-service demo):
 
-`curl -v POST -H "Content-Type: application/json" -d '{"token":"<token>","exp":<exp>}' http://s-t-c.tk/api/v1/expire`
+`curl -v POST -H "Content-Type: application/json" -d '{"token":"<token>","exp":<exp>}' http://stc.qd.je/api/v1/expire`
 
 
 ### Redirect to long URL:
@@ -82,15 +82,15 @@ Method: `GET`
 
 Response contain the redirection to long URL (response code: HTTP 302 'Found' with 'Location' = long URL in response header)
 
-Request example using `s-t-c.tk` (micro-service demo):
+Request example using `stc.qd.je` (micro-service demo):
 
 Via `curl`:
 
-`curl -i -v http://s-t-c.tk/<token>`
+`curl -i -v http://stc.qd.je/<token>`
 
 Via browser:
 
-`http://s-t-c.tk/<token>`
+`http://stc.qd.je/<token>`
 
 
 ### Health-check:
@@ -100,9 +100,9 @@ Method: `GET`
 
 Response: simple home page and `HTTP 200 OK` in case of successful self-health-check, or `HTTP 500 Server error` in case of any error during self-health-check.
 
-Request example using `curl` and `s-t-c.tk` (micro-service demo):
+Request example using `curl` and `stc.qd.je` (micro-service demo):
 
-`curl -i -v http://s-t-c.tk/api/v1/healthcheck`
+`curl -i -v http://stc.qd.je/api/v1/healthcheck`
 
 
 ### Home page
@@ -112,9 +112,9 @@ Method: `GET`
 
 Response: simple home page and `HTTP 200 OK`
 
-Request example using `curl` and `s-t-c.tk` (micro-service demo):
+Request example using `curl` and `stc.qd.je` (micro-service demo):
 
-`curl -i -v http://s-t-c.tk`
+`curl -i -v http://stc.qd.je`
 
 
 ### Service configuration
